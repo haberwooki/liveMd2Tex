@@ -1,0 +1,202 @@
+{
+  "name": "two-column-paper",
+  "description": "An example preset with neutral settings: a two-column paper with a Methods appendix, its supplement, a cover letter, a response to referees and a single-column report. Text-based front matter, author-year citations written as \\cite, bold 'Figure N.' and 'Table N.' captions, figure layouts chosen by file name, drafting notes left out, and a Unicode table. Copy this folder into a project and name it in .latexpreview.json: { \"markdown\": { \"preset\": \"presets/two-column-paper/preset.json\" } }. Every rule here is an ordinary preset option (docs/DESIGN.md#presets); nothing is built in. The preset's files are dedicated to the public domain (CC0 1.0): copy and change them freely.",
+  "defaults": {
+    "escape": {
+      "backslash": "escape",
+      "braces": false,
+      "brackets": false,
+      "angles": false,
+      "dollar": "math",
+      "tilde": "sim",
+      "caret": "hat",
+      "emDash": "closed",
+      "singleQuotes": "straight",
+      "doubleQuotes": "tex"
+    },
+    "unicode": [
+      ["–", "--"],
+      ["—", "---"],
+      ["−", "$-$"],
+      ["×", "$\\times$"],
+      ["±", "$\\pm$"],
+      ["≤", "$\\le$"],
+      ["≥", "$\\ge$"],
+      ["≈", "$\\approx$"],
+      ["→", "$\\rightarrow$"],
+      ["·", "$\\cdot$"],
+      ["°", "$^\\circ$"],
+      ["α", "$\\alpha$"],
+      ["β", "$\\beta$"],
+      ["γ", "$\\gamma$"],
+      ["δ", "$\\delta$"],
+      ["Δ", "$\\Delta$"],
+      ["θ", "$\\theta$"],
+      ["κ", "$\\kappa$"],
+      ["λ", "$\\lambda$"],
+      ["μ", "$\\mu$"],
+      ["π", "$\\pi$"],
+      ["ρ", "$\\rho$"],
+      ["σ", "$\\sigma$"],
+      ["ω", "$\\omega$"],
+      ["Ω", "$\\Omega$"],
+      ["Å", "\\AA{}"],
+      ["⁰", "\\textsuperscript{0}"],
+      ["¹", "\\textsuperscript{1}"],
+      ["²", "\\textsuperscript{2}"],
+      ["³", "\\textsuperscript{3}"],
+      ["⁴", "\\textsuperscript{4}"],
+      ["⁵", "\\textsuperscript{5}"],
+      ["⁶", "\\textsuperscript{6}"],
+      ["⁷", "\\textsuperscript{7}"],
+      ["⁸", "\\textsuperscript{8}"],
+      ["⁹", "\\textsuperscript{9}"],
+      ["⁻", "\\textsuperscript{--}"],
+      ["₀", "\\textsubscript{0}"],
+      ["₁", "\\textsubscript{1}"],
+      ["₂", "\\textsubscript{2}"],
+      ["₃", "\\textsubscript{3}"],
+      ["†", "\\textdagger{}"],
+      ["’", "'"],
+      ["‘", "`"],
+      ["“", "``"],
+      ["”", "''"],
+      ["…", "\\ldots{}"]
+    ],
+    "emphasis": "textit",
+    "code": "text-breaks",
+    "authorYear": "cite",
+    "autolinks": false,
+    "headings": {
+      "commands": { "1": "section", "2": "section", "3": "subsection", "4": "subsubsection" },
+      "stripNumbers": true,
+      "starUnnumbered": false,
+      "labels": false
+    },
+    "rules": "drop",
+    "blockquotes": "drop",
+    "frontMatter": "bold-labels",
+    "bodyStart": "## 1.",
+    "title": "banner",
+    "titleBreakAfterQuestion": true,
+    "figures": {
+      "caption": "next-paragraph",
+      "label": "Figure",
+      "keepLabel": false,
+      "pdfForPng": "if-exists",
+      "style": "two-column",
+      "wide": ["wide_figure"],
+      "sideCaption": ["side_figure"]
+    },
+    "tables": {
+      "caption": "previous-paragraph",
+      "label": "Table",
+      "keepLabel": false,
+      "style": "two-column",
+      "notePrefixes": ["Note:", "Units:"],
+      "placement": "tbp",
+      "inPlace": false
+    },
+    "notes": {
+      "show": false,
+      "inlineMarker": " TODO:",
+      "blockquotePrefixes": ["Drafting note:", "Note to coauthors:"],
+      "sections": ["Notes to coauthors"]
+    },
+    "bibliographyStyle": "plainnat",
+    "bibliographyFiles": ["references"]
+  },
+  "modes": {
+    "paper": {
+      "entry": ["paper.md", "paper-*.md"],
+      "preambleFile": "paper-preamble.tex",
+      "appendixEntry": "methods.md",
+      "appendix": {
+        "heading": "Methods",
+        "dropLines": ["^#\\s", "^##\\s+Methods\\s*$", "^\\s*>"],
+        "starred": true,
+        "clearpage": true
+      }
+    },
+    "supplement": {
+      "entry": ["supplement*.md"],
+      "preambleFile": "supplement-preamble.tex",
+      "frontMatter": "yaml",
+      "title": "heading",
+      "titleText": "Supplementary Material",
+      "headings": { "commands": { "1": "section", "2": "subsection", "3": "subsubsection", "4": "paragraph" } },
+      "tables": { "inPlace": true }
+    },
+    "letter": {
+      "entry": ["letter*.md", "cover*.md"],
+      "preambleFile": "letter-preamble.tex",
+      "xetexPreambleFile": "letter-preamble-xetex.tex",
+      "engine": "auto",
+      "frontMatter": "drop-title",
+      "title": "none",
+      "blockquotes": "quote",
+      "blockLineBreaks": true,
+      "bibliographyStyle": ""
+    },
+    "response": {
+      "entry": ["response*.md"],
+      "preambleFile": "response-preamble.tex",
+      "xetexPreambleFile": "response-preamble-xetex.tex",
+      "engine": "auto",
+      "frontMatter": "yaml",
+      "title": "none",
+      "headings": {
+        "commands": { "1": "section*", "2": "subsection*", "3": "subsubsection*", "4": "paragraph*" },
+        "stripNumbers": false
+      },
+      "blockquotes": "small-quote",
+      "blockLineBreaks": true,
+      "authorYear": "text",
+      "bibliographyStyle": ""
+    },
+    "report": {
+      "entry": ["report*.md"],
+      "preambleFile": "report-preamble.tex",
+      "engine": "xelatex",
+      "escape": {
+        "braces": true,
+        "dollar": "escape",
+        "tilde": "escape",
+        "caret": "textasciicircum",
+        "emDash": "spaced",
+        "doubleQuotes": "straight"
+      },
+      "unicode": [
+        ["⁰", "\\textsuperscript{0}"],
+        ["¹", "\\textsuperscript{1}"],
+        ["²", "\\textsuperscript{2}"],
+        ["³", "\\textsuperscript{3}"],
+        ["⁻", "\\textsuperscript{-}"],
+        ["₀", "\\textsubscript{0}"],
+        ["₁", "\\textsubscript{1}"],
+        ["₂", "\\textsubscript{2}"],
+        ["α", "$\\alpha$"],
+        ["≈", "$\\approx$"],
+        ["≤", "$\\leq$"],
+        ["≥", "$\\geq$"],
+        ["×", "$\\times$"],
+        ["−", "$-$"],
+        ["→", "$\\rightarrow$"]
+      ],
+      "code": "text",
+      "authorYear": "off",
+      "headings": {
+        "commands": { "1": "section", "2": "section", "3": "subsection*" },
+        "stripNumbers": true,
+        "starUnnumbered": true
+      },
+      "blockquotes": "quote",
+      "listOptions": "[leftmargin=*]",
+      "frontMatter": "title-block",
+      "title": "none",
+      "figures": { "label": "Figure|Table", "keepLabel": true, "pdfForPng": "if-exists", "style": "report" },
+      "tables": { "caption": "pandoc", "style": "report" },
+      "bibliographyStyle": ""
+    }
+  }
+}

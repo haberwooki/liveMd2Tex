@@ -1,0 +1,61 @@
+# CI-only reference jobs that the laptop may not run (docs/DESIGN.md#testing, #converter, #rules). Prepared before G0 as
+# skeletons; neither has run yet. Run by hand.
+#
+# - pandoc-references: pandoc converts the public Markdown corpus (test/converter/corpus) to LaTeX once, and the
+#   outputs are kept as an artifact; the converter's structural comparison then switches from the hand-written
+#   expected structures to these (C0a, M6). Checking the outputs in is a reviewed commit, not this job.
+# - zeroperl-feasibility (for v1.1): installs @6over3/zeroperl-ts into a scratch folder (not into the
+#   project's lockfile) and records what the package offers. The latexdiff run is added once its API has been
+#   read on CI; nothing of this reaches the extension.
+
+name: references
+
+on:
+  workflow_dispatch:
+    inputs:
+      job:
+        description: Which reference job to run
+        type: choice
+        options: [pandoc-references, zeroperl-feasibility]
+
+permissions:
+  contents: read
+
+jobs:
+  pandoc-references:
+    if: inputs.job == 'pandoc-references'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pandoc (CI only)
+        run: sudo apt-get update -q && sudo apt-get install -y -q pandoc
+      - name: Convert the public Markdown corpus
+        run: |
+          pandoc --version | head -1 > pandoc-version.txt
+          mkdir -p pandoc-references
+          for f in test/converter/corpus/*.md; do
+            pandoc --from markdown --to latex --standalone --output "pandoc-references/$(basename "${f%.md}").tex" "$f"
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pandoc-references
+          path: |
+            pandoc-references/
+            pandoc-version.txt
+
+  zeroperl-feasibility:
+    if: inputs.job == 'zeroperl-feasibility'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install zeroperl-ts into a scratch folder
+        run: |
+          mkdir -p "$RUNNER_TEMP/zeroperl" && cd "$RUNNER_TEMP/zeroperl"
+          npm init -y > /dev/null
+          npm install --no-audit --no-fund @6over3/zeroperl-ts
+          npm ls @6over3/zeroperl-ts
+          node -e "import('@6over3/zeroperl-ts').then((m) => console.log('exports:', Object.keys(m).join(', ')))"

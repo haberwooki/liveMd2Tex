@@ -1,0 +1,26 @@
+% The extension's own kpathsea settings (docs/DESIGN.md#rules). The engine host lists this file's folder first
+% in TEXMFCNF, so these values win over TeX Live's texmf.cnf in the bundle.
+%
+% No shell escape: \write18 and \immediate\write18 never run a command (TeX Live's default is "p",
+% restricted; here it is off). Every engine call also passes -no-shell-escape.
+shell_escape = f
+shell_escape.tex = f
+shell_escape.initex = f
+%
+% No font or format generation: a missing font is an error naming the font, never an mktexpk attempt.
+MKTEXTEX = 0
+MKTEXPK = 0
+MKTEXTFM = 0
+MKTEXMF = 0
+MKTEXFMT = 0
+MKOCP = 0
+MKOFM = 0
+%
+% Files are written only below the current folder (TeX Live's default, stated here on purpose).
+openout_any = p
+%
+% Long log lines are not wrapped (TeX Live wraps at 79 columns), so the extension's log parser sees whole
+% file names and messages.
+max_print_line = 10000
+error_line = 254
+half_error_line = 238

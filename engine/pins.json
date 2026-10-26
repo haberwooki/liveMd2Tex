@@ -1,0 +1,445 @@
+{
+  "about": "Pinned inputs for S1 (docs/DESIGN.md#engine-and-data). Files are fetched by scripts/engine-assets.mjs into ../engine_assets/<folder>/ (outside the repository) and checked by size and SHA-256. Never commit the files themselves.",
+  "sources": [
+    {
+      "id": "texlyre-busytex",
+      "folder": "texlyre-busytex-build-46ebb62",
+      "release": "https://github.com/TeXlyre/texlyre-busytex-build/releases/tag/build_wasm_46ebb6216a5c1fe63dd1dc885831d1a8cef2dc86_31802832436_1",
+      "tag": "build_wasm_46ebb6216a5c1fe63dd1dc885831d1a8cef2dc86_31802832436_1",
+      "published": "2026-08-14T13:56:30Z",
+      "licence": "Build scripts AGPL-3.0-or-later (TeXlyre); engines: pdfTeX, dvipdfmx GPL-2.0-or-later, XeTeX MIT/X11, bibtex8 GPL-1.0-or-later, kpathsea LGPL-2.1-or-later; TeX Live data under each package licence (docs/DESIGN.md#store-and-packaging).",
+      "note": "SHA-256 values are GitHub release-asset digests, rechecked after download.",
+      "files": [
+        {
+          "name": "busytex.wasm",
+          "url": "https://github.com/TeXlyre/texlyre-busytex-build/releases/download/build_wasm_46ebb6216a5c1fe63dd1dc885831d1a8cef2dc86_31802832436_1/busytex.wasm",
+          "size": 32507525,
+          "sha256": "8d1988fc58cd1611c3cbd6bd986c3e607e5ff44f1d94252207ff7aae4cee72e0"
+        },
+        {
+          "name": "busytex.js",
+          "url": "https://github.com/TeXlyre/texlyre-busytex-build/releases/download/build_wasm_46ebb6216a5c1fe63dd1dc885831d1a8cef2dc86_31802832436_1/busytex.js",
+          "size": 271047,
+          "sha256": "875b87795162cb26b15bd93cffa2e8739bcb900d623ab904029b39402508a1a4"
+        },
+        {
+          "name": "busytex_pipeline.js",
+          "url": "https://github.com/TeXlyre/texlyre-busytex-build/releases/download/build_wasm_46ebb6216a5c1fe63dd1dc885831d1a8cef2dc86_31802832436_1/busytex_pipeline.js",
+          "size": 36266,
+          "sha256": "4855e8fec24e8df952e1080d902791752bcdf283f4fae15811c371dd3ba3389e"
+        },
+        {
+          "name": "busytex_worker.js",
+          "url": "https://github.com/TeXlyre/texlyre-busytex-build/releases/download/build_wasm_46ebb6216a5c1fe63dd1dc885831d1a8cef2dc86_31802832436_1/busytex_worker.js",
+          "size": 3123,
+          "sha256": "80eca56a2eb015bdfbebff26e539dd793407b73b6c1cd351170e6fdb6e17c39a"
+        },
+        {
+          "name": "texlive-extra.data",
+          "url": "https://github.com/TeXlyre/texlyre-busytex-build/releases/download/build_wasm_46ebb6216a5c1fe63dd1dc885831d1a8cef2dc86_31802832436_1/texlive-extra.data",
+          "size": 341568560,
+          "sha256": "9ae117b8fd7eacc13430296278d63603070f083c6f1e647937a6866874c726ae"
+        },
+        {
+          "name": "texlive-extra.js",
+          "url": "https://github.com/TeXlyre/texlyre-busytex-build/releases/download/build_wasm_46ebb6216a5c1fe63dd1dc885831d1a8cef2dc86_31802832436_1/texlive-extra.js",
+          "size": 7345232,
+          "sha256": "6c935b358ababde879aa2c62b48601d6e6be4ee7f3f9ed86c7f49136b803d618"
+        },
+        {
+          "name": "texlive-extra.js.providespackage.txt",
+          "url": "https://github.com/TeXlyre/texlyre-busytex-build/releases/download/build_wasm_46ebb6216a5c1fe63dd1dc885831d1a8cef2dc86_31802832436_1/texlive-extra.js.providespackage.txt",
+          "size": 153961,
+          "sha256": "40e2ceb5b1ef0b401bc26e1148550cd44c4345b2d17fbc6aff81b4a95f7f365f"
+        },
+        {
+          "name": "texlive-extra.profile",
+          "url": "https://github.com/TeXlyre/texlyre-busytex-build/releases/download/build_wasm_46ebb6216a5c1fe63dd1dc885831d1a8cef2dc86_31802832436_1/texlive-extra.profile",
+          "size": 639,
+          "sha256": "fe9ce035e04dd2ff523606556ec2fc15e7419321e26f09590596c6c3f13281f5"
+        },
+        {
+          "name": "texlive-extra.txt",
+          "url": "https://github.com/TeXlyre/texlyre-busytex-build/releases/download/build_wasm_46ebb6216a5c1fe63dd1dc885831d1a8cef2dc86_31802832436_1/texlive-extra.txt",
+          "size": 1864342,
+          "sha256": "bc022d2fb45aad716847ac18299b84b6e4c7a5d12e399687cc9dbfcd40a7fb2c"
+        },
+        {
+          "name": "texmf.cnf",
+          "url": "https://github.com/TeXlyre/texlyre-busytex-build/releases/download/build_wasm_46ebb6216a5c1fe63dd1dc885831d1a8cef2dc86_31802832436_1/texmf.cnf",
+          "size": 43630,
+          "sha256": "a2e9447fc8b6dfa407fa8d0d710e59b039e22598e3f17de0bdf54daba478742c"
+        },
+        {
+          "name": "dvipdfmx.cfg",
+          "url": "https://github.com/TeXlyre/texlyre-busytex-build/releases/download/build_wasm_46ebb6216a5c1fe63dd1dc885831d1a8cef2dc86_31802832436_1/dvipdfmx.cfg",
+          "size": 8828,
+          "sha256": "01df8f6acdd516763b32f8621aa2d638ad756cc864b89f2081cad3d8ccbb5532"
+        },
+        {
+          "name": "updmap.cfg",
+          "url": "https://github.com/TeXlyre/texlyre-busytex-build/releases/download/build_wasm_46ebb6216a5c1fe63dd1dc885831d1a8cef2dc86_31802832436_1/updmap.cfg",
+          "size": 3887,
+          "sha256": "c5a3bc4582a863d5e139fea59c70604ced0cdcb9096158bf5e15f88f4de47f38"
+        },
+        {
+          "name": "versions.txt",
+          "url": "https://github.com/TeXlyre/texlyre-busytex-build/releases/download/build_wasm_46ebb6216a5c1fe63dd1dc885831d1a8cef2dc86_31802832436_1/versions.txt",
+          "size": 438,
+          "sha256": "6c7fc394e74e3cc9182c8f689dcb976970fcf9ad594b1749c61e085cf38bedc5"
+        }
+      ],
+      "patchedGlue": {
+        "file": "derived/busytex.patched.js",
+        "sha256": "52058bd65220fa6ce58e517305ddf392d6d0ca3c6e99617c538aea17fd4d57f1",
+        "note": "engine/patches/busytex-glue.mjs applied to busytex.js by scripts/engine-patch.mjs; stage-engine and the test-copy scan check it (build gate 1, G1S-08)"
+      }
+    },
+    {
+      "id": "ctan-revtex",
+      "folder": "ctan-revtex",
+      "package": "revtex 4.2f",
+      "licence": "LPPL 1.3c (docs/DESIGN.md#testing, P2)",
+      "note": "SHA-256 recorded at first download from the mirror named in each URL (CTAN publishes no checksums).",
+      "pinned": "2026-10-15",
+      "files": [
+        {
+          "name": "revtex.tds.zip",
+          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/install/macros/latex/contrib/revtex.tds.zip",
+          "size": 6711510,
+          "sha256": "594346d851a4a8f73de31235b83cbb105bf7730cc4b8eca23c3c87f159a48400"
+        }
+      ]
+    },
+    {
+      "id": "ctan-ieeetran",
+      "folder": "ctan-ieeetran",
+      "package": "IEEEtran 1.8b",
+      "licence": "LPPL 1.3 (P3)",
+      "note": "SHA-256 recorded at first download from the mirror named in each URL (CTAN publishes no checksums).",
+      "pinned": "2026-10-15",
+      "files": [
+        {
+          "name": "IEEEtran.cls",
+          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/macros/latex/contrib/IEEEtran/IEEEtran.cls",
+          "size": 281957,
+          "sha256": "da751920a317ed318b7b5cd7fa585a6cc7d28502d457856382e9be24b10a3bd7"
+        },
+        {
+          "name": "bare_jrnl.tex",
+          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/macros/latex/contrib/IEEEtran/bare_jrnl.tex",
+          "size": 26887,
+          "sha256": "7a5e5dfdb7c17d6dcc827d1a985245b873e7e903d9d66882392c47bee4be47ed"
+        },
+        {
+          "name": "bibtex/IEEEtran.bst",
+          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/macros/latex/contrib/IEEEtran/bibtex/IEEEtran.bst",
+          "size": 57748,
+          "sha256": "314f0ece704568faf827011bac498650691b2b5ee06320720830e782416d5a5f"
+        }
+      ]
+    },
+    {
+      "id": "ctan-elsarticle",
+      "folder": "ctan-elsarticle",
+      "package": "elsarticle 3.5",
+      "licence": "LPPL 1.3 or later (P4)",
+      "note": "SHA-256 recorded at first download from the mirror named in each URL (CTAN publishes no checksums).",
+      "pinned": "2026-10-15",
+      "files": [
+        {
+          "name": "elsarticle.dtx",
+          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/macros/latex/contrib/elsarticle/elsarticle.dtx",
+          "size": 48559,
+          "sha256": "5679fe34806e0a08d3747f96e472126f520b6ccd3e92118c14bdd26e9e101e2e"
+        },
+        {
+          "name": "elsarticle.ins",
+          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/macros/latex/contrib/elsarticle/elsarticle.ins",
+          "size": 2626,
+          "sha256": "fb7a1005446d3217a77dc4496a10837d01f5ea3a177859054bf0daac0d4072c1"
+        },
+        {
+          "name": "elsarticle-template-num.tex",
+          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/macros/latex/contrib/elsarticle/elsarticle-template-num.tex",
+          "size": 8424,
+          "sha256": "3b02f9b8c80972bda933f281de3c96bb5147969fcebeb23fd8468ff28e33e15d"
+        },
+        {
+          "name": "elsarticle-num.bst",
+          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/macros/latex/contrib/elsarticle/elsarticle-num.bst",
+          "size": 29462,
+          "sha256": "f04dfa2f78d0198ab8e4055b609dc0b91bdb730743cbbd549d84270f20d11394"
+        }
+      ]
+    },
+    {
+      "id": "ctan-beamer-example",
+      "folder": "ctan-beamer-example",
+      "package": "beamer 3.78 documentation example",
+      "licence": "FDL 1.3 or LPPL 1.3c, the LPPL option taken (P6)",
+      "note": "SHA-256 recorded at first download from the mirror named in each URL (CTAN publishes no checksums).",
+      "pinned": "2026-10-15",
+      "files": [
+        {
+          "name": "beamerexample-conference-talk.tex",
+          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/macros/latex/contrib/beamer/doc/examples/a-conference-talk/beamerexample-conference-talk.tex",
+          "size": 20741,
+          "sha256": "858a5607467a926ce619965d9db966fd640316f00a6b588562972fedc0899fa2"
+        }
+      ]
+    },
+    {
+      "id": "ctan-ucbthesis",
+      "folder": "ctan-ucbthesis",
+      "package": "ucbthesis 3.6",
+      "licence": "LPPL 1.3 or later (P7)",
+      "note": "SHA-256 recorded at first download from the mirror named in each URL (CTAN publishes no checksums).",
+      "pinned": "2026-10-15",
+      "files": [
+        {
+          "name": "ucbthesis.cls",
+          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/macros/latex/contrib/ucbthesis/ucbthesis.cls",
+          "size": 24518,
+          "sha256": "e3a3e283637215edc99978f7bf925344f56ecb6d1f7555aed369b699813340c3"
+        },
+        {
+          "name": "thesis.tex",
+          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/macros/latex/contrib/ucbthesis/thesis.tex",
+          "size": 3663,
+          "sha256": "7197593bccc271aa9a816b7608f181c480c6ec62328cd0d269b3e0941bcdd574"
+        },
+        {
+          "name": "abstract.tex",
+          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/macros/latex/contrib/ucbthesis/abstract.tex",
+          "size": 382,
+          "sha256": "17499dd240b070fd0be854a16fbd752dff1d43c24f33859fafdf2fc9d01831bf"
+        },
+        {
+          "name": "chap1.tex",
+          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/macros/latex/contrib/ucbthesis/chap1.tex",
+          "size": 7077,
+          "sha256": "a4c120bfe083b1918c68d52642a75cf66709e7294dea60dfac5c93f18fb386b1"
+        },
+        {
+          "name": "chap2.tex",
+          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/macros/latex/contrib/ucbthesis/chap2.tex",
+          "size": 2401,
+          "sha256": "fd88932b079eba9200216c16da9af0279c539f1eb4f2efd29a8d509e4e7062e6"
+        },
+        {
+          "name": "references.bib",
+          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/macros/latex/contrib/ucbthesis/references.bib",
+          "size": 1983,
+          "sha256": "41ef4c0c151cdccd42808842f127ec72f8bb512b0af0163464d43dea0708beec"
+        }
+      ]
+    },
+    {
+      "id": "ctan-acmart",
+      "folder": "ctan-acmart",
+      "package": "acmart 2.20",
+      "licence": "LPPL 1.3 or later (P12)",
+      "note": "SHA-256 recorded at first download from the mirror named in each URL (CTAN publishes no checksums).",
+      "pinned": "2026-10-15",
+      "files": [
+        {
+          "name": "acmart.dtx",
+          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/macros/latex/contrib/acmart/acmart.dtx",
+          "size": 306814,
+          "sha256": "e29efd327f5c759f3d1f2e99dc8588c6a05b734c142f89c3e348161b893e44ff"
+        },
+        {
+          "name": "acmart.ins",
+          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/macros/latex/contrib/acmart/acmart.ins",
+          "size": 1016,
+          "sha256": "fa7daaa9375775ce699f33f909667bdb83c0408fd8d67606926df86c346c4044"
+        },
+        {
+          "name": "ACM-Reference-Format.bst",
+          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/macros/latex/contrib/acmart/ACM-Reference-Format.bst",
+          "size": 94292,
+          "sha256": "4342d27456645567ef1a027f6474e894715bc31d468f040142fa54540440ad04"
+        },
+        {
+          "name": "samples/samples.dtx",
+          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/macros/latex/contrib/acmart/samples/samples.dtx",
+          "size": 40694,
+          "sha256": "0d707be22c0655631e084c5392dbfe7b9c1e885378dc8a87d83c36c9ab0bf2cd"
+        },
+        {
+          "name": "samples/samples.ins",
+          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/macros/latex/contrib/acmart/samples/samples.ins",
+          "size": 1381,
+          "sha256": "80b7bc67c0a9ce7121074b1f9d64ecbc0456e3d49520833edbb0268b3d7b9c33"
+        },
+        {
+          "name": "samples/sample-base.bib",
+          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/macros/latex/contrib/acmart/samples/sample-base.bib",
+          "size": 49366,
+          "sha256": "528fa8c133f02afd415288792dc9febfa2740ec716656cfff105ae76603945ee"
+        },
+        {
+          "name": "samples/sampleteaser.pdf",
+          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/macros/latex/contrib/acmart/samples/sampleteaser.pdf",
+          "size": 439021,
+          "sha256": "46154916fe8ecc9c3fae87705bfdff78e1d537fe5c4bfd74227cc338de6f2810"
+        }
+      ]
+    },
+    {
+      "id": "ctan-llncs",
+      "folder": "ctan-llncs",
+      "package": "llncs 2.26",
+      "licence": "CC BY 4.0 (P13)",
+      "note": "SHA-256 recorded at first download from the mirror named in each URL (CTAN publishes no checksums).",
+      "pinned": "2026-10-15",
+      "files": [
+        {
+          "name": "llncs.cls",
+          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/macros/latex/contrib/llncs/llncs.cls",
+          "size": 43405,
+          "sha256": "e9894c92191fcd195eef3120a36d2f75b52030eadcbdc3ce1463179746526e6a"
+        },
+        {
+          "name": "splncs04.bst",
+          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/macros/latex/contrib/llncs/splncs04.bst",
+          "size": 32146,
+          "sha256": "f36c3a17e5304a692706359aafa9de709395a085e579eb47c027095aeaa35174"
+        },
+        {
+          "name": "llncsdoc.tex",
+          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/macros/latex/contrib/llncs/llncsdoc.tex",
+          "size": 17763,
+          "sha256": "2b77b747d13460a375e4aab7f94ccbc4c9ec74851b073d5d17550426662124f8"
+        }
+      ]
+    },
+    {
+      "id": "ctan-pgf-manual",
+      "folder": "ctan-pgf-manual",
+      "package": "pgf 3.1.12 manual source (tutorial chapter)",
+      "licence": "FDL 1.2 or LPPL 1.3c, the LPPL option taken (P8)",
+      "note": "SHA-256 recorded at first download from the mirror named in each URL (CTAN publishes no checksums).",
+      "pinned": "2026-10-15",
+      "files": [
+        {
+          "name": "pgfmanual-en-tutorial.tex",
+          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/graphics/pgf/base/doc/generic/pgf/pgfmanual-en-tutorial.tex",
+          "size": 59355,
+          "sha256": "28bced671b41712a544af9e2c613718cfabc4557432b232311ed9c66ff02f9c5"
+        }
+      ]
+    },
+    {
+      "id": "ctan-dejavu",
+      "folder": "ctan-dejavu",
+      "package": "DejaVu 2.34 (TrueType)",
+      "licence": "Bitstream Vera licence with DejaVu changes; LPPL 1.3 for the TeX support (CTAN)",
+      "note": "SHA-256 recorded at first download from the mirror named in each URL (CTAN publishes no checksums).",
+      "pinned": "2026-10-15",
+      "files": [
+        {
+          "name": "truetype/DejaVuSans.ttf",
+          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/fonts/dejavu/truetype/DejaVuSans.ttf",
+          "size": 741536,
+          "sha256": "08ca98e69d9d8fa1065584b4f9ab7d49b6205abea6572b90e171b254845bb990"
+        },
+        {
+          "name": "truetype/DejaVuSans-Bold.ttf",
+          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/fonts/dejavu/truetype/DejaVuSans-Bold.ttf",
+          "size": 693876,
+          "sha256": "7e69e81478e233b81c3ad730f5b10abe76c792d48ec6c3e7cc3b3596a37bb3b1"
+        },
+        {
+          "name": "truetype/DejaVuSans-Oblique.ttf",
+          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/fonts/dejavu/truetype/DejaVuSans-Oblique.ttf",
+          "size": 632416,
+          "sha256": "0603149f330f53c663618a2fcb639493989214a644744d57810c5164e370076b"
+        },
+        {
+          "name": "truetype/DejaVuSans-BoldOblique.ttf",
+          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/fonts/dejavu/truetype/DejaVuSans-BoldOblique.ttf",
+          "size": 632168,
+          "sha256": "440d2978d12b3bc206acdeed547e4d7164426d44f8a4268ce2ebce4e17c97d28"
+        },
+        {
+          "name": "truetype/DejaVuSerif.ttf",
+          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/fonts/dejavu/truetype/DejaVuSerif.ttf",
+          "size": 367260,
+          "sha256": "8deba7c78917fb06eafa38f73434b8f50f2b733cf4374bbf54be814699115dc4"
+        },
+        {
+          "name": "truetype/DejaVuSerif-Bold.ttf",
+          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/fonts/dejavu/truetype/DejaVuSerif-Bold.ttf",
+          "size": 345364,
+          "sha256": "8ffc6ac18d52250940d4cafddb415ed5ed63925b0f68c82e71bd6956eb2b0053"
+        },
+        {
+          "name": "truetype/DejaVuSerif-Italic.ttf",
+          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/fonts/dejavu/truetype/DejaVuSerif-Italic.ttf",
+          "size": 343388,
+          "sha256": "a17c73ae6b29b2d776da7d6b78e48be5ca24c109e5046ff5767e0d377937a49f"
+        },
+        {
+          "name": "truetype/DejaVuSerif-BoldItalic.ttf",
+          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/fonts/dejavu/truetype/DejaVuSerif-BoldItalic.ttf",
+          "size": 336884,
+          "sha256": "711b63f25193e51d0b54183d0ef6c200eca5a5cf234531df5dd504819c98377c"
+        },
+        {
+          "name": "truetype/DejaVuSansMono.ttf",
+          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/fonts/dejavu/truetype/DejaVuSansMono.ttf",
+          "size": 335068,
+          "sha256": "67fa085e9e72a7565ac36cb6a77bdac701e18c7a46d0c15b9b08714a1e1a2042"
+        },
+        {
+          "name": "truetype/DejaVuSansMono-Bold.ttf",
+          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/fonts/dejavu/truetype/DejaVuSansMono-Bold.ttf",
+          "size": 318392,
+          "sha256": "b908e119ab3a02a34f5ebeb479a1dcbf5682e90cdbdb5c13d68bb55b4d423326"
+        },
+        {
+          "name": "truetype/DejaVuSansMono-Oblique.ttf",
+          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/fonts/dejavu/truetype/DejaVuSansMono-Oblique.ttf",
+          "size": 245948,
+          "sha256": "6b93cf18dd3224c24a1febabf62336bd3dabb46ee66fb758f7ea191a7901de40"
+        },
+        {
+          "name": "truetype/DejaVuSansMono-BoldOblique.ttf",
+          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/fonts/dejavu/truetype/DejaVuSansMono-BoldOblique.ttf",
+          "size": 239876,
+          "sha256": "4faba01515b6b40e145b7de16a7e9d3f867e74e5622bb2458b027ac685af1273"
+        },
+        {
+          "name": "doc/font-doc/LICENSE",
+          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/fonts/dejavu/doc/font-doc/LICENSE",
+          "size": 4816,
+          "sha256": "d75938dec098f06f0ac3c00853065d94f020be1c3c62ef1dc2975ba15b4d9b0e"
+        }
+      ]
+    },
+    {
+      "id": "ctan-tensor",
+      "folder": "ctan-tensor",
+      "package": "tensor 2.2",
+      "licence": "LPPL 1.3c or later (M6 .dtx/.ins test; 2023/07/18 v2.2)",
+      "note": "SHA-256 recorded at first download from the mirror named in each URL (CTAN publishes no checksums).",
+      "pinned": "2026-10-16",
+      "files": [
+        {
+          "name": "tensor.dtx",
+          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/macros/latex/contrib/tensor/tensor.dtx",
+          "size": 26581,
+          "sha256": "b64ed87442ca34a1252f8afefa4934506b046ae3f42174a489660fb417e5b722"
+        },
+        {
+          "name": "tensor.ins",
+          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/macros/latex/contrib/tensor/tensor.ins",
+          "size": 2011,
+          "sha256": "98dc0c9f73a73c6351e202b515e1abbfabd0ece220ee5e1bb1111193146c726a"
+        }
+      ]
+    }
+  ]
+}

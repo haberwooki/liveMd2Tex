@@ -1,0 +1,29 @@
+{
+  "about": "Places where a private marker may appear (docs/DESIGN.md#store-and-packaging): the LICENSE copyright line, package.json's author, the publisher's display name, and the commit author (commit author and committer fields are never scanned). A rule applies to whole lines of one file that match its pattern, and only to the markers it names. File paths are always scanned without rules.",
+  "rules": [
+    {
+      "file": "LICENSE",
+      "markers": ["surname"],
+      "line": "^\\s*Copyright \\(C\\) \\d{4}(-\\d{4})?\\s",
+      "reason": "docs/DESIGN.md#store-and-packaging: the LICENSE copyright line."
+    },
+    {
+      "file": "package.json",
+      "markers": ["surname"],
+      "line": "^\\s*\"author\"\\s*:\\s*\"[^\"]*\",?\\s*$",
+      "reason": "docs/DESIGN.md#store-and-packaging: package.json's author (one-line form)."
+    },
+    {
+      "file": "README.md",
+      "markers": ["surname"],
+      "line": "^Publisher display name: ",
+      "reason": "docs/DESIGN.md#store-and-packaging: the publisher's display name."
+    },
+    {
+      "file": "package-lock.json",
+      "markers": "*",
+      "line": "^\\s*\"integrity\": \"sha\\d+-[A-Za-z0-9+/=]+\",?$",
+      "reason": "Random base64 in package integrity hashes can spell a short marker by chance."
+    }
+  ]
+}

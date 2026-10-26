@@ -1,0 +1,129 @@
+/* Viewer page layout. Colours come from VS Code's theme variables only (docs/DESIGN.md#accessibility). */
+:root {
+  --toolbar-height: 30px;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--vscode-editor-background);
+  color: var(--vscode-editor-foreground);
+}
+
+/* Two stacked slots: the visible one and the standby one that renders the next PDF. pdf.js requires an
+   absolutely positioned scroll container. visibility (not display) keeps the standby slot laid out, so
+   pdf.js can render it and measure positions before the swap. */
+.slot {
+  position: absolute;
+  inset: var(--toolbar-height) 0 0 0;
+  overflow: auto;
+  background: var(--vscode-editorWidget-background, var(--vscode-editor-background));
+}
+
+.slot.standby {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+/* The toolbar (M2-B): theme colours only, each control reachable with Tab, a visible focus ring. */
+.toolbar {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: var(--toolbar-height);
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 6px;
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+  color: var(--vscode-foreground);
+  background: var(--vscode-editorWidget-background, var(--vscode-editor-background));
+  border-bottom: 1px solid var(--vscode-panel-border, var(--vscode-contrastBorder, transparent));
+}
+
+.toolbar button {
+  min-width: 24px;
+  height: 22px;
+  padding: 0 6px;
+  font: inherit;
+  color: var(--vscode-button-secondaryForeground, var(--vscode-foreground));
+  background: var(--vscode-button-secondaryBackground, transparent);
+  border: 1px solid var(--vscode-button-border, var(--vscode-contrastBorder, transparent));
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.toolbar button:hover:not(:disabled) {
+  background: var(--vscode-button-secondaryHoverBackground, var(--vscode-toolbar-hoverBackground));
+}
+
+.toolbar button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.toolbar button[aria-pressed='true'] {
+  color: var(--vscode-button-foreground);
+  background: var(--vscode-button-background);
+}
+
+.toolbar button:focus-visible,
+.slot:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: -1px;
+}
+
+.toolbar .info {
+  min-width: 4em;
+  text-align: center;
+  color: var(--vscode-descriptionForeground, var(--vscode-foreground));
+}
+
+.toolbar .separator {
+  width: 1px;
+  height: 16px;
+  margin: 0 4px;
+  background: var(--vscode-panel-border, var(--vscode-contrastBorder, transparent));
+}
+
+/* No motion when VS Code asks for less (its body class) or the system does. */
+.vscode-reduce-motion *,
+.vscode-reduce-motion .syncHighlight {
+  scroll-behavior: auto !important;
+  transition: none !important;
+  animation: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    scroll-behavior: auto !important;
+    transition: none !important;
+  }
+}
+
+/* Forward search (SyncTeX): the source line's boxes, briefly. Theme colours only. */
+.syncHighlight {
+  position: absolute;
+  z-index: 3;
+  pointer-events: none;
+  background: var(--vscode-editor-findMatchHighlightBackground, var(--vscode-editor-selectionBackground));
+  outline: 1px solid var(--vscode-editor-findMatchBorder, var(--vscode-focusBorder, transparent));
+  opacity: 1;
+  transition: opacity 0.9s ease-out;
+}
+
+.syncHighlight.fading {
+  opacity: 0;
+}

@@ -1,0 +1,10 @@
+% SPDX-License-Identifier: CC0-1.0
+% Written for this project's tests; dedicated to the public domain (CC0 1.0).
+% graphicx with hyperref (as the starting documents load them) makes epstopdf note that shell escape is off.
+% With no .eps figure, the note is left out.
+\documentclass{article}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\begin{document}
+A document with no figure.
+\end{document}

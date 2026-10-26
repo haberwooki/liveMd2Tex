@@ -1,0 +1,12 @@
+% The second root of the multi-root fixture (CC0 1.0). It includes appendix.tex (no class, no root comment)
+% and sections/detail.tex (found from the folder above).
+\documentclass{article}
+\begin{document}
+\section{Notes}
+The notes cite another text \cite{landau1976}.
+\input{sections/shared}
+\input{appendix}
+\input{sections/detail}
+\bibliographystyle{plain}
+\bibliography{refs}
+\end{document}

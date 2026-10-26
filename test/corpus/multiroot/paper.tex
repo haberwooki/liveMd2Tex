@@ -1,0 +1,10 @@
+% The multi-root fixture of M2-B (docs/DESIGN.md#multiple-documents): two root documents in one folder share refs.bib and
+% sections/shared.tex. Written by the project; dedicated to the public domain (CC0 1.0).
+\documentclass{article}
+\begin{document}
+\section{Paper}
+The paper cites a classic text \cite{goldstein2002}.
+\input{sections/shared}
+\bibliographystyle{plain}
+\bibliography{refs}
+\end{document}

@@ -1,0 +1,18 @@
+% Fixture (CC0, written by the project), run with LuaHBTeX in ini mode: Lua code tries to open a socket and to
+% run a shell command. With --nosocket the socket library is absent; without it, the engine's socket layer
+% refuses the socket. Neither may open a connection or start a process (docs/DESIGN.md#rules).
+\catcode`\{=1 \catcode`\}=2 \catcode`\#=6
+\directlua{
+  local ok, socket = pcall(require, "socket")
+  if not ok then
+    texio.write_nl("FIXTURE socket-library: absent (" .. tostring(socket):gsub("\string\n", " ") .. ")")
+  else
+    local c, err = socket.connect("127.0.0.1", 9)
+    texio.write_nl("FIXTURE socket-connect: " .. tostring(c) .. " / " .. tostring(err))
+  end
+  local okx, res = pcall(function() return os.execute("echo lua-was-here") end)
+  texio.write_nl("FIXTURE os.execute: " .. tostring(okx) .. " / " .. tostring(res))
+  local okp, pipe = pcall(function() return io.popen("echo lua-was-here") end)
+  texio.write_nl("FIXTURE io.popen: " .. tostring(okp) .. " / " .. tostring(pipe))
+}
+\end

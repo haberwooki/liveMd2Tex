@@ -1,0 +1,14 @@
+{
+  "about": "M5: public thesis and Beamer templates from CTAN, measured like the arXiv papers (docs/coverage-method.md). Each package's zip is pinned by its SHA-256 and its main files; a run of the coverage workflow with job 'pin' downloads them and prints the entries to commit here. An entry without a sha256 is not measured.",
+  "mirrors": ["https://mirrors.ibiblio.org/pub/mirrors/CTAN", "https://mirrors.ctan.org"],
+  "templates": [
+    { "id": "classicthesis", "kind": "thesis", "ctan": "/macros/latex/contrib/classicthesis", "sha256": null, "mains": [] },
+    { "id": "cleanthesis", "kind": "thesis", "ctan": "/macros/latex/contrib/cleanthesis", "sha256": null, "mains": [] },
+    { "id": "ucbthesis", "kind": "thesis", "ctan": "/macros/latex/contrib/ucbthesis", "sha256": null, "mains": [] },
+    { "id": "yathesis", "kind": "thesis", "ctan": "/macros/latex/contrib/yathesis", "sha256": null, "mains": [] },
+    { "id": "suftesi", "kind": "thesis", "ctan": "/macros/latex/contrib/suftesi", "sha256": null, "mains": [] },
+    { "id": "beamer", "kind": "beamer", "ctan": "/macros/latex/contrib/beamer", "sha256": null, "mains": [] },
+    { "id": "beamertheme-focus", "kind": "beamer", "ctan": "/macros/latex/contrib/beamer-contrib/themes/beamertheme-focus", "sha256": null, "mains": [] },
+    { "id": "metropolis", "kind": "beamer", "ctan": "/macros/latex/contrib/beamer-contrib/themes/metropolis", "sha256": null, "mains": [] }
+  ]
+}

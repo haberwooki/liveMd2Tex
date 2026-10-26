@@ -1,0 +1,136 @@
+# One runner's full check, called by ci.yml and floor.yml (docs/DESIGN.md#store-and-packaging, #testing, G0). Prepared on the laptop
+# before G0 and not yet run on GitHub; the first runs at G0 may need small fixes.
+#
+# The steps are the laptop's suites, in the same order: lint, typecheck, unit, engine, VS Code integration, and
+# (on one runner) both VSIX scans. Engine inputs come from engine/pins.json into ../engine_assets, outside the
+# checkout, as on the laptop; a cache keyed by the pins keeps them between runs. The VS Code that test-cli
+# downloads here is the one CI exception to "never download VS Code" (scripts/lib/test-vscode.mjs, G1E-20).
+
+name: test-runner
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        description: The GitHub runner label
+        required: true
+        type: string
+      node-version:
+        description: Node for the tools and the engine tests (22 = VS Code 1.105's major version)
+        required: false
+        type: string
+        default: '22'
+      vscode-version:
+        description: The VS Code version the integration tests download ('stable', or '1.105.0' for the floor)
+        required: false
+        type: string
+        default: stable
+      engine:
+        description: Run the engine tests
+        required: false
+        type: boolean
+        default: true
+      integration:
+        description: Run the VS Code integration tests
+        required: false
+        type: boolean
+        default: true
+      package:
+        description: Build and scan both VSIX packages, and keep them as artifacts
+        required: false
+        type: boolean
+        default: false
+      floor:
+        description: >-
+          The floor test: set engines.vscode to the tested version first, because VS Code refuses an extension whose
+          engines field asks for a newer version, and that refusal would hide which API is really missing
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: ${{ inputs.runner }} (Node ${{ inputs.node-version }}, VS Code ${{ inputs.vscode-version }})
+    runs-on: ${{ inputs.runner }}
+    timeout-minutes: 60
+    env:
+      CI: 'true'
+      LIVEMD2TEX_ALLOW_VSCODE_DOWNLOAD: '1'
+      LIVEMD2TEX_VSCODE_VERSION: ${{ inputs.vscode-version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: npm
+      - name: Install from the lockfile
+        run: npm ci --omit=optional
+      - name: Floor test - accept the tested VS Code version
+        if: inputs.floor
+        shell: bash
+        env:
+          VSCODE_VERSION: ${{ inputs.vscode-version }}
+        run: npm pkg set "engines.vscode=^$VSCODE_VERSION"
+      - name: Engine inputs (cached by the pins)
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/../engine_assets
+          key: engine-assets-${{ hashFiles('engine/pins.json') }}
+          enableCrossOsArchive: true
+      - name: Fetch and check the pinned engine inputs
+        run: node scripts/engine-assets.mjs
+      - name: Patch the engine glue (checked against its pinned SHA-256 when staged)
+        run: node scripts/engine-patch.mjs
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run test:unit
+      - name: Engine tests (the private ones skip)
+        if: inputs.engine
+        run: npm run test:engine
+      - name: The VS Code that test-cli downloads (kept between runs)
+        if: inputs.integration
+        uses: actions/cache@v4
+        with:
+          path: .vscode-test
+          key: vscode-${{ runner.os }}-${{ runner.arch }}-${{ inputs.vscode-version }}-${{ github.run_id }}
+          restore-keys: vscode-${{ runner.os }}-${{ runner.arch }}-${{ inputs.vscode-version }}-
+      - name: VS Code integration tests (Linux, with a virtual display and Electron's libraries)
+        if: inputs.integration && runner.os == 'Linux'
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q xvfb libnss3 libgbm1 libgtk-3-0 libasound2t64 || sudo apt-get install -y -q xvfb libnss3 libgbm1 libgtk-3-0 libasound2
+          xvfb-run -a npm run test:integration
+      - name: VS Code integration tests
+        if: inputs.integration && runner.os != 'Linux'
+        run: npm run test:integration
+      # The private markers reach this step alone (build gate 2, G2E-R2). A pull request from a fork gets no
+      # secret: its scan is left out with a notice, and the markers job scans again after the merge (G2R-03).
+      - name: VSIX scans (plain package and test copy)
+        if: inputs.package
+        shell: bash
+        env:
+          LIVEMD2TEX_PRIVATE_MARKERS: ${{ secrets.LIVEMD2TEX_PRIVATE_MARKERS }}
+          FORK_PR: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
+        run: |
+          if [ -z "$LIVEMD2TEX_PRIVATE_MARKERS" ] && [ "$FORK_PR" = "true" ]; then
+            echo "::notice::No private markers on a pull request from a fork; the VSIX scans run after the merge."
+            exit 0
+          fi
+          node scripts/vsix-scan.mjs
+          node scripts/vsix-scan.mjs --test-copy
+      # The plain package and the scan reports only: the test copy (about 270 MB) would use up a private
+      # repository's artifact storage, and the stand-in add-on holds part of REVTeX, which stays test-only (G2S-08).
+      - name: Keep the plain package and the scan reports
+        if: inputs.package
+        uses: actions/upload-artifact@v4
+        with:
+          name: vsix-${{ inputs.runner }}
+          path: |
+            out/vsix/*.vsix
+            out/vsix/*.scan.json
+            !out/vsix/*-testcopy.vsix
+            !out/vsix/*-standin.vsix
+          retention-days: 14

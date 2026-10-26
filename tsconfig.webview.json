@@ -1,0 +1,15 @@
+{
+  // Type-checks the viewer script that runs inside the webview (a browser page, no Node).
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "types": [],
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "isolatedModules": true
+  },
+  "include": ["src/webview/**/*.ts", "src/shared/**/*.ts"]
+}

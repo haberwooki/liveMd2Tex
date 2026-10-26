@@ -1,0 +1,110 @@
+# CI (docs/DESIGN.md#store-and-packaging, #testing, G0). Prepared on the laptop before G0 and not yet run on GitHub.
+#
+# While the repository is private, the matrix is a budget choice (docs/DESIGN.md#testing). Pushes to main and pull requests
+# into main run Linux x64, Linux arm64 and Windows x64; other branches run CI through their pull request, so a
+# branch push is not run twice. Windows arm64 and Apple Silicon run on release candidates (a tag v*-rc*, or a
+# manual run with "release candidate" ticked). The weekly run is Linux x64 and the plain-Node-24 job. Once the
+# repository is public every runner is free: then run the full matrix on every push and every week.
+#
+# The minutes budget, billed at GitHub's rates (Windows minutes count twice, macOS ten times), from the laptop's
+# times doubled for 2-vCPU runners, to be measured at G0 (build gate 2, G2S-06 and G2E-11):
+#   - one run on main or a pull request: Linux x64 25 + Linux arm64 25 + Windows x64 2 x 25 = about 100 minutes;
+#   - the weekly run: Linux x64 25 + Node 24 20 = about 45 minutes, about 195 a month;
+#   - a release candidate adds macOS 10 x 25 + Windows arm64 2 x 25 = about 300 minutes.
+# So the Free plan's 2,000 minutes a month hold about 18 runs on main and pull requests, or about 15 with one
+# release candidate. A newer push cancels the older run, and documentation-only pushes do not run.
+#
+# The private markers come from the secret LIVEMD2TEX_PRIVATE_MARKERS (scripts/marker-scan.mjs); without it the
+# scan fails, except on a pull request from a fork, which gets no secrets and skips the scan with a notice.
+
+name: ci
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+    paths-ignore:
+      - '**/*.md'
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - '**/*.md'
+  schedule:
+    # Weekly: Linux x64 and the plain-Node-24 job.
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+    inputs:
+      release-candidate:
+        description: Also run Windows arm64 and Apple Silicon
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # The private-marker scan as a CI job (docs/DESIGN.md#store-and-packaging): the tree and the whole history.
+  markers:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      FORK_PR: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: A pull request from a fork has no secrets
+        if: env.FORK_PR == 'true'
+        run: echo "::notice::No private markers on a pull request from a fork; the scan runs again when it is merged."
+      # The secret reaches the scan steps alone, not the checkout or setup actions (G2E-R2).
+      - if: env.FORK_PR != 'true'
+        env:
+          LIVEMD2TEX_PRIVATE_MARKERS: ${{ secrets.LIVEMD2TEX_PRIVATE_MARKERS }}
+        run: node scripts/marker-scan.mjs --tree
+      - if: env.FORK_PR != 'true'
+        env:
+          LIVEMD2TEX_PRIVATE_MARKERS: ${{ secrets.LIVEMD2TEX_PRIVATE_MARKERS }}
+        run: node scripts/marker-scan.mjs --history
+
+  every-push:
+    needs: markers
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: ${{ fromJSON(github.event_name == 'schedule' && '["ubuntu-latest"]' || '["ubuntu-latest", "ubuntu-24.04-arm", "windows-latest"]') }}
+    uses: ./.github/workflows/test-runner.yml
+    secrets: inherit
+    with:
+      runner: ${{ matrix.runner }}
+      package: ${{ matrix.runner == 'ubuntu-latest' }}
+
+  release-candidates:
+    needs: markers
+    if: startsWith(github.ref, 'refs/tags/v') && contains(github.ref, '-rc') || inputs.release-candidate
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [windows-11-arm, macos-latest]
+    uses: ./.github/workflows/test-runner.yml
+    secrets: inherit
+    with:
+      runner: ${{ matrix.runner }}
+
+  # Plain Node 24, the runtime of newer VS Code versions, outside VS Code: the unit and engine tests. Weekly, on
+  # release candidates and by hand.
+  node-24:
+    needs: markers
+    if: github.event_name != 'push' && github.event_name != 'pull_request' || startsWith(github.ref, 'refs/tags/v') && contains(github.ref, '-rc')
+    uses: ./.github/workflows/test-runner.yml
+    secrets: inherit
+    with:
+      runner: ubuntu-latest
+      node-version: '24'
+      integration: false

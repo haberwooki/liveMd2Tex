@@ -1,0 +1,35 @@
+{
+  "about": "M5's coverage measurement: the frame, the seed and the rules, as docs/coverage-method.md writes them down. A change here is a change to the method; make it in both, before a run.",
+  "window": { "from": "2026-07-01", "to": "2026-09-30" },
+  "licences": [
+    "http://creativecommons.org/licenses/by/4.0/",
+    "http://creativecommons.org/publicdomain/zero/1.0/"
+  ],
+  "seed": "20261022",
+  "sampleSize": 400,
+  "strata": [
+    { "id": "cs", "prefixes": ["cs."] },
+    { "id": "math", "prefixes": ["math."] },
+    { "id": "astro-ph", "prefixes": ["astro-ph"] },
+    { "id": "cond-mat", "prefixes": ["cond-mat"] },
+    { "id": "hep", "prefixes": ["hep-ex", "hep-lat", "hep-ph", "hep-th"] },
+    { "id": "quant-ph", "prefixes": ["quant-ph"] },
+    { "id": "physics-other", "prefixes": ["gr-qc", "math-ph", "nlin.", "nucl-ex", "nucl-th", "physics."] },
+    { "id": "stat", "prefixes": ["stat."] },
+    { "id": "eess", "prefixes": ["eess."] },
+    { "id": "other", "prefixes": ["q-bio.", "q-fin.", "econ."] }
+  ],
+  "harvest": {
+    "oai": "https://oaipmh.arxiv.org/oai",
+    "source": "https://export.arxiv.org/src/{id}",
+    "secondsBetweenRequests": 3,
+    "userAgent": "liveMd2Tex-coverage/{version} (+https://github.com/haberwooki/liveMd2Tex)"
+  },
+  "source": {
+    "maxBytes": 1073741824
+  },
+  "compile": {
+    "secondsPerCompile": 300,
+    "pageTolerance": 1
+  }
+}

@@ -1,0 +1,30 @@
+# The VSIX holds the built bundles, the viewer files, the notices, the starting documents of "New document from
+# template" with the example preset they use and the CC0 notices of both, and the walkthrough; nothing else.
+# (vsce adds package.json itself; dependencies are bundled, so packaging uses --no-dependencies.)
+**
+!dist/extension.js
+!dist/fork.js
+!dist/engine-host.js
+!dist/engine-worker.js
+!dist/synctex-worker.js
+!dist/engine/**
+!dist/data/**
+!dist/viewer/**
+!dist/licenses/**
+!LICENSE
+!README.md
+!THIRD_PARTY_NOTICES.md
+!templates/LICENSE.md
+!templates/tex/**
+!templates/preset/**
+!templates/markdown/article.md
+!templates/markdown/notes.md
+!templates/markdown/report.md
+!templates/markdown/revtex.md
+!templates/markdown/ieeetran.md
+!templates/markdown/elsarticle.md
+!templates/markdown/references.bib
+!examples/presets/LICENSE.md
+!examples/presets/two-column-paper/**
+!walkthrough/**
+**/*.map

@@ -1,0 +1,71 @@
+{
+  "about": "What B1's builder (scripts/build-bundle.mjs) puts in the two data sets, by TeX Live package name (docs/DESIGN.md#engine-and-data). A collection brings its packages, not the collections it depends on; a package brings the packages it depends on; 'match' takes every package whose name matches. extra-data is everything it names minus core-data. Each set's licence rule: 'free' takes only packages whose Catalogue licences are all free (and TeX Live's own files); a group may narrow it with 'licences' (regular expressions over the Catalogue's licence names), and its 'readFirst' names Catalogue labels ('none' for no licence at all) whose packages come in only once their files are read and recorded in 'licenceReviews'. A package that fails the rule is left out and listed in the report; in core-data it is an error. A set's 'exclude' leaves a package out on purpose, with the reason, which the report lists; core-data's 'toExtra' leaves a package out of core-data, also as a dependency, and puts it in extra-data instead. core-data's Type 1 fonts are stored packed with t1c (decrypted, and restored to the original bytes when TeX reads them), except those of the packages its 't1cSkip' names, with the reason: fonts whose licence does not plainly cover a stored form. 'licenceReviews' give the licences of packages the Catalogue calls a 'collection' (files under several licences), as read in the files of the pinned snapshot's archives; a collection with no review counts as not free.",
+  "licenceReviews": {
+    "preprint": { "licences": ["lppl1"], "read": "authblk.sty, balance.sty, figcaps.sty, fullpage.sty and sublabel.sty each say: the LaTeX Project Public License, version 1 or any later version (Patrick W Daly). Read 2026-10-22 in the pinned snapshot's archive, checked against its SHA-512." },
+    "fbithesis": { "licences": ["lppl1.3"], "read": "fbithesis.cls and fbithesis.cfg each say: the LaTeX Project Public License, version 1.3 or any later version (Andre Dierker). Read 2026-10-22 in the pinned snapshot's run and doc archives, each checked against its SHA-512." },
+    "tugboat-plain": { "licences": ["other-free"], "read": "tugboat.sty and tugproc.sty each say: unlimited copying and redistribution are permitted as long as the file is not modified; modified versions may be redistributed only under another file name (TeX Users Group). The README is public domain. Read 2026-10-22 in the pinned snapshot's run and doc archives, each checked against its SHA-512." },
+    "frankenstein": { "licences": ["lppl1.2", "gpl"], "read": "Each .sty, .stq, .ins and achicago.bst says: the LaTeX Project Public License, version 1.2 or any later version; the README says every Frankenstein fileset is under the GNU General Public License, which covers the .cfg and .sto files that state nothing (Matt Swift). Read 2026-10-22 in the pinned snapshot's run and doc archives, each checked against its SHA-512." },
+    "was": { "licences": ["lppl1.2"], "read": "icomma.dtx and upgreek.dtx, the sources of icomma.sty and upgreek.sty, each say: the LaTeX Project Public License, version 1.2 or any later version (Walter Schmidt). Read 2026-10-22 in the pinned snapshot's source archive, checked against its SHA-512." }
+  },
+  "core-data": {
+    "collections": ["collection-basic", "collection-latex"],
+    "match": ["^hyphen-", "^babel-"],
+    "packages": [
+      "hyph-utf8", "hyphen-base", "babel", "polyglossia",
+      "ulem", "soul",
+      "beamer", "booktabs", "caption", "cite", "fancyvrb", "float", "fontspec", "listings", "lineno", "mathtools", "microtype", "setspace", "subfig", "xcolor", "xkeyval", "jknapltx", "rsfs", "unicode-math", "xetex",
+      "lm", "lm-math", "cm-super", "tex-gyre", "tex-gyre-math", "psnfss", "times", "helvetic", "courier", "palatino", "mathpazo", "txfonts", "fpl", "symbol", "zapfding", "dejavu",
+      "pgf", "pgfplots", "tikz-cd", "xypic",
+      "siunitx", "physics", "algorithm2e", "ifoddpage", "relsize", "algorithms", "algorithmicx", "mhchem", "nicematrix",
+      "enumitem", "titlesec", "cleveref", "csquotes", "multirow", "wrapfig", "adjustbox", "subfigure", "placeins", "lastpage", "threeparttable", "framed", "environ", "trimspaces", "xstring", "preprint", "tcolorbox", "todonotes", "standalone", "hyperxmp", "orcidlink", "dblfloatfix", "gensymb", "sttools", "etoolbox", "xpatch",
+      "revtex", "textcase", "ieeetran", "elsarticle", "acmart", "totpages", "everyshi", "cmap", "comment", "draftwatermark", "ncctools", "pbalance", "zref", "libertine", "newtx", "inconsolata", "upquote", "llncs", "aliascnt", "catchfile"
+    ],
+    "licence": "free",
+    "exclude": {
+      "luaotfload": "LuaTeX only: this engine has no LuaTeX, and pdfTeX and XeTeX never load it (LuaTeX's font loader; latex-bin depends on it)",
+      "lualibs": "LuaTeX only: this engine has no LuaTeX, and pdfTeX and XeTeX never load it (luaotfload's library)",
+      "lua-uni-algos": "LuaTeX only: this engine has no LuaTeX, and pdfTeX and XeTeX never load it (Unicode algorithms for LuaTeX; l3kernel and latex-bin depend on it)",
+      "luamml": "LuaTeX only: this engine has no LuaTeX, and pdfTeX and XeTeX never load it (MathML for LuaTeX)",
+      "lualatex-math": "LuaTeX only: this engine has no LuaTeX, and pdfTeX and XeTeX never load it (math fixes for LuaLaTeX)",
+      "ltxmisc": "in collection-latex, but not free: vrbexin.sty forbids taking money for its distribution or use, and five of its eleven files state no licence (read 2026-10-22 in the pinned snapshot's archive)"
+    },
+    "toExtra": {
+      "xunicode": "obsolete since fontspec moved to the TU encoding; only old XeTeX documents load it",
+      "tipa": "IPA fonts; in core only as a dependency of xunicode"
+    },
+    "t1cSkip": {
+      "amsfonts": "SIL Open Font License 1.1 with Reserved Font Names: the licence calls a derivative made \"by changing formats\" a Modified Version, and a Modified Version may not use a Reserved Font Name",
+      "inconsolata": "its fonts are under the SIL Open Font License 1.1, which calls a derivative made \"by changing formats\" a Modified Version",
+      "rsfs": "its Catalogue licence is other-free, and its terms were not read for a stored form",
+      "newtx": "its fonts carry several licences, which its Catalogue licence (for its TeX files) does not give: GPL, GPL or OFL (Libertine), the GUST Font License, OFL fonts it derives from (STIX, EB Garamond), Bitstream portions, and others that state none or only what they derive from (the t1c gate, T1S-01)"
+    }
+  },
+  "extra-data": {
+    "collections": ["collection-latexrecommended", "collection-latexextra", "collection-mathscience", "collection-fontsrecommended"],
+    "packages": [
+      "circuitikz", "chemfig", "forest", "pgf-umlsd", "tikzposter", "tufte-latex", "tikz-feynman",
+      "biblatex", "biblatex-apa", "biblatex-ieee", "biblatex-phys", "biblatex-chem", "biblatex-nature", "biblatex-science", "biblatex-mla", "biblatex-chicago",
+      "lh", "cyrillic", "cbfonts", "cbfonts-fd", "greek-fontenc"
+    ],
+    "groups": [
+      { "collections": ["collection-publishers"], "readFirst": ["other-free", "none"] }
+    ],
+    "licence": "free",
+    "exclude": {
+      "bmstu": "not free as a whole: bmstu-logo.pdf, one of its run files, is the university's logo, which its README says is used under fair use, not under a licence (read 2026-10-22 in the pinned snapshot's archives)",
+      "kluwer": "no licence: none of its 25 files states one, and kluwer.cls says \"copyright see the source file\" (read 2026-10-22 in the pinned snapshot's archive)",
+      "jupynotex": "a program in a data set: tex/latex/jupynotex/jupynotex.py, a Python script the package runs through shell escape, which the extension never allows",
+      "prettytok": "a program in a data set: tex/latex/prettytok/prettytok-decode-8bit.py, a Python script; the builder ships no program",
+      "cv4tw": "no licence text to ship: the Catalogue says other-free, but none of its run or doc files states its terms, and it has no source archive (read 2026-10-26 in the pinned snapshot's archives)"
+    }
+  },
+  "outsideProgram": {
+    "about": "Packages that need a program outside the extension: they stay in the sets when TeX Live has them, and the manifest names the reason (docs/DESIGN.md#engine-and-data).",
+    "minted": "Pygments, a Python program",
+    "svg": "Inkscape",
+    "gnuplottex": "gnuplot",
+    "epstopdf": "Ghostscript (a .eps figure needs a PDF copy beside it)",
+    "bib2gls": "Java",
+    "glossaries": "makeglossaries, a Perl script (\\makenoidxglossaries needs no program)"
+  }
+}

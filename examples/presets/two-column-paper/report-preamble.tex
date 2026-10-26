@@ -1,0 +1,20 @@
+% SPDX-License-Identifier: CC0-1.0
+% Part of the example preset, dedicated to the public domain (CC0 1.0).
+% The report preamble of the example preset (XeTeX): one column, with the title block filled in from the front
+% matter ({{title}}, {{author}} and {{date}}). The authors number their own figures and tables, so the caption
+% package prints no label of its own.
+\documentclass[11pt]{article}
+\usepackage{fontspec}
+\usepackage[a4paper,margin=2.5cm]{geometry}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage[labelformat=empty]{caption}
+\usepackage[hidelinks]{hyperref}
+
+\title{{{title}}}
+\author{{{author}}}
+\date{{{date}}}
+
+\begin{document}
+\maketitle

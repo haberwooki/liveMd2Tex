@@ -1,0 +1,57 @@
+% SPDX-License-Identifier: CC0-1.0
+% A starting document from the extension's templates, dedicated to the public domain (CC0 1.0). Replace the
+% text and keep the structure you need; the preview updates as you type.
+\documentclass[11pt]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage[numbers]{natbib}
+\usepackage[hidelinks]{hyperref}
+
+\title{A short, informative title}
+\author{First Author \and Second Author}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+One paragraph: the question, what you did, what you found, and why it matters.
+\end{abstract}
+
+\section{Introduction}
+\label{sec:intro}
+State the problem and why it matters. Cite sources as \cite{callaway1959} or \cite{slack1973,ziman1960}, and
+refer to Section~\ref{sec:method}, Equation~\eqref{eq:model} and Table~\ref{tab:results}.
+
+\section{Method}
+\label{sec:method}
+The kinetic model gives the thermal conductivity as
+\begin{equation}
+  \kappa = \frac{1}{3} C v \ell .
+  \label{eq:model}
+\end{equation}
+
+\section{Results}
+\begin{table}[htbp]
+  \centering
+  \caption{A table with booktabs rules.}
+  \label{tab:results}
+  \begin{tabular}{lrr}
+    \toprule
+    Sample & Value & Error \\
+    \midrule
+    A & 1.0 & 0.1 \\
+    B & 2.0 & 0.2 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\section{Conclusion}
+What the reader should take away.
+
+\bibliographystyle{plainnat}
+\bibliography{references}
+\end{document}

@@ -1,0 +1,37 @@
+{
+  "about": "Copy to .private-fixtures.json (git-ignored) to run tests on documents and tests kept OUTSIDE this repository (docs/DESIGN.md#testing). Paths are relative to the repository root; fixture paths are relative to 'root'. 'privateTests' (optional) is a folder of private tests laid out like test/ (engine/, unit/, integration/, converter/): scripts/private-tests.mjs compiles it into out/private/ and each test runner adds its tests. A fixture's kind is 'tex' or 'md'; an 'md' fixture may name an 'appendix' Markdown file, a preset 'mode' and an 'overrides' JSON file under 'root'. 'pairs' (optional) are reference pairs for a preset: a Markdown file and the .tex made from it, both read from a git repository at a commit, with an 'allow' list under 'root'. Without .private-fixtures.json all of these tests skip.",
+  "root": "../private_fixtures",
+  "privateTests": "../private_tests",
+  "fixtures": {
+    "T1": {
+      "kind": "tex",
+      "main": "path/to/paper.tex",
+      "files": [
+        "path/to/refs.bib"
+      ]
+    },
+    "T6": {
+      "kind": "md",
+      "main": "path/to/paper.md",
+      "appendix": "path/to/appendix.md",
+      "mode": "paper",
+      "overrides": "pairs/paper-overrides.json"
+    },
+    "T8": {
+      "kind": "md",
+      "main": "path/to/notes.md"
+    }
+  },
+  "pairs": {
+    "example": {
+      "repo": "path/to/a/repository",
+      "commit": "0123abc",
+      "markdown": "docs/paper.md",
+      "appendix": "docs/appendix.md",
+      "reference": "docs/paper.tex",
+      "mode": "paper",
+      "overrides": "pairs/paper-overrides.json",
+      "allow": "pairs/allow-paper.json"
+    }
+  }
+}

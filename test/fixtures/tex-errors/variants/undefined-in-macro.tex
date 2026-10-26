@@ -1,0 +1,8 @@
+% SPDX-License-Identifier: CC0-1.0
+% Written for this project's tests; dedicated to the public domain (CC0 1.0).
+% An undefined command inside a macro defined in the preamble: the help names \foo, not \mymacro.
+\documentclass{article}
+\newcommand{\mymacro}{Some text \foo}
+\begin{document}
+\mymacro
+\end{document}

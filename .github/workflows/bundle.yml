@@ -1,0 +1,400 @@
+# B1, the bundle builder (docs/DESIGN.md#engine-and-data), on GitHub only. It builds core-data and extra-data from the
+# pinned TeX Live snapshot (engine/bundle-pins.json) and the selection (engine/bundle-sets.json). The extension's own
+# engine builds the formats and runs the closure test. The public corpus is then compared with a TeX Live installed
+# as the reference. Prepared on the development machine and not yet run; run by hand (Actions, bundle, Run workflow).
+#
+# The jobs. Each has its own time limit and keeps its own report, also when it fails (build gate B1, GB1E-03):
+# - pin (job: pin): fetches the snapshot's tlpdb and TeX Live's signed checksum of it. gpg verifies the signature
+#   with TeX Live's key, whose fingerprint engine/bundle-pins.json pins (GB1E-02). The builder then checks that the
+#   signed SHA-512 is the tlpdb's, runs the selection, and lists every package whose licence is not plainly free
+#   or unknown (GB1E-01). Read the lists, then commit the printed "tlpdb" entry into engine/bundle-pins.json.
+# - fetch: every archive into the cache, each checked against the tlpdb's SHA-512. The cache is saved even when
+#   the fetch fails, so a second attempt downloads only what is missing. curl downloads, not the builder:
+#   texlive.info's bot check lets only curl, wget and TeX Live's own programs through. The builder lists what to
+#   download and checks it, and opens no connection itself (--local).
+# - build: unpacks, generates, builds the formats, the images and the two data packages. The packages' SHA-256 goes
+#   into the job summary before any later job runs.
+# - closure (input closure: core by default, so a first run judges the core first): each class and package of the
+#   chosen set loads alone, on the packages as they ship, sharded over 4 or 8 runners.
+# - corpus: the public corpus on the built packages.
+# - reference: TeX Live's installer, verified with the same key, installs the collections the bundle draws from and
+#   the build's packages into the runner's temp folder, without root; then the corpus is compiled again and the
+#   page counts compared. install-tl and tlmgr are TeX Live's own Perl programs, run in this job only, outside the
+#   builder, after the packages are sealed (GB1E-07, GB1E-08). It downloads only the corpus and the selection.
+#
+# The minutes, estimated for 2-vCPU runners and to be measured on the first run (GB1E-07): pin 5; fetch 20 to 40
+# the first time (a few GB from one host), a few minutes from the cache; build 30 to 60; closure, core only, about
+# 4 x 30; corpus 20; reference 40 to 60. A first run with the core's closure test: about 250 minutes. The add-on's
+# closure test (closure: extra, 8 shards) adds about 8 x 90. Artifacts are kept 3 days (the packages, about 250 MB
+# each) to 7 days (reports), within a private repository's storage.
+
+name: bundle
+
+on:
+  workflow_dispatch:
+    inputs:
+      job:
+        description: pin (check TeX Live's signature, list the licences, print the pin) or build (everything after)
+        type: choice
+        options: [build, pin]
+      closure:
+        description: The closure test's set (core first; extra or all once the core passes; none to skip it)
+        type: choice
+        options: [core, extra, all, none]
+        default: core
+      shards:
+        description: Runners for the closure test
+        type: choice
+        options: ['4', '8']
+        default: '4'
+      reference:
+        description: Compare the corpus with a TeX Live installed as the reference
+        type: boolean
+        default: true
+      version:
+        description: The data sets' version (default the snapshot's date)
+        required: false
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  pin:
+    if: inputs.job == 'pin'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: TeX Live's signed checksum of the tlpdb, verified with gpg and the pinned key (on the runner only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          KEY=$(node -p "require('./engine/bundle-pins.json').signingKey.fingerprint")
+          MIRROR=$(node -p "const p=require('./engine/bundle-pins.json');p.mirrors[0].replace('{snapshot}',p.snapshot)")
+          WORK="$RUNNER_TEMP/pin" && mkdir -p "$WORK"
+          export GNUPGHOME="$WORK/gnupg" && mkdir -m 700 "$GNUPGHOME"
+          curl -fsSL --retry 3 -o "$WORK/texlive.tlpdb.sha512" "${MIRROR}tlpkg/texlive.tlpdb.sha512"
+          curl -fsSL --retry 3 -o "$WORK/texlive.tlpdb.sha512.asc" "${MIRROR}tlpkg/texlive.tlpdb.sha512.asc"
+          curl -fsSL --retry 3 --create-dirs -o "$WORK/tlnet/tlpkg/texlive.tlpdb.xz" "${MIRROR}tlpkg/texlive.tlpdb.xz"
+          gpg --batch --keyserver hkps://keyserver.ubuntu.com --recv-keys "$KEY" || gpg --batch --keyserver hkps://keys.openpgp.org --recv-keys "$KEY"
+          gpg --batch --status-file "$WORK/gpg-status.txt" --verify "$WORK/texlive.tlpdb.sha512.asc" "$WORK/texlive.tlpdb.sha512"
+          # VALIDSIG's last field is the primary key's fingerprint: the builder checks it against the pin.
+          SIGNER=$(awk '$2 == "VALIDSIG" { print $NF }' "$WORK/gpg-status.txt")
+          test -n "$SIGNER"
+          echo "SIGNED_BY=$SIGNER" >> "$GITHUB_ENV"
+      - name: The tlpdb against the signed checksum; the selection and its licences; the entry to pin
+        run: node scripts/build-bundle.mjs --stage pin --local "$RUNNER_TEMP/pin/tlnet" --signed-sha512 "$RUNNER_TEMP/pin/texlive.tlpdb.sha512" --signed-by "$SIGNED_BY" --out "$RUNNER_TEMP/bundle-out"
+      - name: The pin report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundle-report-pin
+          retention-days: 7
+          if-no-files-found: ignore
+          path: ${{ runner.temp }}/bundle-out/report-pin.*
+
+  fetch:
+    if: inputs.job == 'build'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: TeX Live archives from earlier runs of this snapshot
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/bundle-cache
+          key: bundle-archives-${{ hashFiles('engine/bundle-pins.json') }}-${{ github.run_id }}
+          restore-keys: bundle-archives-${{ hashFiles('engine/bundle-pins.json') }}-
+      - name: Download every archive with curl, then check each against the tlpdb's SHA-512
+        shell: bash
+        run: |
+          set -euo pipefail
+          CACHE="$RUNNER_TEMP/bundle-cache"
+          MIRROR=$(node -p "const p=require('./engine/bundle-pins.json');p.mirrors[0].replace('{snapshot}',p.snapshot)")
+          [ -f "$CACHE/tlpkg/texlive.tlpdb.xz" ] || curl -fsSL --retry 3 --create-dirs -o "$CACHE/tlpkg/texlive.tlpdb.xz" "${MIRROR}tlpkg/texlive.tlpdb.xz"
+          # The builder lists what the cache lacks; curl downloads it; the builder then checks every archive.
+          node scripts/build-bundle.mjs --stage fetch --local "$CACHE" --curl-config "$RUNNER_TEMP/to-fetch.curl" --out "$RUNNER_TEMP/bundle-out"
+          if [ -s "$RUNNER_TEMP/to-fetch.curl" ]; then
+            curl --parallel --parallel-max 3 --create-dirs -fsSL --retry 3 -K "$RUNNER_TEMP/to-fetch.curl" || echo "::warning::Some archives did not download; the check below names them."
+          fi
+          node scripts/build-bundle.mjs --stage fetch --local "$CACHE" --out "$RUNNER_TEMP/bundle-out"
+      - name: Keep the archives, also when the fetch failed
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/bundle-cache
+          key: bundle-archives-${{ hashFiles('engine/bundle-pins.json') }}-${{ github.run_id }}
+      - name: The fetch report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundle-report-fetch
+          retention-days: 7
+          if-no-files-found: ignore
+          path: ${{ runner.temp }}/bundle-out/report-fetch.*
+
+  build:
+    needs: fetch
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      CI: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install from the lockfile
+        run: npm ci --omit=optional
+      - name: Engine inputs (cached by the pins)
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/../engine_assets
+          key: engine-assets-${{ hashFiles('engine/pins.json') }}
+      - name: The engine, its host, the client, and the engine build's image (the core takes its support files)
+        run: |
+          node scripts/engine-assets.mjs
+          node scripts/engine-patch.mjs
+          node scripts/build.mjs
+          npm run compile
+          node scripts/stage-engine.mjs --data
+      - name: The archives the fetch job checked
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/bundle-cache
+          key: bundle-archives-${{ hashFiles('engine/bundle-pins.json') }}-${{ github.run_id }}
+          fail-on-cache-miss: true
+      - name: Build core-data and extra-data
+        shell: bash
+        env:
+          VERSION: ${{ inputs.version }}
+        run: node scripts/build-bundle.mjs --stage build --local "$RUNNER_TEMP/bundle-cache" --out "$RUNNER_TEMP/bundle-out" ${VERSION:+--version "$VERSION"}
+      - name: The data packages' SHA-256 and the report, in the job summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo '### Data packages (SHA-256)'
+            echo '```'
+            (cd "$RUNNER_TEMP/bundle-out" && sha256sum ./*.vsix) || echo 'no data package was built'
+            echo '```'
+            echo '### Build report'
+            echo '```'
+            cat "$RUNNER_TEMP/bundle-out/report-build.txt" || echo 'no report'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: The data packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundle-packages
+          retention-days: 3
+          compression-level: 0
+          path: ${{ runner.temp }}/bundle-out/*.vsix
+      - name: The build report and lists
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundle-build
+          retention-days: 7
+          if-no-files-found: ignore
+          path: |
+            ${{ runner.temp }}/bundle-out/report-build.*
+            ${{ runner.temp }}/bundle-out/closure-targets.json
+            ${{ runner.temp }}/bundle-out/selection.json
+            ${{ runner.temp }}/bundle-out/*/data/manifest.json
+            ${{ runner.temp }}/bundle-out/*/data/licences.json
+
+  closure:
+    needs: build
+    if: inputs.closure != 'none'
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ${{ fromJSON(inputs.shards == '8' && '[0, 1, 2, 3, 4, 5, 6, 7]' || '[0, 1, 2, 3]') }}
+    env:
+      CI: 'true'
+      SCOPE: ${{ inputs.closure }}
+      SHARD: ${{ matrix.shard }}
+      SHARDS: ${{ inputs.shards }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install from the lockfile
+        run: npm ci --omit=optional
+      - name: Engine inputs (cached by the pins)
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/../engine_assets
+          key: engine-assets-${{ hashFiles('engine/pins.json') }}
+      - name: The engine, its host and the client
+        run: |
+          node scripts/engine-assets.mjs
+          node scripts/engine-patch.mjs
+          node scripts/build.mjs
+          npm run compile
+      - name: The data packages
+        uses: actions/download-artifact@v4
+        with:
+          name: bundle-packages
+          path: ${{ runner.temp }}/packages
+      - name: The build's lists
+        uses: actions/download-artifact@v4
+        with:
+          name: bundle-build
+          path: ${{ runner.temp }}/bundle-out
+      - name: The data, unpacked from the packages as they ship
+        shell: bash
+        run: |
+          set -euo pipefail
+          for set in core-data extra-data; do
+            unzip -q "$RUNNER_TEMP"/packages/livemd2tex-$set-*.vsix 'extension/data/*' -d "$RUNNER_TEMP/unpack-$set"
+            rm -rf "$RUNNER_TEMP/bundle-out/$set/data" && mkdir -p "$RUNNER_TEMP/bundle-out/$set"
+            mv "$RUNNER_TEMP/unpack-$set/extension/data" "$RUNNER_TEMP/bundle-out/$set/data"
+          done
+      - name: The closure test, this shard
+        run: node scripts/build-bundle.mjs --stage closure --closure "$SCOPE" --shard "$SHARD/$SHARDS" --out "$RUNNER_TEMP/bundle-out"
+      - name: The shard's report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundle-closure-${{ matrix.shard }}
+          retention-days: 7
+          if-no-files-found: ignore
+          path: |
+            ${{ runner.temp }}/bundle-out/report-closure.*
+            ${{ runner.temp }}/bundle-out/closure-*-of-*.json
+
+  corpus:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      CI: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install from the lockfile
+        run: npm ci --omit=optional
+      - name: Engine inputs (cached by the pins)
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/../engine_assets
+          key: engine-assets-${{ hashFiles('engine/pins.json') }}
+      - name: The engine, its host and the client
+        run: |
+          node scripts/engine-assets.mjs
+          node scripts/engine-patch.mjs
+          node scripts/build.mjs
+          npm run compile
+          node scripts/stage-engine.mjs
+      - name: The data packages
+        uses: actions/download-artifact@v4
+        with:
+          name: bundle-packages
+          path: ${{ runner.temp }}/packages
+      - name: The data, unpacked from the packages as they ship
+        shell: bash
+        run: |
+          set -euo pipefail
+          for set in core-data extra-data; do
+            unzip -q "$RUNNER_TEMP"/packages/livemd2tex-$set-*.vsix 'extension/data/*' -d "$RUNNER_TEMP/unpack-$set"
+            mkdir -p "$RUNNER_TEMP/bundle-out/$set"
+            mv "$RUNNER_TEMP/unpack-$set/extension/data" "$RUNNER_TEMP/bundle-out/$set/data"
+          done
+      - name: The public corpus on the built packages
+        env:
+          LIVEMD2TEX_BUNDLE_OUT: ${{ runner.temp }}/bundle-out
+        run: |
+          npx mocha --config .mocharc.engine.cjs --grep "B1: the public corpus on the built bundle" out/test/engine/bundleCorpus.test.js
+      - name: The corpus and its page counts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundle-corpus
+          retention-days: 7
+          if-no-files-found: ignore
+          path: |
+            ${{ runner.temp }}/bundle-out/corpus-bundle.json
+            ${{ runner.temp }}/bundle-out/corpus/
+
+  reference:
+    needs: corpus
+    if: inputs.reference
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      CI: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install from the lockfile
+        run: npm ci --omit=optional
+      - name: The corpus
+        uses: actions/download-artifact@v4
+        with:
+          name: bundle-corpus
+          path: ${{ runner.temp }}/bundle-out
+      - name: The build's selection
+        uses: actions/download-artifact@v4
+        with:
+          name: bundle-build
+          path: ${{ runner.temp }}/bundle-out
+      - name: TeX Live's installer from the snapshot, verified with gpg and the pinned key
+        shell: bash
+        run: |
+          set -euo pipefail
+          KEY=$(node -p "require('./engine/bundle-pins.json').signingKey.fingerprint")
+          MIRROR=$(node -p "const p=require('./engine/bundle-pins.json');p.mirrors[0].replace('{snapshot}',p.snapshot)")
+          WORK="$RUNNER_TEMP/install-tl" && mkdir -p "$WORK/installer"
+          export GNUPGHOME="$WORK/gnupg" && mkdir -m 700 "$GNUPGHOME"
+          cd "$WORK"
+          for f in install-tl-unx.tar.gz install-tl-unx.tar.gz.sha512 install-tl-unx.tar.gz.sha512.asc; do
+            curl -fsSL --retry 3 -o "$f" "${MIRROR}$f"
+          done
+          gpg --batch --keyserver hkps://keyserver.ubuntu.com --recv-keys "$KEY" || gpg --batch --keyserver hkps://keys.openpgp.org --recv-keys "$KEY"
+          gpg --batch --status-file gpg-status.txt --verify install-tl-unx.tar.gz.sha512.asc install-tl-unx.tar.gz.sha512
+          test "$(awk '$2 == "VALIDSIG" { print $NF }' gpg-status.txt)" = "$KEY"
+          sha512sum -c install-tl-unx.tar.gz.sha512
+          tar -xzf install-tl-unx.tar.gz -C installer --strip-components=1
+      - name: The reference TeX Live, in the runner's temp folder without root (install-tl and tlmgr are TeX Live's Perl, outside the builder)
+        shell: bash
+        run: |
+          set -euo pipefail
+          TL="$RUNNER_TEMP/texlive"
+          MIRROR=$(node -p "const p=require('./engine/bundle-pins.json');p.mirrors[0].replace('{snapshot}',p.snapshot)")
+          node scripts/bundle-reference.mjs --profile "$TL" > "$RUNNER_TEMP/install-tl/reference.profile"
+          cd "$RUNNER_TEMP/install-tl/installer"
+          perl ./install-tl --profile "$RUNNER_TEMP/install-tl/reference.profile" --repository "$MIRROR"
+          BIN=$(ls -d "$TL"/bin/*)
+          "$BIN/tlmgr" install $(node "$GITHUB_WORKSPACE/scripts/bundle-reference.mjs" --packages "$RUNNER_TEMP/bundle-out/selection.json")
+          echo "$BIN" >> "$GITHUB_PATH"
+      - name: The public corpus on TeX Live, compared
+        run: node scripts/bundle-reference.mjs --out "$RUNNER_TEMP/bundle-out"
+      - name: The comparison
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundle-reference
+          retention-days: 7
+          if-no-files-found: ignore
+          path: ${{ runner.temp }}/bundle-out/corpus-reference.json

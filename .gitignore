@@ -1,0 +1,19 @@
+# Build output
+/dist/
+/out/
+*.vsix
+
+# Dependencies
+/node_modules/
+
+# Test runs (a .vscode-test folder must never hold a downloaded VS Code; see README)
+/.vscode-test/
+/coverage/
+
+# Private files: never committed (docs/DESIGN.md#store-and-packaging)
+/.private-fixtures.json
+/.private-markers.json
+
+# Editors and OS
+.DS_Store
+Thumbs.db

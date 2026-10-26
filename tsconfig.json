@@ -1,0 +1,23 @@
+{
+  // Type-checks and compiles the extension host, engine host, converter, SyncTeX worker and tests to out/ for Mocha and
+  // @vscode/test-cli. The shipped bundles in dist/ are built by scripts/build.mjs (esbuild), not by tsc.
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2023"],
+    "module": "node16",
+    "moduleResolution": "node16",
+    "rootDir": ".",
+    "outDir": "out",
+    "types": ["node", "mocha", "vscode"],
+    "strict": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "forceConsistentCasingInFileNames": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "sourceMap": true,
+    "isolatedModules": true
+  },
+  "include": ["src/types/**/*.d.ts", "src/extension/**/*.ts", "src/engine-host/**/*.ts", "src/converter/**/*.ts", "src/git/**/*.ts", "src/shared/**/*.ts", "src/synctex/**/*.ts", "src/web/**/*.ts", "test/**/*.ts"],
+  "exclude": ["node_modules", "out", "dist", "src/webview/**"]
+}

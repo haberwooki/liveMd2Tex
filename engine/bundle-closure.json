@@ -1,0 +1,37 @@
+{
+  "about": "Rules for B1's closure test (scripts/build-bundle.mjs --stage closure; docs/DESIGN.md#engine-and-data). Each class, and each .sty in a package's own tex/latex folder, loads alone in a minimal document. 'setup' gives a file the preamble it needs first, when it works only on top of another package. 'expected' lists failures that are right for this set, with the reason: helpers and documentation tools that need a package only extra-data holds, font options whose fonts are in extra-data, and LuaTeX branches. The report says which missing files extra-data holds, and names a listed file that loads now, so the list stays honest. Any other failure stops the build.",
+  "setup": {
+    "tex/latex/babelbib/babelbib.sty": {
+      "preamble": "\\usepackage[english]{babel}",
+      "reason": "babelbib works on top of babel with a main language; with none, babel stops at \\begin{document}"
+    }
+  },
+  "expected": {
+    "tex/latex/beamer/beamerbasethemes.sty": "beamer's own theme loader: it loads beamertheme#2.sty, a name a macro builds; beamer loads it with a theme's name",
+    "tex/latex/base/doc.sty": "a tool for package authors' documentation; it loads hypdoc, which extra-data holds",
+    "tex/latex/base/ltxdoc.cls": "the class for package documentation; it loads hypdoc, which extra-data holds",
+    "tex/latex/base/l3in2edoc.cls": "a class for typesetting LaTeX's own sources; it loads alphalph, which extra-data holds",
+    "tex/latex/base/source2edoc.cls": "a class for typesetting LaTeX's own sources; it loads alphalph, which extra-data holds",
+    "tex/latex/l3kernel/l3doc.cls": "the LaTeX3 documentation class; it loads alphalph, which extra-data holds",
+    "tex/latex/amscls/amsdtx.cls": "the AMS documentation class; it loads hypdoc, which extra-data holds",
+    "tex/latex/oberdiek/holtxdoc.sty": "a documentation helper; it loads hypdoc, which extra-data holds",
+    "tex/latex/listings/lstdoc.sty": "listings' documentation helper; it loads xurl, which extra-data holds",
+    "tex/latex/lineno/fnlineno.sty": "lineno's add-on for footnotes; it loads finstrut, which extra-data holds",
+    "tex/latex/hyperref/minitoc-hyper.sty": "hyperref's patch for minitoc, which extra-data holds; it is loaded with minitoc",
+    "tex/latex/hyperref/ntheorem-hyper.sty": "hyperref's patch for ntheorem, which extra-data holds; it is loaded with ntheorem",
+    "tex/latex/oberdiek/pdfcolparallel.sty": "a patch for parallel, which neither set holds; it is loaded with parallel",
+    "tex/latex/oberdiek/pdfcolparcolumns.sty": "a patch for parcolumns, which extra-data holds; it is loaded with parcolumns",
+    "tex/latex/oberdiek/scrindex.sty": "a patch for index, which extra-data holds; it is loaded with index",
+    "tex/latex/pdfmanagement/l3pdffield.sty": "PDF form fields, a test-phase module; it loads l3draw, which extra-data holds",
+    "tex/latex/pdfmanagement/l3pdffield-testphase.sty": "PDF form fields, a test-phase module; it loads l3draw, which extra-data holds",
+    "tex/latex/polyglossia/farsical.sty": "the Persian calendar; it loads bidi, the right-to-left package, which core-data does not hold",
+    "tex/latex/polyglossia/hebrewcal.sty": "the Hebrew calendar; it loads bidi, the right-to-left package, which core-data does not hold",
+    "tex/latex/psnfss/bookman.sty": "a psnfss font option: its fonts (URW Bookman, package bookman) are in extra-data",
+    "tex/latex/psnfss/chancery.sty": "a psnfss font option: its fonts (URW Chancery, package zapfchan) are in extra-data",
+    "tex/latex/psnfss/charter.sty": "a psnfss font option: its fonts (Bitstream Charter, package charter) are in extra-data",
+    "tex/latex/psnfss/newcent.sty": "a psnfss font option: its fonts (URW New Century Schoolbook, package ncntrsbk) are in extra-data",
+    "tex/latex/psnfss/utopia.sty": "a psnfss font option: its fonts (Adobe Utopia, package utopia) are in extra-data",
+    "tex/latex/mfnfss/pandora.sty": "the Pandora fonts, which core-data does not hold",
+    "tex/latex/unicode-math/unicode-math-luatex.sty": "unicode-math's LuaTeX branch: this engine has no LuaTeX"
+  }
+}

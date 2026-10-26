@@ -1,0 +1,20 @@
+{
+  "about": "The pinned TeX Live snapshot B1's builder takes its packages from (scripts/build-bundle.mjs; docs/DESIGN.md#engine-and-data). One pin covers the whole snapshot: the SHA-256 of tlpkg/texlive.tlpdb.xz. Every package archive is then checked against the SHA-512 that this tlpdb lists for it, so a mirror can change nothing unnoticed. The pin itself is taken only after TeX Live's signature vouches for the tlpdb: the bundle workflow's pin job verifies tlpkg/texlive.tlpdb.sha512.asc with gpg against the key whose fingerprint 'signingKey' pins, and the builder checks that the signed SHA-512 is the fetched tlpdb's. The pin job prints the 'tlpdb' entry (sha256, signedSha512, signatureChecked); a person reads its licence lists and commits it. The builder refuses to run without 'sha256' and 'signatureChecked'. The snapshot is a dated copy of TeX Live's tlnet (texlive.info keeps one per day); the mirrors are tried in order.",
+  "texLive": 2026,
+  "snapshot": "2026/10/15",
+  "mirrors": [
+    "https://texlive.info/tlnet-archive/{snapshot}/tlnet/",
+    "https://www.texlive.info/tlnet-archive/{snapshot}/tlnet/"
+  ],
+  "signingKey": {
+    "fingerprint": "C78B82D8C79512F79CC0D7C80D5E5D9106BAB6BC",
+    "name": "TeX Live Distribution",
+    "source": "https://tug.org/texlive/verify.html (the fingerprint TUG publishes); the key itself from keyserver.ubuntu.com or keys.openpgp.org"
+  },
+  "tlpdb": {
+    "file": "tlpkg/texlive.tlpdb.xz",
+    "sha256": "c64950296a87e76d7ed1f3c052edbc950c3e3e6ca90391baaad9cae54b2e17b0",
+    "signedSha512": "ff9478fc9487e0c3bae7d26b58d41c16575913fbf7d03ba73c687a6d7755cef6a871acde2176d6f614800646c99f7148b54a0d0d628ad792426eb90c7ebe13f9",
+    "signatureChecked": "2026-10-22: gpg verified tlpkg/texlive.tlpdb.sha512.asc with key C78B82D8C79512F79CC0D7C80D5E5D9106BAB6BC; its SHA-512 is that of texlive.tlpdb"
+  }
+}

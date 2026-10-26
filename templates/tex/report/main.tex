@@ -1,0 +1,38 @@
+% SPDX-License-Identifier: CC0-1.0
+% A starting document from the extension's templates, dedicated to the public domain (CC0 1.0). Replace the
+% text and keep the structure you need; the preview updates as you type.
+\documentclass[11pt]{report}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage[numbers]{natbib}
+\usepackage[hidelinks]{hyperref}
+
+\title{A report or thesis}
+\author{First Author}
+\date{\today}
+
+\begin{document}
+\maketitle
+\tableofcontents
+
+\chapter{Introduction}
+\label{ch:intro}
+Each chapter starts on a new page. Cite sources as \cite{callaway1959}, and refer to Chapter~\ref{ch:method}.
+
+\chapter{Method}
+\label{ch:method}
+\section{The model}
+The kinetic model gives the thermal conductivity as
+\begin{equation}
+  \kappa = \frac{1}{3} C v \ell .
+\end{equation}
+
+\chapter{Conclusion}
+What the reader should take away.
+
+\bibliographystyle{plainnat}
+\bibliography{references}
+\end{document}

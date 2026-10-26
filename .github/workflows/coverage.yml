@@ -1,0 +1,376 @@
+# M5, the coverage measurement (docs/coverage-method.md; docs/DESIGN.md#engine-and-data, #testing), on GitHub only.
+# About 400 recent arXiv papers (CC BY and CC0, stratified by category, seed 20261022) and the pinned CTAN thesis
+# and Beamer templates, each compiled three times: with core-data alone, with core-data and extra-data, and with a
+# full TeX Live of the same snapshot as the reference. The data packages come from a run of the bundle workflow
+# (input bundle_run; its artifacts are kept 3 days). Prepared on the development machine and not yet run; run by
+# hand (Actions, coverage, Run workflow): first job "pin" to pin the templates, then job "rehearse" (the default)
+# to prove the compile and reference steps without any arXiv request, then job "measure". docs/DEVELOPING.md gives
+# the steps around a run (the tag before it, the report committed after it, the caches deleted).
+#
+# The jobs. Each has its own time limit and keeps its own report, also when it fails:
+# - pin (job: pin): downloads the CTAN templates and prints their SHA-256 and main files, to commit into
+#   engine/coverage-templates.json.
+# - sources: the harvest (arXiv's OAI-PMH), the draw and the sources (export.arxiv.org), under arXiv's API terms:
+#   one request every three seconds, one connection at a time. Only this job contacts arXiv, only at its two
+#   programmatic endpoints (oaipmh.arxiv.org/oai and export.arxiv.org/src/<id>), following no redirect, and its
+#   concurrency group keeps two runs from doing so at once. It runs for job "measure" only. The sources go into
+#   the Actions cache, never into the repository or an artifact. The cache is saved also when a step fails or runs out of time: a new run goes on from the
+#   newest entry of the same frame (the harvest from its last saved page, the fetch with the sources it lacks).
+# - texlive: the reference, scheme-full from the pinned snapshot, its installer verified with gpg and the pinned
+#   key (engine/bundle-pins.json), installed without root into the runner's temp folder and kept in the Actions
+#   cache by the snapshot's pin; install-tl (TeX Live's Perl installer) runs in this job only.
+# - compile (a matrix of shards): each document of the shard on the extension's route (the stubs loaded), then
+#   on the reference, which runs without network, as the runner's user, with TeX Live's restricted shell escape
+#   and paranoid file access; Ghostscript, from the runner's Ubuntu release, lets it convert .eps figures and run
+#   the DVI route. Each side has a time budget (150 and 60 minutes) inside the job's 240; results are written after
+#   every document. A re-run of a failed shard restores this run's newest sources entry.
+# - report: every sampled document with an outcome, "not measured" with its reason included; the shares with their
+#   95 % Wilson intervals, per stratum, and the missing packages, in the job summary and an artifact. Its first
+#   line says whether a shard or part of the sample is missing.
+# - rehearse (job: rehearse): texlive, compile and report as above, on the public corpus (test/corpus) and the
+#   probes of scripts/lib/coverage.mjs instead of arXiv papers; the sources job does not run, so nothing asks
+#   arXiv. Each probe proves one part of the reference (Ghostscript and repstopdf, the DVI route, biber, no
+#   network, openin_any = p, a missing file); the report checks them and fails when one does not hold.
+#
+# The minutes, estimated for the public repository's 4-vCPU runners, where they cost nothing, and to be measured
+# on the first run: pin 5; sources 30 to 120 the first time (the harvest's page count is not known in advance,
+# and every request waits its three seconds; the job may take up to 360), 2 from the cache; texlive 40 to 80 the
+# first time (scheme-full without documentation, about 4 GB, kept as a cache entry of about 2 GB), 3 from the
+# cache; compile, 10 shards of about 40 papers and the templates, 60 to 110 each; report 3. Artifacts are kept
+# 7 days.
+
+name: coverage
+
+on:
+  workflow_dispatch:
+    inputs:
+      job:
+        description: rehearse (no arXiv request), measure, or pin (download the templates and print their pins)
+        type: choice
+        options: [rehearse, measure, pin]
+        default: rehearse
+      bundle_run:
+        description: The id of the bundle workflow run whose data packages are measured (its artifacts last 3 days)
+        required: false
+        type: string
+        default: ''
+      shards:
+        description: Compile jobs
+        type: choice
+        options: ['10', '8', '16']
+        default: '10'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  pin:
+    if: inputs.job == 'pin'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      CI: 'true'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: The templates, downloaded; their SHA-256 and main files printed
+        run: node scripts/coverage.mjs --stage templates --pin --templates "$RUNNER_TEMP/templates" | tee "$RUNNER_TEMP/pin.txt"
+      - name: The pins, in the job summary
+        if: always()
+        shell: bash
+        run: |
+          { echo '### Template pins'; echo '```'; cat "$RUNNER_TEMP/pin.txt" || echo 'no output'; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - name: The pin report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-pin
+          retention-days: 7
+          if-no-files-found: ignore
+          path: ${{ runner.temp }}/pin.txt
+
+  sources:
+    if: inputs.job == 'measure'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    concurrency:
+      group: coverage-arxiv
+      cancel-in-progress: false
+    env:
+      CI: 'true'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: The User-Agent's address must open for arXiv's administrators
+        if: github.event.repository.private
+        run: echo "::warning::The repository is private, so the address in the User-Agent (engine/coverage-frame.json) does not open for arXiv's administrators."
+      - name: The sources of earlier runs of this frame
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/coverage
+          key: coverage-sources-${{ hashFiles('engine/coverage-frame.json') }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: coverage-sources-${{ hashFiles('engine/coverage-frame.json') }}-
+      - name: The harvest and the draw (OAI-PMH, three seconds apart), unless an earlier run drew the sample
+        timeout-minutes: 270
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ ! -f "$RUNNER_TEMP/coverage/candidates.json" ]; then
+            node scripts/coverage.mjs --stage sample --dir "$RUNNER_TEMP/coverage"
+          fi
+      - name: The sources, stratum by stratum, three seconds apart
+        timeout-minutes: 70
+        run: node scripts/coverage.mjs --stage fetch --dir "$RUNNER_TEMP/coverage"
+      - name: Keep the sources, also when a step failed or ran out of time
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/coverage
+          key: coverage-sources-${{ hashFiles('engine/coverage-frame.json') }}-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: The pinned templates, from the cache of this templates file
+        id: templates
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/templates
+          key: coverage-templates-${{ hashFiles('engine/coverage-templates.json') }}
+      - name: The pinned templates, downloaded
+        if: steps.templates.outputs.cache-hit != 'true'
+        timeout-minutes: 10
+        run: node scripts/coverage.mjs --stage templates --templates "$RUNNER_TEMP/templates"
+      - name: Keep the templates
+        if: steps.templates.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/templates
+          key: coverage-templates-${{ hashFiles('engine/coverage-templates.json') }}
+      - name: The frame and the sample (arXiv ids and counts, no sources)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-frame
+          retention-days: 7
+          if-no-files-found: ignore
+          overwrite: true
+          path: |
+            ${{ runner.temp }}/coverage/frame.json
+            ${{ runner.temp }}/coverage/papers.json
+
+  texlive:
+    if: inputs.job == 'measure' || inputs.job == 'rehearse'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 150
+    env:
+      CI: 'true'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: The reference TeX Live of this snapshot, from the cache
+        id: texlive
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/texlive
+          key: coverage-texlive-full-${{ hashFiles('engine/bundle-pins.json') }}
+      - name: TeX Live's installer from the snapshot, verified with gpg and the pinned key
+        if: steps.texlive.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          KEY=$(node -p "require('./engine/bundle-pins.json').signingKey.fingerprint")
+          MIRROR=$(node -p "const p=require('./engine/bundle-pins.json');p.mirrors[0].replace('{snapshot}',p.snapshot)")
+          WORK="$RUNNER_TEMP/install-tl" && mkdir -p "$WORK/installer"
+          export GNUPGHOME="$WORK/gnupg" && mkdir -m 700 "$GNUPGHOME"
+          cd "$WORK"
+          for f in install-tl-unx.tar.gz install-tl-unx.tar.gz.sha512 install-tl-unx.tar.gz.sha512.asc; do
+            curl -fsSL --retry 3 -o "$f" "${MIRROR}$f"
+          done
+          gpg --batch --keyserver hkps://keyserver.ubuntu.com --recv-keys "$KEY" || gpg --batch --keyserver hkps://keys.openpgp.org --recv-keys "$KEY"
+          gpg --batch --status-file gpg-status.txt --verify install-tl-unx.tar.gz.sha512.asc install-tl-unx.tar.gz.sha512
+          test "$(awk '$2 == "VALIDSIG" { print $NF }' gpg-status.txt)" = "$KEY"
+          sha512sum -c install-tl-unx.tar.gz.sha512
+          tar -xzf install-tl-unx.tar.gz -C installer --strip-components=1
+      - name: The reference, scheme-full, in the runner's temp folder without root (install-tl is TeX Live's Perl)
+        if: steps.texlive.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          TL="$RUNNER_TEMP/texlive"
+          MIRROR=$(node -p "const p=require('./engine/bundle-pins.json');p.mirrors[0].replace('{snapshot}',p.snapshot)")
+          node scripts/coverage.mjs --stage profile --texdir "$TL" --dir "$RUNNER_TEMP/coverage" > "$RUNNER_TEMP/install-tl/reference.profile"
+          cd "$RUNNER_TEMP/install-tl/installer"
+          perl ./install-tl --profile "$RUNNER_TEMP/install-tl/reference.profile" --repository "$MIRROR"
+      - name: The reference's version and size, in the job summary
+        if: always()
+        shell: bash
+        run: |
+          { echo '### Reference TeX Live'; echo '```'; ls "$RUNNER_TEMP"/texlive/bin/*/pdflatex >/dev/null 2>&1 && "$(ls -d "$RUNNER_TEMP"/texlive/bin/*)/pdflatex" --version | head -1; du -sh "$RUNNER_TEMP/texlive" 2>/dev/null || echo 'not installed'; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
+  compile:
+    needs: [sources, texlive]
+    # A rehearsal runs without the sources job, which then counts as skipped.
+    if: ${{ !cancelled() && needs.texlive.result == 'success' && (needs.sources.result == 'success' || inputs.job == 'rehearse') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 240
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ${{ fromJSON(inputs.shards == '16' && '[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]' || inputs.shards == '8' && '[0, 1, 2, 3, 4, 5, 6, 7]' || '[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]') }}
+    env:
+      CI: 'true'
+      SHARD: ${{ matrix.shard }}
+      SHARDS: ${{ inputs.shards }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install from the lockfile
+        run: npm ci --omit=optional
+      - name: Engine inputs (restored by the pins, never saved from this job, which reads untrusted sources)
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ github.workspace }}/../engine_assets
+          key: engine-assets-${{ hashFiles('engine/pins.json') }}
+      - name: The engine, its host and the client
+        run: |
+          node scripts/engine-assets.mjs
+          node scripts/engine-patch.mjs
+          node scripts/build.mjs
+          npm run compile
+          node scripts/stage-engine.mjs
+      - name: The sources the sources job fetched (this run's newest entry)
+        if: inputs.job == 'measure'
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/coverage
+          key: coverage-sources-${{ hashFiles('engine/coverage-frame.json') }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: coverage-sources-${{ hashFiles('engine/coverage-frame.json') }}-${{ github.run_id }}-
+          fail-on-cache-miss: true
+      - name: The pinned templates
+        if: inputs.job == 'measure'
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/templates
+          key: coverage-templates-${{ hashFiles('engine/coverage-templates.json') }}
+          fail-on-cache-miss: true
+      - name: The rehearsal's documents, from the repository (no arXiv request)
+        if: inputs.job == 'rehearse'
+        run: node scripts/coverage.mjs --stage rehearse --dir "$RUNNER_TEMP/coverage"
+      - name: The reference TeX Live
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/texlive
+          key: coverage-texlive-full-${{ hashFiles('engine/bundle-pins.json') }}
+          fail-on-cache-miss: true
+      - name: Ghostscript for the reference (repstopdf and ps2pdf call it), from the runner's Ubuntu release
+        run: |
+          sudo apt-get update -q && sudo apt-get install -y -q --no-install-recommends ghostscript
+          gs --version
+      - name: The data packages of the bundle run
+        uses: actions/download-artifact@v4
+        with:
+          name: bundle-packages
+          path: ${{ runner.temp }}/packages
+          run-id: ${{ inputs.bundle_run }}
+          github-token: ${{ github.token }}
+      - name: The data, unpacked from the packages as they ship
+        shell: bash
+        run: |
+          set -euo pipefail
+          for set in core-data extra-data; do
+            unzip -q "$RUNNER_TEMP"/packages/livemd2tex-$set-*.vsix 'extension/data/*' -d "$RUNNER_TEMP/unpack-$set"
+            mkdir -p "$RUNNER_TEMP/data/$set"
+            mv "$RUNNER_TEMP/unpack-$set/extension/data" "$RUNNER_TEMP/data/$set/data"
+          done
+          rm -rf "$RUNNER_TEMP"/unpack-*
+      - name: This shard's documents, unpacked
+        run: node scripts/coverage.mjs --stage prepare --dir "$RUNNER_TEMP/coverage" --templates "$RUNNER_TEMP/templates" --shard "$SHARD/$SHARDS" --work "$RUNNER_TEMP/work"
+      - name: The disk before the compiles
+        if: always()
+        run: df -h "$RUNNER_TEMP" "$GITHUB_WORKSPACE"
+      - name: On the extension's route (core alone, and with extra where the core lacks a file), with the stubs
+        run: node --require ./test/stubs/register-unit.cjs out/test/engine/coverageRun.js --work "$RUNNER_TEMP/work" --data "$RUNNER_TEMP/data" --packages "$RUNNER_TEMP/packages" --minutes 150
+      - name: On the reference, as the runner's user in a network namespace of its own (no network)
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          TLBIN="$(ls -d "$RUNNER_TEMP"/texlive/bin/*)"
+          mkdir -p "$RUNNER_TEMP/reference-home"
+          sudo unshare --net --setuid "$(id -u)" --setgid "$(id -g)" -- env -i PATH="$TLBIN:/usr/bin:/bin" HOME="$RUNNER_TEMP/reference-home" CI=true LANG=C.UTF-8 "$(command -v node)" scripts/coverage.mjs --stage reference --work "$RUNNER_TEMP/work" --minutes 60
+      - name: The disk after the compiles
+        if: always()
+        run: df -h "$RUNNER_TEMP" "$GITHUB_WORKSPACE"
+      - name: The shard's results (outcomes, page counts and file names; no sources)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-shard-${{ matrix.shard }}
+          retention-days: 7
+          if-no-files-found: ignore
+          overwrite: true
+          path: |
+            ${{ runner.temp }}/work/shard.json
+            ${{ runner.temp }}/work/ours.json
+            ${{ runner.temp }}/work/reference.json
+
+  report:
+    needs: compile
+    if: always() && (inputs.job == 'measure' || inputs.job == 'rehearse')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      SHARDS: ${{ inputs.shards }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: The shards' results (a shard without them is counted as not measured)
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          pattern: coverage-shard-*
+          path: ${{ runner.temp }}/results
+      - name: The frame
+        if: inputs.job == 'measure'
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: coverage-frame
+          path: ${{ runner.temp }}/coverage
+      - name: The rehearsal's documents, from the repository (no arXiv request)
+        if: inputs.job == 'rehearse'
+        run: node scripts/coverage.mjs --stage rehearse --dir "$RUNNER_TEMP/coverage"
+      - name: Every sampled document's outcome, the shares, their intervals and the missing packages (and a rehearsal's checks)
+        run: node scripts/coverage.mjs --stage report --dir "$RUNNER_TEMP/coverage" --results "$RUNNER_TEMP/results" --out "$RUNNER_TEMP/report" --shards "$SHARDS"
+      - name: The report, in the job summary
+        if: always()
+        shell: bash
+        run: cat "$RUNNER_TEMP/report/coverage-report.md" >> "$GITHUB_STEP_SUMMARY" || echo 'no report' >> "$GITHUB_STEP_SUMMARY"
+      - name: The report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          retention-days: 7
+          if-no-files-found: ignore
+          overwrite: true
+          path: ${{ runner.temp }}/report/

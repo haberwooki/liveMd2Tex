@@ -1,0 +1,8 @@
+% Fixture (CC0, written by the project): \write18 must not start anything (docs/DESIGN.md#rules).
+\documentclass{article}
+\begin{document}
+Before.
+\immediate\write18{echo shell-was-here > shell-was-here.txt}
+\immediate\write18{kpsewhich article.cls}
+After.
+\end{document}

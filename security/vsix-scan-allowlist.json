@@ -1,0 +1,150 @@
+{
+  "about": [
+    "Reviewed allow-list for scripts/vsix-scan.mjs (docs/DESIGN.md#rules). Each entry names one hit by file (path inside the VSIX), line, the watched name or module, and the line's text; the scan fails if a hit is missing here, if an entry no longer matches a hit (the file changed: review it again), or if an entry tries to allow child_process (allowed only in extension/dist/fork.js, by rule, not by this list).",
+    "Every entry below is in pdf.js (pdfjs-dist 6.4.299, Apache-2.0), copied verbatim. pdf.js runs only inside the viewer webview. Its Content Security Policy is default-src 'none' with connect-src limited to webview.cspSource, so these calls can reach only the extension's own files, and the extension gives pdf.js each PDF as bytes, never as a URL.",
+    "Entries for extension/dist/engine/busytex.js apply only to a test copy built with --with-engine (the engine joins the shipped package at V0); an entry whose file is not in the VSIX is not checked."
+  ],
+  "reviewed": "2026-10-15",
+  "entries": [
+    {
+      "file": "extension/dist/viewer/pdfjs/build/pdf.mjs",
+      "line": 1241,
+      "match": "fetch",
+      "text": "const response = await fetch(url);",
+      "reason": "fetchData(): the page's loader for the cMap, standard-font and WASM files under the in-extension cMapUrl, standardFontDataUrl and wasmUrl. The viewer runs pdf.js with useWorkerFetch off, so this is the path those files take (S3)."
+    },
+    {
+      "file": "extension/dist/viewer/pdfjs/build/pdf.mjs",
+      "line": 1256,
+      "match": "XMLHttpRequest",
+      "text": "const request = new XMLHttpRequest();",
+      "reason": "fetchData()'s XMLHttpRequest fallback for URLs fetch() cannot take; same files as the entry above."
+    },
+    {
+      "file": "extension/dist/viewer/pdfjs/build/pdf.mjs",
+      "line": 1260,
+      "match": "XMLHttpRequest",
+      "text": "if (request.readyState !== XMLHttpRequest.DONE) {",
+      "reason": "A constant read (XMLHttpRequest.DONE) inside the same fallback."
+    },
+    {
+      "file": "extension/dist/viewer/pdfjs/build/pdf.mjs",
+      "line": 13575,
+      "match": "fetch",
+      "text": "return fetch(url, {",
+      "reason": "PDFFetchStream: loads a PDF given by URL. The viewer passes getDocument({ data }), never a url, so this path does not run."
+    },
+    {
+      "file": "extension/dist/viewer/pdfjs/build/pdf.mjs",
+      "line": 13948,
+      "match": "XMLHttpRequest",
+      "text": "const xhr = new XMLHttpRequest();",
+      "reason": "PDFNetworkStream: range requests for a PDF given by URL; does not run, as above."
+    },
+    {
+      "file": "extension/dist/viewer/pdfjs/build/pdf.worker.mjs",
+      "line": 1356,
+      "match": "fetch",
+      "text": "const response = await fetch(url);",
+      "reason": "fetchBinaryData(): the worker's own loader, used only with useWorkerFetch on; the viewer turns it off because a blob: worker cannot load webview resources in VS Code (S3)."
+    },
+    {
+      "file": "extension/dist/viewer/pdfjs/build/pdf.worker.mjs",
+      "line": 1975,
+      "match": "fetch",
+      "text": "module_or_path = fetch(module_or_path);",
+      "reason": "wasm-bindgen's loader in the qcms colour module, used only when given a path; pdf.js calls initSync() with bytes it loaded from wasmUrl."
+    },
+    {
+      "file": "extension/dist/viewer/pdfjs/build/pdf.worker.mjs",
+      "line": 2676,
+      "match": "XMLHttpRequest",
+      "text": "const xhr = new XMLHttpRequest();",
+      "reason": "fetchSync(): the worker's synchronous load of qcms_bg.wasm and the CMYK ICC profile, used only with useWorkerFetch on (off in the viewer)."
+    },
+    {
+      "file": "extension/dist/viewer/pdfjs/build/pdf.worker.mjs",
+      "line": 9329,
+      "match": "fetch",
+      "text": "var response = await fetch(url, {",
+      "reason": "Emscripten's readAsync in the JBIG2 decoder glue; pdf.js hands the decoder its WASM bytes itself, so this is not called."
+    },
+    {
+      "file": "extension/dist/viewer/pdfjs/build/pdf.worker.mjs",
+      "line": 10129,
+      "match": "fetch",
+      "text": "var response = await fetch(url, {",
+      "reason": "Emscripten's readAsync in the OpenJPEG decoder glue; not called, as above."
+    },
+    {
+      "file": "extension/dist/engine/busytex.js",
+      "line": 175,
+      "match": "XMLHttpRequest",
+      "text": "var xhr = new XMLHttpRequest();",
+      "reason": "Patched TeXlyre glue (busytex.js, sha256 875b8779... before patches). readBinary for a browser worker. Emscripten runtime for the web (ENVIRONMENT_IS_WEB or a browser worker). Under Node the glue reads files with fs, and the engine passes its compiled module through instantiateWasm, so this is not reached."
+    },
+    {
+      "file": "extension/dist/engine/busytex.js",
+      "line": 190,
+      "match": "XMLHttpRequest",
+      "text": "var xhr = new XMLHttpRequest();",
+      "reason": "Patched TeXlyre glue (busytex.js, sha256 875b8779... before patches). readAsync for file: URLs in a browser. Emscripten runtime for the web (ENVIRONMENT_IS_WEB or a browser worker). Under Node the glue reads files with fs, and the engine passes its compiled module through instantiateWasm, so this is not reached."
+    },
+    {
+      "file": "extension/dist/engine/busytex.js",
+      "line": 204,
+      "match": "fetch",
+      "text": "var response = await fetch(url, { credentials: 'same-origin' });",
+      "reason": "Patched TeXlyre glue (busytex.js, sha256 875b8779... before patches). readAsync in a browser. Emscripten runtime for the web (ENVIRONMENT_IS_WEB or a browser worker). Under Node the glue reads files with fs, and the engine passes its compiled module through instantiateWasm, so this is not reached."
+    },
+    {
+      "file": "extension/dist/engine/busytex.js",
+      "line": 604,
+      "match": "fetch",
+      "text": "var response = fetch(binaryFile, { credentials: 'same-origin' });",
+      "reason": "Patched TeXlyre glue (busytex.js, sha256 875b8779... before patches). instantiateAsync streaming path: skipped under Node (!ENVIRONMENT_IS_NODE) and never reached, because the engine supplies instantiateWasm."
+    },
+    {
+      "file": "extension/dist/engine/busytex.js",
+      "line": 3960,
+      "match": "XMLHttpRequest",
+      "text": "if (globalThis.XMLHttpRequest) {",
+      "reason": "Patched TeXlyre glue (busytex.js, sha256 875b8779... before patches). FS.forceLoadFile: a feature test for lazy files (XMLHttpRequest does not exist in Node); the engine creates no lazy files."
+    },
+    {
+      "file": "extension/dist/engine/busytex.js",
+      "line": 3989,
+      "match": "XMLHttpRequest",
+      "text": "var xhr = new XMLHttpRequest();",
+      "reason": "Patched TeXlyre glue (busytex.js, sha256 875b8779... before patches). FS.createLazyFile range loader; the engine creates no lazy files (the image is mounted from memory)."
+    },
+    {
+      "file": "extension/dist/engine/busytex.js",
+      "line": 4008,
+      "match": "XMLHttpRequest",
+      "text": "var xhr = new XMLHttpRequest();",
+      "reason": "Patched TeXlyre glue (busytex.js, sha256 875b8779... before patches). FS.createLazyFile range loader, as above."
+    },
+    {
+      "file": "extension/dist/engine/busytex.js",
+      "line": 4063,
+      "match": "XMLHttpRequest",
+      "text": "if (globalThis.XMLHttpRequest) {",
+      "reason": "Patched TeXlyre glue (busytex.js, sha256 875b8779... before patches). FS.createLazyFile feature test, as above."
+    },
+    {
+      "file": "extension/dist/engine/busytex.js",
+      "line": 4312,
+      "match": "WebSocket",
+      "text": "WebSocketConstructor = WebSocket;",
+      "reason": "Patched TeXlyre glue (busytex.js, sha256 875b8779... before patches). SOCKFS browser WebSocket; unreachable: the no-sockets patch makes createSocket throw EACCES first (engine/patches/busytex-glue.mjs)."
+    },
+    {
+      "file": "extension/dist/engine/busytex.js",
+      "line": 6989,
+      "match": "XMLHttpRequest",
+      "text": "var xhr = new XMLHttpRequest();",
+      "reason": "Patched TeXlyre glue (busytex.js, sha256 875b8779... before patches). TeXlyre KPSE_REMOTE.fetch; unreachable: the no-remote-fetch-xhr patch returns null before it, and no-remote-fetch stops its caller."
+    }
+  ]
+}

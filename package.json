@@ -1,0 +1,458 @@
+{
+  "name": "livemd2tex",
+  "displayName": "liveMd2Tex",
+  "description": "A live PDF preview of LaTeX and Markdown, typeset by TeX engines inside the extension: no TeX installation, no download after install, no network, no telemetry.",
+  "version": "0.0.1",
+  "publisher": "haberwooki",
+  "author": "the liveMd2Tex authors",
+  "license": "GPL-3.0-or-later AND AGPL-3.0-only",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/haberwooki/liveMd2Tex"
+  },
+  "private": true,
+  "preview": true,
+  "engines": {
+    "vscode": "^1.105.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "latex",
+    "markdown",
+    "pdf",
+    "preview",
+    "webassembly"
+  ],
+  "main": "./dist/extension.js",
+  "extensionKind": [
+    "ui",
+    "workspace"
+  ],
+  "activationEvents": [
+    "onLanguage:latex",
+    "onLanguage:markdown"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "description": "In Restricted Mode nothing compiles automatically, and a compile from a command asks first. The workspace cannot switch on the Markdown HTML view (its setting and its folder configs are ignored). No setting names a file path today; one that does will be listed as restricted.",
+      "restrictedConfigurations": [
+        "livemd2tex.markdown.htmlViewPlugin"
+      ]
+    },
+    "virtualWorkspaces": false
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "livemd2tex.compile",
+        "title": "Compile this document now",
+        "category": "liveMd2Tex"
+      },
+      {
+        "command": "livemd2tex.showPreview",
+        "title": "Show the PDF preview",
+        "category": "liveMd2Tex"
+      },
+      {
+        "command": "livemd2tex.openLatexPreview",
+        "title": "Open LaTeX preview",
+        "category": "liveMd2Tex"
+      },
+      {
+        "command": "livemd2tex.newDocument",
+        "title": "New document from template",
+        "category": "liveMd2Tex"
+      },
+      {
+        "command": "livemd2tex.showLog",
+        "title": "Show the compile log",
+        "category": "liveMd2Tex"
+      },
+      {
+        "command": "livemd2tex.toggleLive",
+        "title": "Switch between live preview and compile on save",
+        "category": "liveMd2Tex"
+      },
+      {
+        "command": "livemd2tex.installExtraPackages",
+        "title": "Install Extra Packages",
+        "category": "liveMd2Tex"
+      },
+      {
+        "command": "livemd2tex.addPackageFromFile",
+        "title": "Add a package from a file",
+        "category": "liveMd2Tex"
+      },
+      {
+        "command": "livemd2tex.reportMissingPackage",
+        "title": "Report a missing package",
+        "category": "liveMd2Tex"
+      },
+      {
+        "command": "livemd2tex.engineHostCheck",
+        "title": "Check the engine host",
+        "category": "liveMd2Tex"
+      },
+      {
+        "command": "livemd2tex.showGeneratedLatex",
+        "title": "Show generated LaTeX",
+        "category": "liveMd2Tex"
+      },
+      {
+        "command": "livemd2tex.exportLatex",
+        "title": "Export LaTeX",
+        "category": "liveMd2Tex"
+      },
+      {
+        "command": "livemd2tex.compareWithCommittedTex",
+        "title": "Compare generated LaTeX with the committed .tex",
+        "category": "liveMd2Tex"
+      },
+      {
+        "command": "livemd2tex.goToMarkdownSource",
+        "title": "Go to Markdown source",
+        "category": "liveMd2Tex"
+      },
+      {
+        "command": "livemd2tex.createFolderConfig",
+        "title": "Create folder config from this document",
+        "category": "liveMd2Tex"
+      },
+      {
+        "command": "livemd2tex.openPdfInViewer",
+        "title": "Open a PDF in the viewer",
+        "category": "liveMd2Tex"
+      },
+      {
+        "command": "livemd2tex.syncToPdf",
+        "title": "Show This Line in the PDF Preview",
+        "category": "liveMd2Tex"
+      },
+      {
+        "command": "livemd2tex.syncFromPdfCentre",
+        "title": "Go to the Source of the PDF Preview's Centre",
+        "category": "liveMd2Tex"
+      },
+      {
+        "command": "livemd2tex.viewer.nextPage",
+        "title": "PDF Preview: Next Page",
+        "category": "liveMd2Tex"
+      },
+      {
+        "command": "livemd2tex.viewer.previousPage",
+        "title": "PDF Preview: Previous Page",
+        "category": "liveMd2Tex"
+      },
+      {
+        "command": "livemd2tex.viewer.zoomIn",
+        "title": "PDF Preview: Zoom In",
+        "category": "liveMd2Tex"
+      },
+      {
+        "command": "livemd2tex.viewer.zoomOut",
+        "title": "PDF Preview: Zoom Out",
+        "category": "liveMd2Tex"
+      },
+      {
+        "command": "livemd2tex.viewer.fitWidth",
+        "title": "PDF Preview: Fit the Page Width",
+        "category": "liveMd2Tex"
+      },
+      {
+        "command": "livemd2tex.viewer.toggleThemeColours",
+        "title": "PDF Preview: Draw the Pages in the High Contrast Theme Colours",
+        "category": "liveMd2Tex"
+      },
+      {
+        "command": "livemd2tex.viewer.focus",
+        "title": "PDF Preview: Focus the Preview",
+        "category": "liveMd2Tex"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "livemd2tex.openLatexPreview",
+          "when": "editorLangId == markdown"
+        },
+        {
+          "command": "livemd2tex.showGeneratedLatex",
+          "when": "editorLangId == markdown"
+        },
+        {
+          "command": "livemd2tex.exportLatex",
+          "when": "editorLangId == markdown"
+        },
+        {
+          "command": "livemd2tex.compareWithCommittedTex",
+          "when": "editorLangId == markdown"
+        },
+        {
+          "command": "livemd2tex.goToMarkdownSource",
+          "when": "resourceScheme == livemd2tex-latex"
+        },
+        {
+          "command": "livemd2tex.createFolderConfig",
+          "when": "editorLangId == markdown"
+        },
+        {
+          "command": "livemd2tex.syncToPdf",
+          "when": "editorLangId == latex || editorLangId == markdown"
+        },
+        {
+          "command": "livemd2tex.viewer.nextPage",
+          "when": "activeWebviewPanelId == 'livemd2tex.viewer'"
+        },
+        {
+          "command": "livemd2tex.viewer.previousPage",
+          "when": "activeWebviewPanelId == 'livemd2tex.viewer'"
+        },
+        {
+          "command": "livemd2tex.viewer.zoomIn",
+          "when": "activeWebviewPanelId == 'livemd2tex.viewer'"
+        },
+        {
+          "command": "livemd2tex.viewer.zoomOut",
+          "when": "activeWebviewPanelId == 'livemd2tex.viewer'"
+        },
+        {
+          "command": "livemd2tex.viewer.fitWidth",
+          "when": "activeWebviewPanelId == 'livemd2tex.viewer'"
+        },
+        {
+          "command": "livemd2tex.viewer.toggleThemeColours",
+          "when": "activeWebviewPanelId == 'livemd2tex.viewer'"
+        },
+        {
+          "command": "livemd2tex.viewer.focus",
+          "when": "true"
+        }
+      ],
+      "file/newFile": [
+        {
+          "command": "livemd2tex.newDocument",
+          "group": "file"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "liveMd2Tex",
+      "properties": {
+        "livemd2tex.compileOn": {
+          "type": "string",
+          "enum": [
+            "pause",
+            "save"
+          ],
+          "enumDescriptions": [
+            "Compile after each pause in typing (on the unsaved text, a quick pass), and fully on save.",
+            "Compile only when a file is saved."
+          ],
+          "default": "pause",
+          "description": "When to compile. The status bar switch changes it. A Markdown file is typeset only after \"Open LaTeX preview\", or when its front matter has \"latex-preview: true\" or its folder's .latexpreview.json has \"latexPreview\": true."
+        },
+        "livemd2tex.pauseMilliseconds": {
+          "type": "number",
+          "default": 1000,
+          "minimum": 200,
+          "maximum": 10000,
+          "description": "How long a pause in typing starts a compile, in milliseconds."
+        },
+        "livemd2tex.engine": {
+          "type": "string",
+          "enum": [
+            "pdflatex",
+            "xelatex"
+          ],
+          "default": "pdflatex",
+          "description": "The engine for documents that do not choose one. A \"% !TEX program\" comment, or fontspec, unicode-math or polyglossia in the preamble (XeTeX), takes precedence."
+        },
+        "livemd2tex.writePdfOnSave": {
+          "type": "boolean",
+          "default": true,
+          "description": "Write the PDF next to the source file after each compile."
+        },
+        "livemd2tex.openPreviewOnCompile": {
+          "type": "boolean",
+          "default": true,
+          "description": "Open the PDF preview beside the editor when a document compiles."
+        },
+        "livemd2tex.engineIdleMinutes": {
+          "type": "number",
+          "default": 10,
+          "minimum": 0,
+          "description": "Stop the engine after this many minutes without a compile (0: never). It starts again on the next compile."
+        },
+        "livemd2tex.markdown.htmlViewPlugin": {
+          "type": "boolean",
+          "default": false,
+          "scope": "resource",
+          "markdownDescription": "Show this extension's Markdown dialect (citations, callouts, `==highlights==`, wikilinks, fenced divs, `Table:` captions) in VS Code's own Markdown preview. Off by default, so the preview stays exactly as VS Code draws it. A folder can also switch it on with `\"htmlView\": true` in its `.latexpreview.json`."
+        },
+        "livemd2tex.syncFollowCursor": {
+          "type": "boolean",
+          "default": false,
+          "description": "Move the PDF preview to the cursor's line as the cursor moves (SyncTeX). Off: use \"Show This Line in the PDF Preview\" (Shift+Alt+J); in the preview, a double-click or a Ctrl+click (Cmd+click) goes to the source, and Shift+Alt+J goes to the source of the view's centre."
+        },
+        "livemd2tex.previewFollowsEditor": {
+          "type": "boolean",
+          "default": true,
+          "description": "The preview follows the active editor: switching to another document brings its preview to the front, and a document without a preview yet (a second root document in the folder) is typeset when a preview is showing."
+        }
+      }
+    },
+    "markdown.markdownItPlugins": true,
+    "keybindings": [
+      {
+        "command": "livemd2tex.syncToPdf",
+        "key": "shift+alt+j",
+        "when": "editorTextFocus && (editorLangId == latex || editorLangId == markdown)"
+      },
+      {
+        "command": "livemd2tex.syncFromPdfCentre",
+        "key": "shift+alt+j",
+        "when": "activeWebviewPanelId == 'livemd2tex.viewer'"
+      },
+      {
+        "command": "livemd2tex.viewer.nextPage",
+        "key": "alt+pagedown",
+        "when": "activeWebviewPanelId == 'livemd2tex.viewer'"
+      },
+      {
+        "command": "livemd2tex.viewer.previousPage",
+        "key": "alt+pageup",
+        "when": "activeWebviewPanelId == 'livemd2tex.viewer'"
+      },
+      {
+        "command": "livemd2tex.viewer.zoomIn",
+        "key": "ctrl+=",
+        "mac": "cmd+=",
+        "when": "activeWebviewPanelId == 'livemd2tex.viewer'"
+      },
+      {
+        "command": "livemd2tex.viewer.zoomOut",
+        "key": "ctrl+-",
+        "mac": "cmd+-",
+        "when": "activeWebviewPanelId == 'livemd2tex.viewer'"
+      },
+      {
+        "command": "livemd2tex.viewer.fitWidth",
+        "key": "ctrl+0",
+        "mac": "cmd+0",
+        "when": "activeWebviewPanelId == 'livemd2tex.viewer'"
+      }
+    ],
+    "walkthroughs": [
+      {
+        "id": "gettingStarted",
+        "title": "Get started with liveMd2Tex",
+        "description": "A LaTeX or Markdown document and its PDF side by side, in a few minutes, with no TeX installation.",
+        "steps": [
+          {
+            "id": "openSample",
+            "title": "Open a sample",
+            "description": "Make a folder with a starting LaTeX article, and see its PDF.\n[Open a sample](command:livemd2tex.newDocument?%5B%22tex-article%22%5D)",
+            "media": {
+              "markdown": "walkthrough/open-sample.md"
+            },
+            "completionEvents": [
+              "onCommand:livemd2tex.newDocument"
+            ]
+          },
+          {
+            "id": "seePreview",
+            "title": "See the preview",
+            "description": "Type, save, and go between the PDF and the text.\n[Show this line in the PDF](command:livemd2tex.syncToPdf)",
+            "media": {
+              "markdown": "walkthrough/see-preview.md"
+            },
+            "completionEvents": [
+              "onCommand:livemd2tex.syncToPdf",
+              "onCommand:livemd2tex.syncFromPdfCentre"
+            ]
+          },
+          {
+            "id": "tryMarkdown",
+            "title": "Try Markdown",
+            "description": "The same preview for a Markdown file.\n[Make a Markdown article](command:livemd2tex.newDocument?%5B%22md-article%22%5D)",
+            "media": {
+              "markdown": "walkthrough/try-markdown.md"
+            },
+            "completionEvents": [
+              "onCommand:livemd2tex.openLatexPreview"
+            ]
+          },
+          {
+            "id": "missingPackage",
+            "title": "When a package is missing",
+            "description": "What the extension says, and three ways to get a package.\n[Make a Physical Review paper](command:livemd2tex.newDocument?%5B%22tex-revtex%22%5D)",
+            "media": {
+              "markdown": "walkthrough/missing-package.md"
+            },
+            "completionEvents": [
+              "onCommand:livemd2tex.installExtraPackages",
+              "onCommand:livemd2tex.addPackageFromFile"
+            ]
+          },
+          {
+            "id": "latexWorkshop",
+            "title": "Beside LaTeX Workshop",
+            "description": "Keep LaTeX Workshop for completion and the outline; this extension builds and previews.",
+            "media": {
+              "markdown": "walkthrough/latex-workshop.md"
+            },
+            "completionEvents": [
+              "onStepSelected"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "compile": "node scripts/clean-out.mjs && tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.webview.json",
+    "lint": "eslint --max-warnings 0 .",
+    "test:unit": "node scripts/build.mjs && node scripts/clean-out.mjs && tsc -p tsconfig.json && node scripts/private-tests.mjs && mocha",
+    "test:integration": "node scripts/run-integration.mjs",
+    "scan:vsix": "node scripts/vsix-scan.mjs",
+    "scan:markers": "node scripts/marker-scan.mjs --tree",
+    "check:stores": "node scripts/check-store-names.mjs",
+    "hooks": "node scripts/install-hooks.mjs",
+    "engine:assets": "node scripts/engine-assets.mjs",
+    "engine:patch": "node scripts/engine-patch.mjs",
+    "test:engine": "node scripts/build.mjs && node scripts/stage-engine.mjs --data --if-present && node scripts/clean-out.mjs && tsc -p tsconfig.json && node scripts/private-tests.mjs && mocha --config .mocharc.engine.cjs",
+    "stage:engine": "node scripts/stage-engine.mjs --data",
+    "package:testcopy": "node scripts/vsix-scan.mjs --test-copy",
+    "package:extra-standin": "node scripts/build-extra-standin.mjs"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@types/mocha": "10.0.10",
+    "@types/node": "22.20.4",
+    "@types/vscode": "1.105.0",
+    "@vscode/test-cli": "0.0.15",
+    "@vscode/test-electron": "3.1.0",
+    "@vscode/vsce": "4.0.0",
+    "acorn": "8.18.0",
+    "esbuild-wasm": "0.28.2",
+    "eslint": "10.11.0",
+    "globals": "17.12.0",
+    "mocha": "11.8.0",
+    "pdf-lib": "1.17.1",
+    "pdfjs-dist": "6.4.299",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.71.0"
+  },
+  "dependencies": {
+    "isomorphic-git": "1.42.5",
+    "markdown-it": "15.0.2",
+    "markdown-it-deflist": "4.0.0",
+    "markdown-it-footnote": "4.0.0",
+    "yaml": "2.9.1"
+  }
+}
