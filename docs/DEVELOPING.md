@@ -8,7 +8,7 @@ user's page is `README.md` (also the store page); the design, which the code cit
 Confirmed by the maintainer on 2026-10-16: publisher `haberwooki`; extension `haberwooki.livemd2tex`
 (display name liveMd2Tex); data extensions `haberwooki.livemd2tex-core-data` and
 `haberwooki.livemd2tex-extra-data`. Commands, settings and view IDs start with `livemd2tex.`. The repository
-is https://github.com/haberwooki/liveMd2Tex (private for now). Its history is the fresh public history
+is https://github.com/haberwooki/liveMd2Tex. Its history is the fresh public history
 (`fresh-history.mjs`, then `public-sync.mjs`, below), never this repository's own. `src/shared/identity.ts`
 holds these names for the code, and `test/unit/identity.test.ts` checks that it agrees with `package.json`.
 
@@ -865,71 +865,98 @@ closure test on the engine, with the interim image standing in for the new tree)
 
 ## How many documents compile (M5, prepared, not yet run)
 
-The method is `docs/coverage-method.md`, written down before any paper was fetched; its parameters are in
-`engine/coverage-frame.json`. It runs on GitHub only, in `.github/workflows/coverage.yml`, by hand. In the public
-repository the runners cost nothing; arXiv's limits stay as they are (one request every three seconds, one at a
-time, across every machine).
+The method is `docs/coverage-method.md`, written down before any document was fetched. It measures the frame
+without arXiv: TeX Live's own example and template documents of the pinned snapshot, the public corpus and the
+probes. Its parameters are in `engine/coverage-local-frame.json`. It runs on GitHub only, in
+`.github/workflows/coverage.yml`, by hand. In the public repository the runners cost nothing.
 
-1. **Pin the templates.** Run the workflow with job `pin`. It downloads the CTAN thesis and Beamer templates of
-   `engine/coverage-templates.json` and prints each zip's SHA-256 and its main files in the job summary. Commit the
-   entries (keep the main files that are templates); an entry without a SHA-256 is not measured.
-2. **Build the data packages.** A run of the bundle workflow; its `bundle-packages` artifact is kept 3 days.
-   **Rehearse.** Run the workflow with job `rehearse` (the default) and that run's id as `bundle_run`. It asks
-   arXiv nothing: the `sources` job does not run, and each compile job builds its documents from the repository
-   (`--stage rehearse`: the public corpus and the probes of `scripts/lib/coverage.mjs`). The report's first lines
-   list its checks (Ghostscript and `repstopdf`, the DVI route, biber, no network, `openin_any=p`, a missing file,
-   the corpus on TeX Live, every document measured on both sides), and the job fails when one does not pass. Fix
-   and rehearse again until all pass.
+The arXiv frame is kept and cannot run: it waits for arXiv's permission. `engine/coverage-frame.json` sets
+`harvest.enabled` to false, so the `sample` and `fetch` stages refuse to start; the workflow's `pin` and `sources`
+jobs have `if: false`, and no choice of the `job` input reaches them. Running it later needs arXiv's agreement
+first, then a change to the method, to that file and to the workflow, and a gate.
+
+1. **Build the data packages.** A run of the bundle workflow; its `bundle-packages` artifact is kept 3 days.
+2. **Rehearse.** Run the workflow with job `rehearse` (the default) and that run's id as `bundle_run`. Each compile
+   job builds its documents from the repository (`--stage rehearse`: the public corpus and the probes of
+   `scripts/lib/coverage.mjs`), so no document is fetched. The report's first lines list its checks (Ghostscript
+   and `repstopdf`, the DVI route, biber, no network, `openin_any=p`, a missing file, the corpus on TeX Live, every
+   corpus document and probe measured on both sides), and the job fails when one does not pass. Fix and rehearse
+   again until all pass.
 3. **Tag the method.** Tag the commit to be measured (say `coverage-method-1`), so the method is fixed before any
    result is seen. In the public repository, run from a branch of its own (say `coverage-run`) at that commit: pull
-   requests into `main` cannot restore that branch's caches, so the sources stay out of their reach.
-   Before the run, tell arXiv's administrators what it will fetch and at what rate. arXiv's robots page asks for
-   contact in advance only when an application needs its guidelines relaxed; telling them is still good practice.
-   export.arxiv.org's robots.txt disallows every path to crawlers, although arXiv's bulk-data page sets that site
-   aside for programmatic access. The requests go only to `oaipmh.arxiv.org/oai` and
-   `export.arxiv.org/src/<id>`, follow no redirect, and carry the User-Agent
-   `liveMd2Tex-coverage/<version> (+https://github.com/haberwooki/liveMd2Tex)`.
-4. **Measure.** Run the workflow with job `measure` and that run's id as `bundle_run`. The jobs:
-   - `sources`: the harvest from arXiv's OAI-PMH interface, the draw (`candidates.json`, only ids), and the sources,
-     stratum by stratum until each quota of LaTeX sources is met (`papers.json`, with each source's version and
-     SHA-256). One request every three seconds, one at a time (`Pacer` in `scripts/lib/coverage.mjs`), in a
-     concurrency group. The harvest prints its page count and time every 20 pages and saves its progress
-     (`harvest.json`). The sources go into the Actions cache, never into an artifact, saved under a key of their
-     own for each attempt, also when a step fails or runs out of time. A new run goes on from the newest entry of
-     the same frame: the harvest from its last saved page, the fetch with the sources it lacks. The templates have
-     a cache of their own, keyed by their file, so re-pinning one keeps the arXiv sources.
+   requests into `main` cannot restore that branch's caches.
+4. **Measure.** Run the workflow with job `measure-local` and that run's id as `bundle_run` (required). Steps 1
+   and 4 must fall within the bundle artifact's 3 days. The jobs:
+   - `local`: first `--stage mirror-check` asks the snapshot's host for the tlpdb's signed checksum and stops the
+     job unless it comes back as the file with the pinned SHA-512 (texlive.info's bot check decides by the
+     User-Agent; an HTML page here means it stops this client). After `npm ci` (the stage draws a corpus figure with
+     pdf-lib), `--stage local` first removes the sample an earlier run left in the cache (`papers.json`,
+     `frame.json`), so a stage that stops early uploads none. It takes the pinned tlpdb (in three rounds, checked
+     against `engine/bundle-pins.json`) and draws the frame from it. It stops when the frame's counts or members are
+     not the ones `engine/coverage-local-frame.json` writes down. Then it downloads each drawn package's
+     documentation archive with curl and curl's own User-Agent, as the bundle workflow does, one request at a time,
+     a second apart, a 429 or 503 waited out, and checks each reply: status 200, no HTML page, the tlpdb's size and
+     SHA-512. A download that fails three rounds keeps its package in the sample as not measured; ten such packages
+     in a row fail the stage with an error, the sample saved as incomplete with the reason, so no compile job runs
+     and the report gives no share. A package's document is its first example file, in draw order, that is a LaTeX
+     main file, with its folder. The corpus and the probes are added. The archives go into a cache of their own
+     (`coverage-docarchives-*`), for this job only; the documents go into the sample's cache (`coverage-local-*`).
+     Neither goes into an artifact. Both are saved for each attempt, also when the step fails or runs out of time; a
+     new run takes the archives it already has from the newest entry.
    - `texlive`: the reference, scheme-full of the pinned snapshot, its installer verified with gpg, kept in the
      cache by the snapshot's pin. install-tl, TeX Live's Perl installer, runs in this job only.
-   - `compile`, one job per shard: `scripts/coverage.mjs --stage prepare` unpacks the shard's documents (each on
-     its own: one that cannot be unpacked is counted, and the next goes on); `out/test/engine/coverageRun.js`
-     compiles each on the extension's own route, with core alone and, where the core lacks a file, with extra
-     installed. It refuses to start without the stubs and records what they blocked. `--stage reference` compiles
-     each on TeX Live, started with `sudo unshare --net` and dropped back to the runner's user: no network, a small
-     environment, restricted shell escape and `openin_any=p`. TeX Live's own Perl tools (`repstopdf`, `biber`) run
-     there, inside that sandbox. Ghostscript comes from the runner's Ubuntu archive (the job's one other use of
-     `sudo`). The checkout keeps no token, and the job saves no cache. Results are written after every document,
-     and each side stops starting documents at its time budget. "Re-run failed jobs" works for a shard: it
-     restores this run's newest sources entry.
-   - `report`: `--stage report` lists every sampled document (`papers.json` and the pinned templates) with its
-     outcome, "not measured" with its reason included, and gives the shares with their Wilson intervals, per
-     stratum, and the missing packages (`coverage-report.md` in the job summary, and `coverage-report.json`). Its
-     first line says when a shard or part of the sample is missing. It records the commit and the SHA-256 of the
-     method's files. The reweighted figure is there as a sensitivity figure only.
-5. **Keep the result.** Commit `coverage-report.json` (ids, versions, outcomes, file and package names; no paper
-   text) beside the method, as `docs/coverage-report.json`: the run's artifacts expire after 7 days.
-6. **Delete the caches.** Delete the `coverage-sources-*` and `coverage-templates-*` entries (Actions, Caches, or
-   `gh cache delete <key>`): after every run, and all of them before the repository is made public. Keep
-   `coverage-texlive-full-*` if another run is planned.
+   - `compile`, one job per shard: `scripts/coverage.mjs --stage prepare` unpacks the shard's documents (each on its
+     own: one that cannot be unpacked is counted, and the next goes on); `out/test/engine/coverageRun.js` compiles
+     each on the extension's own route, with core alone and, where the core lacks a file, with extra installed. It
+     refuses to start without the stubs or without all four engine files, and records what the stubs blocked. It
+     compiles two canaries (pdfLaTeX, XeLaTeX) before the shard's documents and after them. A compile the engine
+     cannot start or load for is tried once more on a fresh service, then not measured; an engine host that dies on
+     a document is retried once on a fresh service, and a second death, or a fresh service that cannot start after
+     the death, is the document's failure. A XeLaTeX or LuaLaTeX request gets the engine setting XeLaTeX (the
+     extension has no LuaLaTeX), and the extension's own rule then reads the document. The mark written before each
+     document holds the engine that rule chooses, so TeX Live runs that engine for a document the process died on.
+     When only a compile with the add-on is rejected, the core result stands. `--stage reference` runs the same two
+     canaries on TeX Live and compiles each on TeX Live, started with `sudo unshare --net` and dropped back to the
+     runner's user: no network, a small environment, restricted shell escape and `openin_any=p`, and the log line
+     lengths of `engine/texmf-override.cnf` (`referenceEnvironment`). TeX Live's own Perl tools (`repstopdf`,
+     `biber`) run there, inside that sandbox. Ghostscript comes from the runner's Ubuntu archive
+     (the job's one other use of `sudo`). The checkout keeps no token, and the job saves no cache. Results are
+     written after every document, and each side stops starting documents at its time budget. "Re-run failed jobs"
+     works for a shard: it restores this run's newest sample entry.
+   - `report`: after `npm ci` (a rehearsal's report job runs `--stage rehearse`, which uses pdf-lib), `--stage
+     report` lists every sampled document with its outcome, "not measured" with its reason included. It gives the
+     shares of each part (package examples, journal, conference and thesis templates, Beamer packages, the corpus)
+     with their Wilson intervals, per stratum, each part's accounting, the stratified share of the package examples,
+     and the missing packages (`coverage-report.md` in the job summary, and `coverage-report.json`), with each
+     share's worst and best case for what was not measured, and how many documents ran on another engine than TeX
+     Live (rule 4: no more TeX errors than TeX Live's log, which both sides record). Its first lines give the checks
+     (the canaries on both sides, the bounds on "not measured", on what fails on TeX Live and on what is broken as
+     submitted, each shard's left-out documents against the other shards', the corpus, the probes); the next says
+     when a shard or part of the sample is missing. A failed check makes the job fail. It records the commit and the
+     SHA-256 of the method's files.
+5. **Keep the result.** Commit `coverage-report.json` (package names, file names, outcomes; no document text)
+   beside the method, as `docs/coverage-report.json`: the run's artifacts expire after 7 days.
+6. **The caches.** Until a measurement runs, the repository's caches hold only npm and VS Code downloads. A
+   measurement without arXiv adds public files only: TeX Live's documentation archives from the pinned snapshot
+   (`coverage-docarchives-*`); the sample, that is the pinned tlpdb, the documents taken from those archives and
+   the repository's own corpus and probes (`coverage-local-*`); TeX Live itself (`coverage-texlive-full-*`); and
+   the engine's pinned release files, which the compile jobs restore (`engine-assets-*`). To save cache space,
+   delete the `coverage-local-*` entries after a run (Actions, Caches, or `gh cache delete <key>`; the prefix
+   takes the samples only), and keep `coverage-docarchives-*` and `coverage-texlive-full-*` while another run is
+   planned. The arXiv frame has never run, and makes no cache while it is disabled. If it ever runs, delete its
+   `coverage-sources-*` and `coverage-templates-*` entries after every run: they hold the papers' sources.
 
-The pure parts (the OAI-PMH reader, the strata, the draw and the shards, the pacer, the version, the main file,
-"compiles" for both sides, the interval, every document's outcome, the report, the rehearsal's probes and checks)
-are unit-tested in `test/unit/coverage.test.ts`; `test/unit/workflows.test.ts` checks the workflow's rules (one
-job asks arXiv, and only for `measure`; no source in an artifact; no token in a checkout; no cache saved by the
-compile job; `sudo` in two lines only, the reference's without network). The minutes are estimated in the
-workflow's header.
+The pure parts (the frame without arXiv and its strata, the example files and their order, the draw and the
+shards, "compiles" for both sides, the interval, every document's outcome, the report, the rehearsal's probes and
+checks, and the arXiv frame's reader, pacer and endpoints) are unit-tested in `test/unit/coverage.test.ts`. The
+same file runs the `local` stage end to end on a made-up snapshot behind a made-up mirror. `test/unit/workflows.test.ts`
+checks the workflow's rules (the arXiv jobs never run and no choice names them; no document in an artifact; no
+token in a checkout; no cache saved by the compile job; `sudo` in two lines only, the reference's without network).
+The minutes are estimated in the workflow's header.
 
-When M5 passes, the README's "How many documents compile" gets the numbers the method's last section names, from
-the report, and "Not yet measured" goes.
+When M5 passes, the README's "How many documents compile" gets the numbers the method's "What lands in the README"
+names, from the report, as shares of TeX Live's own example and template documents, never of papers; "Not yet
+measured" goes.
 
 ## New documents, the walkthrough and help for TeX errors (M4)
 
@@ -1041,9 +1068,9 @@ The licence gates (2026-10-26) checked every part by others that a package ships
     `anyHolder` (a licence that asks for no list of holders in a copy, such as FreeType's under its GPL option, or a
     public-domain dedication) covers any holder and says why. These two hold only when their words start on the
     clause's own line. Words may be a phrase (`text`) or a pattern (`pattern`); `unless` rules a licence out when it
-    matches the clause's lines: the public-domain dedication's catches "not", "no longer", "isn't", "never" and "no"
-    up to 40 characters before "public domain". Own licences can be limited to some files (`files`), as luaffi's and
-    DynASM's are.
+    matches the clause's lines: the public-domain dedication's catches "not", "n't", "no longer", "never" and "no"
+    up to 40 characters before "public domain" in the same sentence (it stops at "." and ";"). Own licences can be
+    limited to some files (`files`), as luaffi's and DynASM's are.
   - Every other file needs a rule in the manifest's `search`: the notice that ships for it, why the shipped notices
     cover it, or why it is not compiled for the engine. A file with no rule, and a rule that names no file, fail the
     search.
@@ -1070,15 +1097,17 @@ The licence gates (2026-10-26) checked every part by others that a package ships
   `../engine_assets/derived/<first 16 digits of its SHA-256>/` (`scripts/lib/derived-glue.mjs`). `stage-engine`,
   the engine tests and the bundle builder read only the folder of the hash `engine/pins.json` pins. So worktrees
   with different patches share the one assets folder without overwriting each other's glue.
-- **This version's source.** README.md (Licence) and THIRD_PARTY_NOTICES.md say "The source code of this version is
-  at https://github.com/haberwooki/liveMd2Tex/tree/v<version>", with the version of `package.json`;
-  `test/unit/releaseSources.test.ts` fails when the version changes and they do not. The repository must be public
-  before any package is published, so that this address works.
+- **This version's source.** README.md (Licence) and THIRD_PARTY_NOTICES.md name the tag of the version as its
+  source: "for this version, the tag `v<version>` of https://github.com/haberwooki/liveMd2Tex", with the version of
+  `package.json`. They name the tag and do not link its tree, which opens only once the release has made the tag;
+  each release's page links it. `test/unit/releaseSources.test.ts` fails when the version changes and they do not.
+  The repository must be public before any package is published, so that this address works.
 - **Releases, in this order.** The sources are attached before any package reaches a store.
   0. If the engine pin changed since the last release, the notice search's new hits have been read and ruled
      ("When the engine pin changes", above), and its report is recorded.
   1. Push the tag `v<version>` on the commit the packages are built from.
-  2. Make a draft release on GitHub for that tag, with the packages (`.vsix`) as its files.
+  2. Make a draft release on GitHub for that tag, with the packages (`.vsix`) as its files. Its notes give the
+     source: the tag's tree, https://github.com/haberwooki/liveMd2Tex/tree/v<version>.
   3. Run `.github/workflows/release-sources.yml` by hand with the tag. It runs `scripts/release-sources.mjs`,
      which checks the tag against the extension's version and README, and lists the sources each package needs:
      for a package with the engine, the four archives of `engine/engine-notices.json`; for a data package, the

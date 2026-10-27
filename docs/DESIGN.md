@@ -219,7 +219,7 @@ These rules hold for everyone who installs the extension.
   WebAssembly) keeps its AGPL-3.0 terms inside the combined work. Every bundled package's licence text ships in
   `dist/licenses/`, and so does the notice of every part linked into the engine (`dist/licenses/engine/`,
   pinned in `engine/engine-notices.json`). `THIRD_PARTY_NOTICES.md` lists the parts by others. Each release
-  is tagged `v<version>`, README.md and the notices give that tag's tree as the source, and the release carries
+  is tagged `v<version>`, README.md and the notices name that tag as the source, and the release carries
   the engine's source archives and the data packages' GPL sources, attached to the draft release before it is
   published and before any package reaches a store (`.github/workflows/release-sources.yml`).
 - **What is copied into users' folders is CC0.** The starting documents (`templates/`) and the example presets
@@ -286,11 +286,15 @@ These rules hold for everyone who installs the extension.
   has LaTeX Workshop installed: there the stubs also allow its MathJax worker and its PDF viewer's server on the
   loopback address, which it needs to activate, so the tests meet it building on save beside ours.
 - **Scans.** The VSIX scan, the private-marker scan (also of encoded forms), the licence check.
-- **Coverage** is measured on CI as `docs/coverage-method.md` writes down: about 400 recent arXiv papers (CC BY
-  and CC0, stratified), and thesis and Beamer templates, each compiled with core-data alone, with extra-data, and
-  with a full TeX Live of the same snapshot (without network, with Ghostscript). Both sides are held to the same
-  rules, every sampled document is reported ("not measured" with its reason included), and the shares carry 95 %
-  Wilson intervals. A rehearsal on the public corpus and a few probes proves every step before any arXiv request.
+- **Coverage** is measured on CI as `docs/coverage-method.md` writes down, on TeX Live's own example and template
+  documents of the pinned snapshot (400 package examples stratified by Catalogue topic, every publisher-collection
+  template and Beamer package) and the public corpus, each compiled with core-data alone, with extra-data, and with
+  a full TeX Live of the same snapshot (without network, with Ghostscript). These documents are written to compile,
+  so the shares measure package coverage, not papers. Both sides are held to the same rules, every sampled
+  document is reported ("not measured" with its reason included), and the shares carry 95 % Wilson intervals. A
+  rehearsal on the public corpus and a few probes proves every step first, and a canary in every shard, on
+  the extension and on TeX Live, shows an engine or a TeX Live that stops working. An arXiv frame is kept in the code,
+  disabled until arXiv agrees; nothing asks arXiv anything.
 - **Private tests** are not in the repository. A git-ignored `.private-fixtures.json` can point to private
   documents and to a private test folder. `scripts/private-tests.mjs` compiles that folder against the
   repository, and each test runner adds its tests when it is named. Otherwise they are skipped, and the runners

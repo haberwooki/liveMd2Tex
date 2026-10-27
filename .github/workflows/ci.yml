@@ -1,13 +1,15 @@
-# CI (docs/DESIGN.md#store-and-packaging, #testing, G0). Prepared on the laptop before G0 and not yet run on GitHub.
+# CI (docs/DESIGN.md#store-and-packaging, #testing, G0). It runs on GitHub; its runs on main have passed on Linux
+# x64, Linux arm64 and Windows x64.
 #
-# While the repository is private, the matrix is a budget choice (docs/DESIGN.md#testing). Pushes to main and pull requests
-# into main run Linux x64, Linux arm64 and Windows x64; other branches run CI through their pull request, so a
-# branch push is not run twice. Windows arm64 and Apple Silicon run on release candidates (a tag v*-rc*, or a
-# manual run with "release candidate" ticked). The weekly run is Linux x64 and the plain-Node-24 job. Once the
-# repository is public every runner is free: then run the full matrix on every push and every week.
+# The matrix was chosen for a private repository's minutes budget (docs/DESIGN.md#testing). Pushes to main and pull
+# requests into main run Linux x64, Linux arm64 and Windows x64; other branches run CI through their pull request, so
+# a branch push is not run twice. Windows arm64 and Apple Silicon run on release candidates (a tag v*-rc*, or a
+# manual run with "release candidate" ticked). The weekly run is Linux x64 and the plain-Node-24 job. On a public
+# repository GitHub's standard runners cost nothing, so the full matrix could run on every push and every week; that
+# change has not been made.
 #
-# The minutes budget, billed at GitHub's rates (Windows minutes count twice, macOS ten times), from the laptop's
-# times doubled for 2-vCPU runners, to be measured at G0 (build gate 2, G2S-06 and G2E-11):
+# The minutes budget of the private phase, billed at GitHub's rates (Windows minutes count twice, macOS ten times),
+# from the development machine's times doubled for 2-vCPU runners (build gate 2, G2S-06 and G2E-11):
 #   - one run on main or a pull request: Linux x64 25 + Linux arm64 25 + Windows x64 2 x 25 = about 100 minutes;
 #   - the weekly run: Linux x64 25 + Node 24 20 = about 45 minutes, about 195 a month;
 #   - a release candidate adds macOS 10 x 25 + Windows arm64 2 x 25 = about 300 minutes.

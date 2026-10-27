@@ -12,9 +12,10 @@ The extension as a whole is released under GPL-3.0-or-later (see `LICENSE`). Its
 WebAssembly) keeps its AGPL-3.0 terms inside the combined work. Copyright (C) 2026 the liveMd2Tex authors
 (`AUTHORS.md` in the repository says who they are).
 
-The source code of this version is at https://github.com/haberwooki/liveMd2Tex/tree/v0.0.1. Each release is
-tagged `v<version>`, with the version in `package.json`, on the commit its packages are built from. The tree at
-that tag holds the whole source, with our changes to the engine's glue in `engine/patches/`. The release workflow
+The source code of each release is the tag of its version in this repository: for this version, the tag `v0.0.1`
+of https://github.com/haberwooki/liveMd2Tex. Each release is tagged `v<version>`, with the version in
+`package.json`, on the commit its packages are built from, and its page links the tag's tree. That tree holds the
+whole source, with our changes to the engine's glue in `engine/patches/`. The release workflow
 (`.github/workflows/release-sources.yml`) checks the tag against the package's version and its README, and
 attaches the sources of the engine and of the data packages' GPL files to the release ("The engine's source",
 "The data packages").
@@ -145,14 +146,15 @@ file is named by a rule a person wrote. A clause is covered when the licence's w
 (or, for a licence written out, in its paragraph) and the notices name every holder on the copyright lines up to
 25 lines above the clause; a holder written only as "the authors" names nobody. A licence that is only pointed to,
 or that asks for no list of holders, covers a clause only in its own words on the clause's own line. A public-domain
-line is not taken as a dedication when "not", "no longer", "isn't", "never" or "no" comes up to 40 characters
-before "public domain". The rules are in `engine/engine-notices.json` ("search"): for each file, the notice that
-ships, or why the shipped notices cover it, or why it is not compiled for the engine. What the search does not see
-is for a person to find: words that none of its patterns knows, a clause split over three lines or more, a holder
-more than 25 lines above its clause, a denial of a dedication in other words, and a second author's grant of the
-same kind with no copyright line of its own, which is checked against the first author's holder above it. So on
-every change of the engine pin a person reads the search's new hits and its rules before a release
-(docs/DEVELOPING.md). The search of 2026-10-26 found these, and their notices ship:
+line is not taken as a dedication when "not", "n't", "no longer", "never" or "no" comes up to 40 characters
+before "public domain" in the same sentence (the guard stops at "." and ";"). The rules are in
+`engine/engine-notices.json` ("search"): for each file, the notice that ships, or why the shipped notices cover it,
+or why it is not compiled for the engine. What the search does not see is for a person to find: words that none
+of its patterns knows, a clause split over three lines or more, a holder more than 25 lines above its clause, a
+denial of a dedication in other words, and a second author's grant of the same kind with no copyright line of its
+own, which is checked against the first author's holder above it. So on every change of the engine pin a person
+reads the search's new hits and its rules before a release (docs/DEVELOPING.md). The search of 2026-10-26 found
+these, and their notices ship:
 - pplib's SHA-2 code (`util/utilsha.c`, Aaron D. Gifford, BSD-3-Clause) and MD5 code (`util/utilmd5.c`, L. Peter
   Deutsch, Zlib-style);
 - the Mersenne Twister in xdvipdfmx (`mt19937ar.c`, Makoto Matsumoto and Takuji Nishimura, BSD-3-Clause);
@@ -377,8 +379,10 @@ The tools used to build and test the extension (esbuild-wasm, TypeScript, ESLint
 The coverage measurement (`docs/coverage-method.md`) runs on GitHub's runners only, never on a user's computer and
 never in the package. There it installs a full TeX Live (scheme-full of the pinned snapshot; each package under its
 own licence, https://tug.org/texlive/) and Ubuntu's Ghostscript package (AGPL-3.0-or-later,
-https://www.ghostscript.com), and downloads arXiv papers under CC BY 4.0 or CC0 1.0 and CTAN templates. None of
-them is committed, uploaded as an artifact or shipped.
+https://www.ghostscript.com), and downloads TeX Live packages' documentation archives from the same snapshot (each
+under its package's own licence) for their example and template documents. None of them is committed, uploaded as
+an artifact or shipped. The arXiv frame kept in the code, which would download arXiv papers under CC BY 4.0 or CC0
+1.0 and CTAN templates, is disabled until arXiv agrees.
 
 ## Test data from other projects (never shipped)
 

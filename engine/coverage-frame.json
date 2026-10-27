@@ -20,6 +20,8 @@
     { "id": "other", "prefixes": ["q-bio.", "q-fin.", "econ."] }
   ],
   "harvest": {
+    "enabled": false,
+    "waitsFor": "arXiv's permission (docs/coverage-method.md, The arXiv frame): until then the sample and fetch stages refuse to run, and the workflow has no job that reaches them",
     "oai": "https://oaipmh.arxiv.org/oai",
     "source": "https://export.arxiv.org/src/{id}",
     "secondsBetweenRequests": 3,

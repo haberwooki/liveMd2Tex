@@ -17,6 +17,8 @@ type Source = { name: string; url: string; sha256?: string; sha512?: string; com
 type Entry = { path: string; type: string; data?: Buffer; link?: string; mode: number };
 interface Lib {
   sourceTree(tag: string): string;
+  sourceStatement(tag: string): string;
+  namesSource(text: string, tag: string): boolean;
   releaseSources(packages: Map<string, Map<string, Buffer>>, tag: string, notices: unknown, bundlePins: unknown): Record<string, Source[]>;
   curlConfig(groups: Record<string, Source[]>, dir: string, bundlePins: unknown): string;
   gitList(groups: Record<string, Source[]>): string;
@@ -67,16 +69,20 @@ describe('the sources a release carries (scripts/release-sources.mjs)', () => {
     tar = await importScript('scripts/lib/tar.mjs');
   });
 
-  it("README.md and THIRD_PARTY_NOTICES.md give this version's tag as its source (M1)", () => {
-    const tree = lib.sourceTree(`v${version}`);
-    assert.equal(tree, `https://github.com/haberwooki/liveMd2Tex/tree/v${version}`);
+  it("README.md and THIRD_PARTY_NOTICES.md name this version's tag as its source, not a page that does not exist yet (M1)", () => {
+    assert.equal(lib.sourceStatement(`v${version}`), `for this version, the tag \`v${version}\` of https://github.com/haberwooki/liveMd2Tex`);
     for (const file of ['README.md', 'THIRD_PARTY_NOTICES.md']) {
-      assert.ok(readFileSync(path.join(root, file), 'utf8').includes(`The source code of this version is at ${tree}`), `${file}: change the tag with the version`);
+      const text = readFileSync(path.join(root, file), 'utf8');
+      assert.ok(lib.namesSource(text, `v${version}`), `${file}: change the tag with the version`);
+      // The tag's tree opens only once the release has made the tag, so neither file links it.
+      assert.ok(!text.includes(lib.sourceTree(`v${version}`)), `${file} links the tag's tree`);
     }
+    // The release's own page links the tree.
+    assert.equal(lib.sourceTree('v1.2.3'), 'https://github.com/haberwooki/liveMd2Tex/tree/v1.2.3');
   });
 
   it('lists the engine source for a package with the engine and the snapshot archives for a data package', () => {
-    const readme = Buffer.from(`See ${lib.sourceTree('v1.2.3')}.\n`);
+    const readme = Buffer.from('The source code of each release is the tag of its version in this repository: for this version, the tag `v1.2.3`\nof https://github.com/haberwooki/liveMd2Tex.\n');
     const main = new Map([
       ['extension/package.json', Buffer.from(JSON.stringify({ name: 'livemd2tex', version: '1.2.3' }))],
       ['extension/dist/extension.js', Buffer.from('')],
@@ -104,7 +110,7 @@ describe('the sources a release carries (scripts/release-sources.mjs)', () => {
     // The extension's tag is v<version>, and its README gives that tag's tree.
     assert.throws(() => lib.releaseSources(new Map([['main.vsix', main]]), 'v1.2.4', notices, bundlePins), /its release tag must be v1\.2\.3, not v1\.2\.4/);
     const noPointer = new Map(main).set('extension/readme.md', Buffer.from('No pointer.\n'));
-    assert.throws(() => lib.releaseSources(new Map([['main.vsix', noPointer]]), 'v1.2.3', notices, bundlePins), /README\.md does not give https:\/\/github\.com\/haberwooki\/liveMd2Tex\/tree\/v1\.2\.3/);
+    assert.throws(() => lib.releaseSources(new Map([['main.vsix', noPointer]]), 'v1.2.3', notices, bundlePins), /README\.md does not name the tag v1\.2\.3 of https:\/\/github\.com\/haberwooki\/liveMd2Tex as the source of this version/);
     // A data archive must be the pinned snapshot's, under a plain name.
     for (const url of ['https://example.org/archive/cm-super.tar.xz', `${snap}archive/../cm-super.tar.xz`, `${snap}archive/sub/cm-super.tar.xz`, `${snap}archive/cm-super.zip`]) {
       assert.throws(() => lib.releaseSources(new Map([['core.vsix', dataPackage({ x: { archives: [{ kind: 'run', url, sha512: 'ab' }] } })]]), 'x', notices, bundlePins), /is not an archive of the pinned snapshot/, url);

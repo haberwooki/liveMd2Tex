@@ -488,7 +488,7 @@
           {
             "notices": [],
             "anyHolder": true,
-            "why": "a public-domain dedication (\"... is in the public domain.\", \"placed in the public domain\", \"public domain software\"), which asks nothing of a copy. A sentence with \"not\", \"no longer\", \"never\" or \"no\" up to 40 characters before \"public domain\" is not taken as one; a denial in other words is a known limit",
+            "why": "a public-domain dedication (\"... is in the public domain.\", \"placed in the public domain\", \"public domain software\"), which asks nothing of a copy. A sentence with \"not\", \"n't\", \"no longer\", \"never\" or \"no\" up to 40 characters before \"public domain\", in the same sentence (the guard stops at \".\" and \";\"), is not taken as one; a denial in other words is a known limit",
             "pattern": "public\\s+domain\\s*[.;(]|\\b(?:released|put|placed|dedicated)\\s+(?:explicit(?:e)?ly\\s+)?(?:in(?:to)?|to)\\s+(?:the\\s+)?public\\s+domain|\\bpublic\\s+domain\\s+(?:software|program)\\b",
             "unless": "(?:\\bnot\\b|n't\\b|\\bno\\b|\\bnever\\b)[^.;]{0,40}public\\s+domain",
             "clauses": [
@@ -620,7 +620,7 @@
           {
             "notices": [],
             "anyHolder": true,
-            "why": "a public-domain dedication (\"... is in the public domain.\", \"placed in the public domain\", \"public domain software\"), which asks nothing of a copy. A sentence with \"not\", \"no longer\", \"never\" or \"no\" up to 40 characters before \"public domain\" is not taken as one; a denial in other words is a known limit",
+            "why": "a public-domain dedication (\"... is in the public domain.\", \"placed in the public domain\", \"public domain software\"), which asks nothing of a copy. A sentence with \"not\", \"n't\", \"no longer\", \"never\" or \"no\" up to 40 characters before \"public domain\", in the same sentence (the guard stops at \".\" and \";\"), is not taken as one; a denial in other words is a known limit",
             "pattern": "public\\s+domain\\s*[.;(]|\\b(?:released|put|placed|dedicated)\\s+(?:explicit(?:e)?ly\\s+)?(?:in(?:to)?|to)\\s+(?:the\\s+)?public\\s+domain|\\bpublic\\s+domain\\s+(?:software|program)\\b",
             "unless": "(?:\\bnot\\b|n't\\b|\\bno\\b|\\bnever\\b)[^.;]{0,40}public\\s+domain",
             "clauses": [
@@ -641,7 +641,7 @@
           {
             "notices": [],
             "anyHolder": true,
-            "why": "a public-domain dedication (\"... is in the public domain.\", \"placed in the public domain\", \"public domain software\"), which asks nothing of a copy. A sentence with \"not\", \"no longer\", \"never\" or \"no\" up to 40 characters before \"public domain\" is not taken as one; a denial in other words is a known limit",
+            "why": "a public-domain dedication (\"... is in the public domain.\", \"placed in the public domain\", \"public domain software\"), which asks nothing of a copy. A sentence with \"not\", \"n't\", \"no longer\", \"never\" or \"no\" up to 40 characters before \"public domain\", in the same sentence (the guard stops at \".\" and \";\"), is not taken as one; a denial in other words is a known limit",
             "pattern": "public\\s+domain\\s*[.;(]|\\b(?:released|put|placed|dedicated)\\s+(?:explicit(?:e)?ly\\s+)?(?:in(?:to)?|to)\\s+(?:the\\s+)?public\\s+domain|\\bpublic\\s+domain\\s+(?:software|program)\\b",
             "unless": "(?:\\bnot\\b|n't\\b|\\bno\\b|\\bnever\\b)[^.;]{0,40}public\\s+domain",
             "clauses": [
@@ -731,7 +731,7 @@
           {
             "notices": [],
             "anyHolder": true,
-            "why": "a public-domain dedication (\"... is in the public domain.\", \"placed in the public domain\", \"public domain software\"), which asks nothing of a copy. A sentence with \"not\", \"no longer\", \"never\" or \"no\" up to 40 characters before \"public domain\" is not taken as one; a denial in other words is a known limit",
+            "why": "a public-domain dedication (\"... is in the public domain.\", \"placed in the public domain\", \"public domain software\"), which asks nothing of a copy. A sentence with \"not\", \"n't\", \"no longer\", \"never\" or \"no\" up to 40 characters before \"public domain\", in the same sentence (the guard stops at \".\" and \";\"), is not taken as one; a denial in other words is a known limit",
             "pattern": "public\\s+domain\\s*[.;(]|\\b(?:released|put|placed|dedicated)\\s+(?:explicit(?:e)?ly\\s+)?(?:in(?:to)?|to)\\s+(?:the\\s+)?public\\s+domain|\\bpublic\\s+domain\\s+(?:software|program)\\b",
             "unless": "(?:\\bnot\\b|n't\\b|\\bno\\b|\\bnever\\b)[^.;]{0,40}public\\s+domain",
             "clauses": [
@@ -843,7 +843,7 @@
           {
             "notices": [],
             "anyHolder": true,
-            "why": "a public-domain dedication (\"... is in the public domain.\", \"placed in the public domain\", \"public domain software\"), which asks nothing of a copy. A sentence with \"not\", \"no longer\", \"never\" or \"no\" up to 40 characters before \"public domain\" is not taken as one; a denial in other words is a known limit",
+            "why": "a public-domain dedication (\"... is in the public domain.\", \"placed in the public domain\", \"public domain software\"), which asks nothing of a copy. A sentence with \"not\", \"n't\", \"no longer\", \"never\" or \"no\" up to 40 characters before \"public domain\", in the same sentence (the guard stops at \".\" and \";\"), is not taken as one; a denial in other words is a known limit",
             "pattern": "public\\s+domain\\s*[.;(]|\\b(?:released|put|placed|dedicated)\\s+(?:explicit(?:e)?ly\\s+)?(?:in(?:to)?|to)\\s+(?:the\\s+)?public\\s+domain|\\bpublic\\s+domain\\s+(?:software|program)\\b",
             "unless": "(?:\\bnot\\b|n't\\b|\\bno\\b|\\bnever\\b)[^.;]{0,40}public\\s+domain",
             "clauses": [
@@ -899,7 +899,7 @@
           {
             "notices": [],
             "anyHolder": true,
-            "why": "a public-domain dedication (\"... is in the public domain.\", \"placed in the public domain\", \"public domain software\"), which asks nothing of a copy. A sentence with \"not\", \"no longer\", \"never\" or \"no\" up to 40 characters before \"public domain\" is not taken as one; a denial in other words is a known limit",
+            "why": "a public-domain dedication (\"... is in the public domain.\", \"placed in the public domain\", \"public domain software\"), which asks nothing of a copy. A sentence with \"not\", \"n't\", \"no longer\", \"never\" or \"no\" up to 40 characters before \"public domain\", in the same sentence (the guard stops at \".\" and \";\"), is not taken as one; a denial in other words is a known limit",
             "pattern": "public\\s+domain\\s*[.;(]|\\b(?:released|put|placed|dedicated)\\s+(?:explicit(?:e)?ly\\s+)?(?:in(?:to)?|to)\\s+(?:the\\s+)?public\\s+domain|\\bpublic\\s+domain\\s+(?:software|program)\\b",
             "unless": "(?:\\bnot\\b|n't\\b|\\bno\\b|\\bnever\\b)[^.;]{0,40}public\\s+domain",
             "clauses": [
@@ -933,7 +933,7 @@
           {
             "notices": [],
             "anyHolder": true,
-            "why": "a public-domain dedication (\"... is in the public domain.\", \"placed in the public domain\", \"public domain software\"), which asks nothing of a copy. A sentence with \"not\", \"no longer\", \"never\" or \"no\" up to 40 characters before \"public domain\" is not taken as one; a denial in other words is a known limit",
+            "why": "a public-domain dedication (\"... is in the public domain.\", \"placed in the public domain\", \"public domain software\"), which asks nothing of a copy. A sentence with \"not\", \"n't\", \"no longer\", \"never\" or \"no\" up to 40 characters before \"public domain\", in the same sentence (the guard stops at \".\" and \";\"), is not taken as one; a denial in other words is a known limit",
             "pattern": "public\\s+domain\\s*[.;(]|\\b(?:released|put|placed|dedicated)\\s+(?:explicit(?:e)?ly\\s+)?(?:in(?:to)?|to)\\s+(?:the\\s+)?public\\s+domain|\\bpublic\\s+domain\\s+(?:software|program)\\b",
             "unless": "(?:\\bnot\\b|n't\\b|\\bno\\b|\\bnever\\b)[^.;]{0,40}public\\s+domain",
             "clauses": [
@@ -964,7 +964,7 @@
           {
             "notices": [],
             "anyHolder": true,
-            "why": "a public-domain dedication (\"... is in the public domain.\", \"placed in the public domain\", \"public domain software\"), which asks nothing of a copy. A sentence with \"not\", \"no longer\", \"never\" or \"no\" up to 40 characters before \"public domain\" is not taken as one; a denial in other words is a known limit",
+            "why": "a public-domain dedication (\"... is in the public domain.\", \"placed in the public domain\", \"public domain software\"), which asks nothing of a copy. A sentence with \"not\", \"n't\", \"no longer\", \"never\" or \"no\" up to 40 characters before \"public domain\", in the same sentence (the guard stops at \".\" and \";\"), is not taken as one; a denial in other words is a known limit",
             "pattern": "public\\s+domain\\s*[.;(]|\\b(?:released|put|placed|dedicated)\\s+(?:explicit(?:e)?ly\\s+)?(?:in(?:to)?|to)\\s+(?:the\\s+)?public\\s+domain|\\bpublic\\s+domain\\s+(?:software|program)\\b",
             "unless": "(?:\\bnot\\b|n't\\b|\\bno\\b|\\bnever\\b)[^.;]{0,40}public\\s+domain",
             "clauses": [
@@ -1000,7 +1000,7 @@
           {
             "notices": [],
             "anyHolder": true,
-            "why": "a public-domain dedication (\"... is in the public domain.\", \"placed in the public domain\", \"public domain software\"), which asks nothing of a copy. A sentence with \"not\", \"no longer\", \"never\" or \"no\" up to 40 characters before \"public domain\" is not taken as one; a denial in other words is a known limit",
+            "why": "a public-domain dedication (\"... is in the public domain.\", \"placed in the public domain\", \"public domain software\"), which asks nothing of a copy. A sentence with \"not\", \"n't\", \"no longer\", \"never\" or \"no\" up to 40 characters before \"public domain\", in the same sentence (the guard stops at \".\" and \";\"), is not taken as one; a denial in other words is a known limit",
             "pattern": "public\\s+domain\\s*[.;(]|\\b(?:released|put|placed|dedicated)\\s+(?:explicit(?:e)?ly\\s+)?(?:in(?:to)?|to)\\s+(?:the\\s+)?public\\s+domain|\\bpublic\\s+domain\\s+(?:software|program)\\b",
             "unless": "(?:\\bnot\\b|n't\\b|\\bno\\b|\\bnever\\b)[^.;]{0,40}public\\s+domain",
             "clauses": [
@@ -1063,7 +1063,7 @@
           {
             "notices": [],
             "anyHolder": true,
-            "why": "a public-domain dedication (\"... is in the public domain.\", \"placed in the public domain\", \"public domain software\"), which asks nothing of a copy. A sentence with \"not\", \"no longer\", \"never\" or \"no\" up to 40 characters before \"public domain\" is not taken as one; a denial in other words is a known limit",
+            "why": "a public-domain dedication (\"... is in the public domain.\", \"placed in the public domain\", \"public domain software\"), which asks nothing of a copy. A sentence with \"not\", \"n't\", \"no longer\", \"never\" or \"no\" up to 40 characters before \"public domain\", in the same sentence (the guard stops at \".\" and \";\"), is not taken as one; a denial in other words is a known limit",
             "pattern": "public\\s+domain\\s*[.;(]|\\b(?:released|put|placed|dedicated)\\s+(?:explicit(?:e)?ly\\s+)?(?:in(?:to)?|to)\\s+(?:the\\s+)?public\\s+domain|\\bpublic\\s+domain\\s+(?:software|program)\\b",
             "unless": "(?:\\bnot\\b|n't\\b|\\bno\\b|\\bnever\\b)[^.;]{0,40}public\\s+domain",
             "clauses": [

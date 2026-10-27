@@ -1,21 +1,25 @@
 # M5, the coverage measurement (docs/coverage-method.md; docs/DESIGN.md#engine-and-data, #testing), on GitHub only.
-# About 400 recent arXiv papers (CC BY and CC0, stratified by category, seed 20261022) and the pinned CTAN thesis
-# and Beamer templates, each compiled three times: with core-data alone, with core-data and extra-data, and with a
-# full TeX Live of the same snapshot as the reference. The data packages come from a run of the bundle workflow
-# (input bundle_run; its artifacts are kept 3 days). Prepared on the development machine and not yet run; run by
-# hand (Actions, coverage, Run workflow): first job "pin" to pin the templates, then job "rehearse" (the default)
-# to prove the compile and reference steps without any arXiv request, then job "measure". docs/DEVELOPING.md gives
-# the steps around a run (the tag before it, the report committed after it, the caches deleted).
+# It measures the frame without arXiv: TeX Live's own example and template documents of the pinned snapshot (400
+# package examples by Catalogue topic, every publisher-collection template and Beamer package, seed 20261026), the
+# public corpus and the probes, each compiled three times: with core-data alone, with core-data and extra-data, and
+# with a full TeX Live of the same snapshot as the reference. The data packages come from a run of the bundle
+# workflow (input bundle_run; its artifacts are kept 3 days). Run by hand (Actions, coverage, Run workflow): job
+# "rehearse" (the default) first, then job "measure-local". docs/DEVELOPING.md gives the steps around a run.
+#
+# The arXiv frame is kept but cannot run: it waits for arXiv's permission. Its jobs (pin, sources) have "if: false"
+# and no choice reaches them, and its stages refuse to start while engine/coverage-frame.json's harvest.enabled is
+# false. No job asks arXiv anything.
 #
 # The jobs. Each has its own time limit and keeps its own report, also when it fails:
-# - pin (job: pin): downloads the CTAN templates and prints their SHA-256 and main files, to commit into
-#   engine/coverage-templates.json.
-# - sources: the harvest (arXiv's OAI-PMH), the draw and the sources (export.arxiv.org), under arXiv's API terms:
-#   one request every three seconds, one connection at a time. Only this job contacts arXiv, only at its two
-#   programmatic endpoints (oaipmh.arxiv.org/oai and export.arxiv.org/src/<id>), following no redirect, and its
-#   concurrency group keeps two runs from doing so at once. It runs for job "measure" only. The sources go into
-#   the Actions cache, never into the repository or an artifact. The cache is saved also when a step fails or runs out of time: a new run goes on from the
-#   newest entry of the same frame (the harvest from its last saved page, the fetch with the sources it lacks).
+# - local (job: measure-local): the pinned tlpdb (checked against engine/bundle-pins.json), the frame from it
+#   (checked against the counts and members engine/coverage-local-frame.json writes down), and each drawn package's
+#   documentation archive from the snapshot's host, with curl and curl's own User-Agent (texlive.info's bot check
+#   decides by the User-Agent and stops others), one request at a time, a 429 or 503 waited out, every reply checked
+#   by size and the tlpdb's SHA-512 and refused when it is an HTML page. Its first step checks that the host gives
+#   the tlpdb's signed checksum to curl, before any other work. A download that fails keeps its package in the sample
+#   as not measured; ten such packages in a row fail the stage, so no compile job runs. The archives have a cache
+#   of their own, for this job only; the documents go into the sample's cache, which the compile jobs restore.
+#   Nothing of them goes into the repository or an artifact; only package names, file names and counts are uploaded.
 # - texlive: the reference, scheme-full from the pinned snapshot, its installer verified with gpg and the pinned
 #   key (engine/bundle-pins.json), installed without root into the runner's temp folder and kept in the Actions
 #   cache by the snapshot's pin; install-tl (TeX Live's Perl installer) runs in this job only.
@@ -23,21 +27,20 @@
 #   on the reference, which runs without network, as the runner's user, with TeX Live's restricted shell escape
 #   and paranoid file access; Ghostscript, from the runner's Ubuntu release, lets it convert .eps figures and run
 #   the DVI route. Each side has a time budget (150 and 60 minutes) inside the job's 240; results are written after
-#   every document. A re-run of a failed shard restores this run's newest sources entry.
-# - report: every sampled document with an outcome, "not measured" with its reason included; the shares with their
-#   95 % Wilson intervals, per stratum, and the missing packages, in the job summary and an artifact. Its first
-#   line says whether a shard or part of the sample is missing.
-# - rehearse (job: rehearse): texlive, compile and report as above, on the public corpus (test/corpus) and the
-#   probes of scripts/lib/coverage.mjs instead of arXiv papers; the sources job does not run, so nothing asks
-#   arXiv. Each probe proves one part of the reference (Ghostscript and repstopdf, the DVI route, biber, no
-#   network, openin_any = p, a missing file); the report checks them and fails when one does not hold.
+#   every document. A re-run of a failed shard restores this run's newest sample entry.
+# - report: every sampled document with an outcome, "not measured" with its reason included; the shares of each
+#   part with their 95 % Wilson intervals, per stratum, the missing packages and the checks, in the job summary and
+#   an artifact. Its first lines give the checks and say whether a shard or part of the sample is missing; a check
+#   that fails makes it fail.
+# - rehearse (job: rehearse): texlive, compile and report as above, on the public corpus and the probes alone; no
+#   request goes anywhere for documents. Each probe proves one part of the reference (Ghostscript and repstopdf,
+#   the DVI route, biber, no network, openin_any = p, a missing file).
 #
 # The minutes, estimated for the public repository's 4-vCPU runners, where they cost nothing, and to be measured
-# on the first run: pin 5; sources 30 to 120 the first time (the harvest's page count is not known in advance,
-# and every request waits its three seconds; the job may take up to 360), 2 from the cache; texlive 40 to 80 the
-# first time (scheme-full without documentation, about 4 GB, kept as a cache entry of about 2 GB), 3 from the
-# cache; compile, 10 shards of about 40 papers and the templates, 60 to 110 each; report 3. Artifacts are kept
-# 7 days.
+# on the first run: local 20 to 60 the first time (about 590 documentation archives, most under 2 MB, one second
+# apart), 2 from the cache; texlive 40 to 80 the first time (scheme-full without documentation, about 4 GB, kept as
+# a cache entry of about 2 GB), 3 from the cache; compile, 10 shards of about 60 documents, 60 to 120 each; report
+# 3. Artifacts are kept 7 days.
 
 name: coverage
 
@@ -45,15 +48,14 @@ on:
   workflow_dispatch:
     inputs:
       job:
-        description: rehearse (no arXiv request), measure, or pin (download the templates and print their pins)
+        description: rehearse (the corpus and the probes), or measure-local (TeX Live's own example and template documents). The arXiv frame waits for arXiv's permission and is not a choice.
         type: choice
-        options: [rehearse, measure, pin]
+        options: [rehearse, measure-local]
         default: rehearse
       bundle_run:
         description: The id of the bundle workflow run whose data packages are measured (its artifacts last 3 days)
-        required: false
+        required: true
         type: string
-        default: ''
       shards:
         description: Compile jobs
         type: choice
@@ -65,8 +67,9 @@ permissions:
   actions: read
 
 jobs:
+  # The arXiv frame's CTAN template pins: kept, and unreachable while the arXiv frame waits for arXiv's permission.
   pin:
-    if: inputs.job == 'pin'
+    if: false
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
@@ -94,8 +97,10 @@ jobs:
           if-no-files-found: ignore
           path: ${{ runner.temp }}/pin.txt
 
+  # The arXiv frame's harvest and sources: kept, and unreachable while it waits for arXiv's permission
+  # (docs/coverage-method.md); its stages refuse to run as well.
   sources:
-    if: inputs.job == 'measure'
+    if: false
     runs-on: ubuntu-24.04
     timeout-minutes: 360
     concurrency:
@@ -164,8 +169,66 @@ jobs:
             ${{ runner.temp }}/coverage/frame.json
             ${{ runner.temp }}/coverage/papers.json
 
+  local:
+    if: inputs.job == 'measure-local'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    env:
+      CI: 'true'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: The snapshot's host gives the tlpdb's signed checksum to curl (no HTML page), before any other work
+        timeout-minutes: 5
+        run: node scripts/coverage.mjs --stage mirror-check
+      - name: Install from the lockfile (the stage draws a corpus figure with pdf-lib)
+        run: npm ci --omit=optional
+      - name: The documentation archives of earlier runs (this job only; the compile jobs never need them)
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/archives
+          key: coverage-docarchives-${{ hashFiles('engine/bundle-pins.json') }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: coverage-docarchives-${{ hashFiles('engine/bundle-pins.json') }}-
+      - name: The sample of earlier runs of this frame
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/coverage
+          key: coverage-local-${{ hashFiles('engine/coverage-local-frame.json', 'engine/bundle-pins.json') }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: coverage-local-${{ hashFiles('engine/coverage-local-frame.json', 'engine/bundle-pins.json') }}-
+      - name: TeX Live's own example and template documents, from the pinned snapshot (no request to arXiv)
+        timeout-minutes: 150
+        run: node scripts/coverage.mjs --stage local --dir "$RUNNER_TEMP/coverage" --archives "$RUNNER_TEMP/archives"
+      - name: Keep the documentation archives, also when a step failed or ran out of time
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/archives
+          key: coverage-docarchives-${{ hashFiles('engine/bundle-pins.json') }}-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Keep the sample, also when a step failed or ran out of time
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/coverage
+          key: coverage-local-${{ hashFiles('engine/coverage-local-frame.json', 'engine/bundle-pins.json') }}-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: The frame and the sample (package and file names and counts, no documents)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-frame
+          retention-days: 7
+          if-no-files-found: ignore
+          overwrite: true
+          path: |
+            ${{ runner.temp }}/coverage/frame.json
+            ${{ runner.temp }}/coverage/papers.json
+
   texlive:
-    if: inputs.job == 'measure' || inputs.job == 'rehearse'
+    if: inputs.job == 'measure-local' || inputs.job == 'rehearse'
     runs-on: ubuntu-24.04
     timeout-minutes: 150
     env:
@@ -218,9 +281,9 @@ jobs:
           { echo '### Reference TeX Live'; echo '```'; ls "$RUNNER_TEMP"/texlive/bin/*/pdflatex >/dev/null 2>&1 && "$(ls -d "$RUNNER_TEMP"/texlive/bin/*)/pdflatex" --version | head -1; du -sh "$RUNNER_TEMP/texlive" 2>/dev/null || echo 'not installed'; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
 
   compile:
-    needs: [sources, texlive]
-    # A rehearsal runs without the sources job, which then counts as skipped.
-    if: ${{ !cancelled() && needs.texlive.result == 'success' && (needs.sources.result == 'success' || inputs.job == 'rehearse') }}
+    needs: [sources, local, texlive]
+    # The documents come from the local job, or for a rehearsal from the repository; the arXiv sources job never runs.
+    if: ${{ !cancelled() && needs.texlive.result == 'success' && (needs.local.result == 'success' || inputs.job == 'rehearse') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 240
     strategy:
@@ -253,7 +316,7 @@ jobs:
           node scripts/build.mjs
           npm run compile
           node scripts/stage-engine.mjs
-      - name: The sources the sources job fetched (this run's newest entry)
+      - name: The arXiv frame's sources (this run's newest entry; unreachable while it waits for arXiv)
         if: inputs.job == 'measure'
         uses: actions/cache/restore@v4
         with:
@@ -261,7 +324,15 @@ jobs:
           key: coverage-sources-${{ hashFiles('engine/coverage-frame.json') }}-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: coverage-sources-${{ hashFiles('engine/coverage-frame.json') }}-${{ github.run_id }}-
           fail-on-cache-miss: true
-      - name: The pinned templates
+      - name: The frame without arXiv's documents, from the local job (this run's newest entry)
+        if: inputs.job == 'measure-local'
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/coverage
+          key: coverage-local-${{ hashFiles('engine/coverage-local-frame.json', 'engine/bundle-pins.json') }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: coverage-local-${{ hashFiles('engine/coverage-local-frame.json', 'engine/bundle-pins.json') }}-${{ github.run_id }}-
+          fail-on-cache-miss: true
+      - name: The arXiv frame's pinned CTAN templates (unreachable while it waits for arXiv)
         if: inputs.job == 'measure'
         uses: actions/cache/restore@v4
         with:
@@ -331,7 +402,7 @@ jobs:
 
   report:
     needs: compile
-    if: always() && (inputs.job == 'measure' || inputs.job == 'rehearse')
+    if: always() && (inputs.job == 'measure-local' || inputs.job == 'rehearse')
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
@@ -343,6 +414,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+          cache: npm
+      - name: Install from the lockfile (the rehearse stage draws a corpus figure with pdf-lib)
+        run: npm ci --omit=optional
       - name: The shards' results (a shard without them is counted as not measured)
         uses: actions/download-artifact@v4
         continue-on-error: true
@@ -350,7 +424,7 @@ jobs:
           pattern: coverage-shard-*
           path: ${{ runner.temp }}/results
       - name: The frame
-        if: inputs.job == 'measure'
+        if: inputs.job == 'measure-local'
         uses: actions/download-artifact@v4
         continue-on-error: true
         with:

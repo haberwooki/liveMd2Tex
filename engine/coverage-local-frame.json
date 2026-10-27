@@ -1,0 +1,60 @@
+{
+  "about": "M5's frame without arXiv: TeX Live's own example and template documents, as docs/coverage-method.md writes them down. The frame comes from the pinned snapshot's tlpdb (engine/bundle-pins.json); 'expected' holds its counts and the SHA-256 of its members at that snapshot, and a run whose frame differs stops. The compile rules and the size cap are the ones in engine/coverage-frame.json. A change here is a change to the method; make it in both, before a run.",
+  "seed": "20261026",
+  "names": "example|sample|template|demo|skeleton|minimal",
+  "examples": {
+    "sampleSize": 400,
+    "strata": [
+      { "id": "fonts", "topics": ["font*"] },
+      {
+        "id": "maths-science",
+        "topics": ["maths*", "physics", "chemistry", "numbers", "calculation", "arithmetic", "engineering", "scientific-docs", "units", "biology", "astronomy", "comp-sci", "algorithms", "logic", "statistics", "pseudocode", "crystallography", "electronic", "optics", "automata", "uml"]
+      },
+      {
+        "id": "graphics",
+        "topics": ["pgf-tikz", "graphics*", "diagram*", "colour", "decoration", "logo", "chart", "tree", "pstricks", "qrcode", "barcode", "mp-use", "image-supp", "watermark", "background", "genchart"]
+      },
+      { "id": "references", "topics": ["biblatex", "bibtex*", "biblio", "cite*", "glossary", "index*", "label-ref", "hyper", "acronym", "endnote", "footnote", "toc-etc"] },
+      { "id": "tables-lists-boxes", "topics": ["table*", "float", "listing", "boxing", "box-*", "list*", "verbatim", "caption", "multicol", "parallel", "marginal"] },
+      {
+        "id": "languages",
+        "topics": ["multilingual*", "linguistic", "chinese*", "japanese*", "korean", "arabic", "persian", "bidi", "cyrillic", "russian", "greek", "hebrew", "indic", "sanskrit", "bengali", "polish", "french*", "german*", "croatian", "kurdish", "malagasy", "cherokee", "tibetan", "vietnamese*", "other-lang", "african", "hyphenation", "phonetic", "translation", "unicode", "inputenc"]
+      },
+      {
+        "id": "document-types",
+        "topics": ["class*", "report-like", "article-like", "book-*", "letter", "cv", "exam", "exercise", "notes", "teaching", "doc-templ", "editorial*", "magazine", "presentation", "drama-script", "legal", "games", "music", "calendar", "poster", "journalpub", "dissertation", "confproc", "essay", "cooking", "covers", "chess", "go", "puzzle", "chords", "crit-ed", "course-material", "invoice", "card-*", "meeting-admin", "theology", "humanities", "amusements", "novelty", "advert", "publicity"]
+      },
+      { "id": "engines-pdf", "topics": ["luatex", "use-lua*", "xetex", "pdf-*", "tagged-pdf*", "accessible", "std-conform", "etex", "callback", "engine", "context", "latex3", "multimedia", "metadata"] },
+      {
+        "id": "layout-programming",
+        "topics": ["layout*", "geometry", "page-*", "headings", "macro-*", "counter-mgmt", "keyval", "format", "data-*", "csv-support", "doc-*", "cond-comp", "parser", "debug-supp", "package-devel", "latex-devel", "program-doc", "misc-support", "project-mgmt", "version-control", "security", "archival", "typesetting", "text-*", "typeset-grid", "rule", "quotation", "date-time", "word-count", "dummy-gen", "random", "tut-*", "tutorial", "defer-stuff", "env-query", "sys-supp"]
+      }
+    ]
+  },
+  "templates": {
+    "collection": "collection-publishers",
+    "beamer": { "topic": "presentation", "name": "beamer" }
+  },
+  "fetch": { "secondsBetweenRequests": 1, "attempts": 3, "retrySeconds": 30, "stopAfter": 10 },
+  "notMeasuredLimit": 0.05,
+  "failsOnTeXLiveLimit": 0.2,
+  "brokenAsSubmittedLimit": 0.2,
+  "shardLeftOutChance": 0.001,
+  "expected": {
+    "examples": {
+      "document-types": 114,
+      "engines-pdf": 51,
+      "fonts": 130,
+      "graphics": 93,
+      "languages": 58,
+      "layout-programming": 38,
+      "maths-science": 75,
+      "other": 9,
+      "references": 65,
+      "tables-lists-boxes": 32
+    },
+    "templates": 151,
+    "beamer": 32,
+    "members": "43792abdfdf74d6ee3e65da4de3cbb499122256c3acedeb5362bfe5e6a2be3ba"
+  }
+}

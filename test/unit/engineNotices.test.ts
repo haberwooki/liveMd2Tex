@@ -200,7 +200,8 @@ describe('the engine notices (engine/engine-notices.json)', () => {
       const r = tool.searchFolder(new Map([[rel, text]]), folder, search, noticeText);
       return r.covered.includes(rel) ? 'covered' : r.problems.some((p) => p.startsWith(`${folderPath}/${rel}: `)) ? 'problem' : 'ruled';
     };
-    // The skeptic's five probes (GATE_LICENCES_S4.md, section 2).
+    // Five probes from a licence review: a stranger's clause beside a public-domain line, a pointer to a notice that
+    // does not ship, and clauses beside FreeType's and libpng's licence sentences.
     assert.equal(verdict('texk/kpathsea', 'probe.c', '/*\n * Copyright (c) 2021 Jane Q. Stranger\n * Based on public domain code by Someone Else.\n * Redistribution and use in source and binary forms, with or without\n * modification, must reproduce the above copyright notice.\n */\n'), 'problem');
     assert.equal(verdict('texk/web2c/luatexdir', 'probe.c', '/*\n** Copyright (c) 2021 Jane Q. Stranger\n** Parts of this file are in the public domain.\n** Released under the MIT license. See stranger.txt for the full notice.\n*/\n'), 'problem');
     assert.equal(verdict('texk/web2c/luatexdir', 'lua/probe.c', '/*\n** See Copyright Notice in fancy.h\n*/\n'), 'problem');
@@ -211,8 +212,9 @@ describe('the engine notices (engine/engine-notices.json)', () => {
     assert.equal(verdict('texk/web2c/luatexdir', 'lua/pointer.c', '/*\n** See Copyright Notice in lua.h\n*/\n'), 'covered');
     assert.equal(verdict('libs/freetype2/freetype-src/src', 'own.c', '/*\n * Copyright (C) 2021 by Someone.\n *\n * This file is part of the FreeType project, and may only be used,\n * modified, and distributed under the terms of the FreeType project\n * license, LICENSE.TXT.\n */\n'), 'covered');
 
-    // The skeptic's seven probes of round 5 (GATE_LICENCES_S5.md): an own licence covers only its own kind of clause,
-    // so none of these borrows one (L5-01).
+    // Seven more probes from a licence review: clauses of one kind next to another kind's licence, on the same line,
+    // the next line or in the same paragraph, and a denial of a dedication. An own licence covers only its own kind
+    // of clause, so none of these borrows one (L5-01).
     const r5 = [
       ['texk/kpathsea', 'probe1.c', '/*\n * Released under the MIT license (this file is not public domain).\n */\n'],
       ['texk/kpathsea', 'probe2.c', '/*\n * Redistribution and use in source and binary forms must reproduce this notice;\n * the tables below are public domain.\n */\n'],

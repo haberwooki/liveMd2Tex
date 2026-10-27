@@ -134,9 +134,12 @@ Biber) get their own message, with what to use instead.
 
 ## How many documents compile
 
-Not yet measured. Before the first release, the share of recent arXiv papers that compile is measured with and
-without the add-on, and given here with its 95 % interval. The method is written down in
-`docs/coverage-method.md`.
+Not yet measured. Before the first release, the share of TeX Live's own example and template documents that
+compile is measured, with and without the add-on. It is given here for each part on its own (package examples,
+journal, conference and thesis templates, and Beamer packages), each with its 95 % interval, with its worst and
+best case (every document that could not be measured counted as failing, and as compiling), and with how many of
+its documents were left out and why. These documents are written to compile and to show their own package, so the
+shares measure package coverage, not papers. The method is written down in `docs/coverage-method.md`.
 
 ## What does not work
 
@@ -175,10 +178,10 @@ the engine WebAssembly) keeps its AGPL-3.0 terms inside the combined work, so `p
 says who they are. The parts by others and their licences are in `THIRD_PARTY_NOTICES.md`. The licence texts and
 the notices of the engine's parts ship in `dist/licenses/`.
 
-The source code of this version is at https://github.com/haberwooki/liveMd2Tex/tree/v0.0.1. Each release is
-tagged with `v` and its version, and that tag's tree holds the whole source. Our changes to the engine's
-JavaScript glue are in its `engine/patches/` folder. The glue ships as readable JavaScript, so the shipped file is
-its own source.
+The source code of each release is the tag of its version in this repository: for this version, the tag `v0.0.1`
+of https://github.com/haberwooki/liveMd2Tex. The tag is `v` and the version, its tree holds the whole source, and
+each release's page links it. Our changes to the engine's JavaScript glue are in its `engine/patches/` folder. The
+glue ships as readable JavaScript, so the shipped file is its own source.
 
 The engine is built from these sources: TeXlyre's build scripts at commit
 46ebb6216a5c1fe63dd1dc885831d1a8cef2dc86 (https://github.com/TeXlyre/texlyre-busytex-build, release

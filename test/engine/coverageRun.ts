@@ -10,20 +10,24 @@
 // whose SHA-256 the report names. Writes W/ours.json: per document the engine, each compile's outcome (PDF,
 // pages, fatal, missing files, seconds), for core alone the missing packages and where they are, and any attempt
 // the engine host's stubs blocked. It is written after every document; past --minutes no new document starts, and
-// the report counts the rest as not measured. It refuses to start unless this process's stubs are loaded, and
-// records what they blocked (its own attempts, and each compile's worker's).
+// the report counts the rest as not measured. It refuses to start unless this process's stubs are loaded and all
+// four engine files are staged, and records what the stubs blocked (its own attempts, and each compile's
+// worker's). A mark before each document makes one during which the process stops count as failing. A compile the
+// engine service rejects is recorded as rejected (the report counts it as not measured), and the service is
+// replaced. The canary (a pdfLaTeX and a XeLaTeX document) runs before the documents and after them.
 
 import { createHash } from 'node:crypto';
-import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import * as path from 'node:path';
 import { PDFDocument } from 'pdf-lib';
 import { imagesForNotFound, prepareCompile, type PackageContext, type PreparedCompile } from '../../src/extension/compile/pipeline';
 import { packageContext, readCoreData, readDataExtension } from '../../src/extension/engine/dataSets';
-import { EngineService } from '../../src/extension/engine/engineService';
+import { EngineService, EngineUnavailableError } from '../../src/extension/engine/engineService';
 import { STUB_STATE_KEY, type StubReport } from '../../src/shared/engineProtocol';
 import { EXTRA_DATA_NAME } from '../../src/shared/identity';
 import { importScript, root } from '../support/helpers';
 import { nodeFs } from '../support/nodeFs';
+import { extensionEngine, measurementSetting } from './coverageEngine';
 
 interface ShardDocument {
   key: string;
@@ -42,13 +46,24 @@ interface Outcome {
   fatal: boolean;
   timedOut: boolean;
   missing: string[];
+  /** TeX's errors in the last pass's log (rule 4 compares them on another engine than TeX Live's). */
+  errors?: number;
   unsupported?: string;
+  /** The engine host died on this document twice, on two services, or died and a fresh one could not start. */
+  engineStopped?: boolean;
+  /** The second case: the host died on this document, and the fresh service could not start or load after it. */
+  restartFailed?: boolean;
   seconds: number;
 }
 
 interface Helpers {
   fatalInLog(log: string): boolean;
   notFoundInLog(log: string): string[];
+  errorsInLog(log: string): number;
+  ENGINE_FILES: string[];
+  missingFiles(names: string[], exists: (name: string) => boolean): string[];
+  /** The canaries, the same on the reference's side (scripts/lib/coverage.mjs). */
+  CANARY_DOCUMENTS: Record<'pdflatex' | 'xelatex', string>;
 }
 
 const arg = (name: string) => {
@@ -102,6 +117,11 @@ async function main(): Promise<void> {
   const coreAlone = packageContext({ index: core.index, elsewhere: core.elsewhere }, []);
   const withExtra = packageContext({ index: core.index, elsewhere: core.elsewhere }, [extra]);
   const engineDir = path.join(root, 'dist', 'engine');
+  // Without the engine every compile would fail, and the shard would report failures that are not the documents'.
+  const missingEngine = helpers.missingFiles(helpers.ENGINE_FILES, (name) => existsSync(path.join(engineDir, name)));
+  if (missingEngine.length > 0) {
+    throw new Error(`the engine is not staged: ${missingEngine.join(', ')} missing in ${engineDir} (node scripts/stage-engine.mjs)`);
+  }
   let service = newService();
   function newService(): EngineService {
     const s = new EngineService({
@@ -121,13 +141,25 @@ async function main(): Promise<void> {
     return s;
   }
 
+  /** The extension's engine for a document, before its compile (the main file unreadable: what it asks for). */
+  function markEngine(doc: ShardDocument): string {
+    try {
+      return extensionEngine(readFileSync(path.join(doc.folder, doc.main), 'utf8'), doc.engine);
+    } catch {
+      return doc.engine ?? 'pdflatex';
+    }
+  }
+
   /** One compile on the extension's route, within the time limit. */
   async function compile(doc: ShardDocument, packages: PackageContext, mountSets?: ReadonlySet<string>) {
     const started = Date.now();
     const prepared: PreparedCompile = await prepareCompile({
       fs: nodeFs(doc.folder),
       mainRel: doc.main,
-      engineSetting: doc.engine === 'xelatex' ? 'xelatex' : 'pdflatex',
+      // The measurement's setting: XeLaTeX for a XeLaTeX or LuaLaTeX request, as a user who asks for either would
+      // set it (the extension has no LuaLaTeX); otherwise the default, pdfLaTeX. The document's own % !TEX line and
+      // preamble still decide inside prepareCompile, as they do for a user.
+      engineSetting: measurementSetting(doc.engine),
       packages,
       mountSets,
     });
@@ -137,17 +169,72 @@ async function main(): Promise<void> {
     let timer: ReturnType<typeof setTimeout> | undefined;
     const run = service.compile(prepared.job).then((r) => r.result);
     const outcome = await Promise.race([run, new Promise<'timeout'>((resolve) => (timer = setTimeout(() => resolve('timeout'), limit)))]).catch(
-      // A compile the engine rejects (it stopped, say) is marked so; a CompileResult may carry an error field itself.
-      (err: unknown) => ({ rejected: String(err) }) as const,
+      // The engine could not start or load its data (EngineUnavailableError): the compile says nothing about the
+      // document. Any other rejection is the engine host dying during this compile. A CompileResult may carry an
+      // error field itself.
+      (err: unknown) => (err instanceof EngineUnavailableError ? ({ rejected: String(err) } as const) : ({ died: String(err) } as const)),
     );
     clearTimeout(timer);
-    if (outcome === 'timeout') {
+    const rejected = outcome !== 'timeout' && 'rejected' in outcome ? String(outcome.rejected).slice(0, 200) : null;
+    const died = outcome !== 'timeout' && 'died' in outcome ? String(outcome.died).slice(0, 200) : null;
+    if (outcome === 'timeout' || rejected || died) {
+      // A service that timed out, that rejects compiles (it remembers a failed start) or whose host died is
+      // replaced, so the next compile gets a working engine.
       run.catch(() => undefined);
       await service.stop().catch(() => undefined);
       service = newService();
     }
-    const result = outcome === 'timeout' || 'rejected' in outcome ? null : outcome;
-    return { prepared, result, timedOut: outcome === 'timeout', seconds: Math.round((Date.now() - started) / 1000) };
+    const result = outcome === 'timeout' || rejected || died ? null : (outcome as Exclude<typeof outcome, 'timeout' | { rejected: string } | { died: string }>);
+    return { prepared, result, rejected, died, engineStopped: false, restartFailed: false, timedOut: outcome === 'timeout', seconds: Math.round((Date.now() - started) / 1000) };
+  }
+
+  /**
+   * A document's compile. When the engine cannot start or load, once more on a fresh service; a second failure is
+   * "not measured". When the engine host dies during it, once more on a fresh service. A second death is the
+   * document's failure ("the engine stopped on this document"), as it would be for a user. So is a fresh service
+   * that cannot start or load right after the death: that is most likely the death's aftermath (memory not yet
+   * given back, say), so it is the document's failure with its own reason, not "not measured".
+   */
+  async function compileDocument(doc: ShardDocument, packages: PackageContext, mountSets?: ReadonlySet<string>) {
+    let c = await compile(doc, packages, mountSets);
+    if (c.rejected) {
+      // The engine could not start or load: once more on the fresh service, so that a passing failure becomes a
+      // measurement. A second rejection is "not measured".
+      workers.startRetried++;
+      c = await compile(doc, packages, mountSets);
+    }
+    if (!c.died) {
+      return c;
+    }
+    workers.died++;
+    const again = await compile(doc, packages, mountSets);
+    if (again.died) {
+      workers.died++;
+      return { ...again, engineStopped: true };
+    }
+    if (again.rejected) {
+      workers.restartFailed++;
+      return { ...again, rejected: null, engineStopped: true, restartFailed: true };
+    }
+    return again;
+  }
+
+  /** The canary: each known-good document compiled with core-data alone; true when it gives a page, nothing missing. */
+  async function canary(): Promise<Record<string, boolean>> {
+    const out: Record<string, boolean> = {};
+    for (const [engine, text] of Object.entries(helpers.CANARY_DOCUMENTS)) {
+      const folder = path.join(work, 'canary', engine);
+      mkdirSync(folder, { recursive: true });
+      writeFileSync(path.join(folder, 'main.tex'), text);
+      try {
+        const c = await compile({ key: `canary-${engine}`, kind: 'canary', folder, main: 'main.tex', engine, bbl: false }, coreAlone);
+        const o = await outcomeOf(c);
+        out[engine] = o.pdf && !o.fatal && o.missing.length === 0 && (o.pages ?? 0) >= 1;
+      } catch {
+        out[engine] = false;
+      }
+    }
+    return out;
   }
 
   async function outcomeOf(c: Awaited<ReturnType<typeof compile>>): Promise<Outcome> {
@@ -158,7 +245,10 @@ async function main(): Promise<void> {
       pages: await pagesOf(c.result?.pdf ?? null),
       fatal: !c.result || !c.result.pdf || helpers.fatalInLog(log) || Boolean(c.result.error),
       timedOut: c.timedOut,
+      ...(c.engineStopped ? { engineStopped: true } : {}),
+      ...(c.restartFailed ? { restartFailed: true } : {}),
       missing: [...new Set([...scanned, ...helpers.notFoundInLog(log)])].sort(),
+      errors: helpers.errorsInLog(log),
       seconds: c.seconds,
     };
   }
@@ -171,14 +261,18 @@ async function main(): Promise<void> {
   // Written after every document, so a shard that runs out of time keeps what it measured.
   const results: Record<string, unknown> = {};
   // What the stubs saw: this process's blocked attempts, and the workers' (each compile reports its own record).
-  const workers = { compiles: 0, withoutRecord: 0, blocked: 0 };
+  const workers = { compiles: 0, withoutRecord: 0, blocked: 0, rejected: 0, startRetried: 0, died: 0, restartFailed: 0 };
   let stopped: string | null = null;
+  // The shard's health: the canary before its documents and after them (docs/coverage-method.md).
+  const health: { before: Record<string, boolean> | null; after: Record<string, boolean> | null } = { before: null, after: null };
   const save = () => {
     const stubs = { checked: true, role: own.role, blocked: ownStubs()?.blocked ?? [], workers };
-    writeFileSync(path.join(work, 'ours.json'), `${JSON.stringify({ packages, stubs, stopped, documents: results }, null, 2)}\n`);
+    writeFileSync(path.join(work, 'ours.json'), `${JSON.stringify({ packages, stubs, stopped, canary: health, documents: results }, null, 2)}\n`);
   };
   const minutes = Number(arg('--minutes') ?? 150);
   const began = Date.now();
+  health.before = await canary();
+  save();
   try {
     for (const doc of documents) {
       if (Date.now() - began > minutes * 60000) {
@@ -186,15 +280,12 @@ async function main(): Promise<void> {
         console.log(`  the shard's time is up: ${documents.length - Object.keys(results).length} document(s) not measured`);
         break;
       }
-      if (doc.engine === 'lualatex') {
-        const unsupported: Outcome = { pdf: false, pages: null, fatal: true, timedOut: false, missing: [], unsupported: 'asks for LuaLaTeX', seconds: 0 };
-        results[doc.key] = { engine: 'lualatex', core: unsupported, extra: unsupported, missingCore: [] };
-        console.log(`  ${doc.key}: LuaLaTeX, not compiled`);
-        save();
-        continue;
-      }
+      // Marked before it runs: a document during which this process stops counts as failing, not as not measured.
+      // The mark holds the engine the extension's own rule chooses, so TeX Live then runs that engine too.
+      results[doc.key] = { started: new Date().toISOString(), engine: markEngine(doc) };
+      save();
       try {
-        const first = await compile(doc, coreAlone);
+        const first = await compileDocument(doc, coreAlone);
         const core = await outcomeOf(first);
         const missingCore = core.missing.map((file) => {
           const m = first.prepared.packageScan?.missing.find((x) => x.file === file);
@@ -204,11 +295,11 @@ async function main(): Promise<void> {
         let extraOutcome: Outcome | undefined;
         const runs = [first];
         if (core.missing.length > 0) {
-          let again = await compile(doc, withExtra);
+          let again = await compileDocument(doc, withExtra);
           runs.push(again);
           const more = again.result ? imagesForNotFound(again.result, again.prepared) : [];
           if (more.length > 0) {
-            again = await compile(doc, withExtra, new Set(more));
+            again = await compileDocument(doc, withExtra, new Set(more));
             runs.push(again);
           }
           extraOutcome = await outcomeOf(again);
@@ -216,8 +307,18 @@ async function main(): Promise<void> {
         const blocked = runs.flatMap((c) => c.result?.stubs?.blocked ?? []);
         workers.compiles += runs.filter((c) => c.result).length;
         workers.withoutRecord += runs.filter((c) => c.result && !c.result.stubs).length;
+        workers.rejected += runs.filter((c) => c.rejected).length;
         workers.blocked += blocked.length;
-        results[doc.key] = { engine: first.prepared.engine.engine, core, ...(extraOutcome ? { extra: extraOutcome } : {}), missingCore, ...(blocked.length > 0 ? { blocked } : {}) };
+        // A compile the engine service rejected (it could not start or load) says nothing about the document. When
+        // the core compile was rejected, the document is not measured. When only a compile with the add-on was, the
+        // core result stands, and only the add-on side is not measured: a core failure is never thrown away.
+        const extraRejected = runs.slice(1).find((c) => c.rejected)?.rejected ?? null;
+        const engine = first.prepared.engine.engine;
+        results[doc.key] = first.rejected
+          ? { engine, rejected: first.rejected }
+          : extraRejected
+            ? { engine, core, missingCore, extraRejected, ...(blocked.length > 0 ? { blocked } : {}) }
+            : { engine, core, ...(extraOutcome ? { extra: extraOutcome } : {}), missingCore, ...(blocked.length > 0 ? { blocked } : {}) };
         console.log(
           `  ${doc.key}: core ${core.pages ?? 'no'} page(s)${core.missing.length ? `, missing ${core.missing.join(' ')}` : ''}` +
             `${extraOutcome ? `; with extra ${extraOutcome.pages ?? 'no'} page(s)${extraOutcome.missing.length ? `, missing ${extraOutcome.missing.join(' ')}` : ''}` : ''}`,
@@ -231,6 +332,7 @@ async function main(): Promise<void> {
       save();
     }
   } finally {
+    health.after = await canary().catch(() => ({ pdflatex: false, xelatex: false }));
     await service.stop().catch(() => undefined);
     save();
   }

@@ -170,16 +170,16 @@ describe('GitHub Actions workflows (G0 preparation)', () => {
     assert.match(profile, /^tlpdbopt_install_docfiles 0$/m);
     assert.deepEqual(ref.referencePackages({ core: ['latex', 'amsmath'], extra: ['revtex', 'latex', '$(rm -rf /)'] }), ['amsmath', 'latex', 'revtex']);
   });
-  it('M5: the coverage measurement runs by hand, fetches from arXiv in one job only, and never keeps a source in an artifact', () => {
+  it('M5: the coverage measurement runs by hand, asks arXiv nothing, and never keeps a document in an artifact', () => {
     type Step = { name?: string; run?: string; uses?: string; if?: string; id?: string; with?: Record<string, unknown> };
-    type Job = { needs?: string | string[]; if?: string; 'timeout-minutes'?: number; steps: Step[]; concurrency?: { group: string; 'cancel-in-progress': boolean } };
+    type Job = { needs?: string | string[]; if?: string | boolean; 'timeout-minutes'?: number; steps: Step[]; concurrency?: { group: string; 'cancel-in-progress': boolean } };
     const text = readFileSync(path.join(folder, 'coverage.yml'), 'utf8');
     const coverage = load('coverage.yml') as Workflow & { permissions: Record<string, string> };
     const jobs = coverage.jobs as Record<string, Job>;
     assert.deepEqual(Object.keys(coverage.on), ['workflow_dispatch']);
     // Read access only; actions: read to take the data packages from a bundle run.
     assert.deepEqual(coverage.permissions, { contents: 'read', actions: 'read' });
-    assert.deepEqual(Object.keys(jobs), ['pin', 'sources', 'texlive', 'compile', 'report']);
+    assert.deepEqual(Object.keys(jobs), ['pin', 'sources', 'local', 'texlive', 'compile', 'report']);
     assert.match(text, /^# The minutes, estimated/m);
     for (const [name, job] of Object.entries(jobs)) {
       // GitHub's hosted runners stop a job at 360 minutes.
@@ -193,45 +193,92 @@ describe('GitHub Actions workflows (G0 preparation)', () => {
     }
     const run = (job: string) => jobs[job].steps.map((s) => s.run ?? '').join('\n');
     const at = (job: string, re: RegExp) => jobs[job].steps.findIndex((s) => re.test(`${s.name ?? ''} ${s.run ?? ''} ${s.uses ?? ''}`));
-    // Only the sources job asks arXiv, and two runs never do it at once (arXiv's terms: one connection).
+
+    // The choices: the rehearsal (the default) and the frame without arXiv. The arXiv frame waits for arXiv's
+    // permission: its jobs never run (if: false), no choice names it, and every step that would serve it asks for a
+    // job that is not a choice.
+    const job = (coverage.on as { workflow_dispatch: { inputs: { job: { options: string[]; default: string } } } }).workflow_dispatch.inputs.job;
+    assert.deepEqual([job.options, job.default], [['rehearse', 'measure-local'], 'rehearse']);
+    assert.equal(jobs.sources.if, false);
+    assert.equal(jobs.pin.if, false);
+    for (const [name, j] of Object.entries(jobs)) {
+      for (const s of j.steps.filter((x) => /inputs\.job == 'measure'(?!-)/.test(String(x.if ?? '')))) {
+        assert.ok(/arXiv frame/.test(s.name ?? ''), `${name}: ${s.name} serves the arXiv frame`);
+      }
+    }
+    // Only the sources job, which never runs, holds the arXiv stages; no run line names arXiv's addresses.
     for (const [name] of Object.entries(jobs)) {
-      const fetches = /--stage (sample|fetch)\b/.test(run(name));
-      assert.equal(fetches, name === 'sources', name);
+      assert.equal(/--stage (sample|fetch)\b/.test(run(name)), name === 'sources', name);
     }
     assert.deepEqual(jobs.sources.concurrency, { group: 'coverage-arxiv', 'cancel-in-progress': false });
     assert.doesNotMatch(Object.keys(jobs).map(run).join('\n'), /arxiv\.org/i, 'the addresses live in engine/coverage-frame.json');
-    // The sources stay in the cache: saved also on a failure, under a key of their own per attempt (a key is written
-    // once), keyed by the frame alone; restored by the compile jobs from this run's newest entry; never uploaded.
-    const save = at('sources', /actions\/cache\/save@/);
-    assert.ok(save > at('sources', /--stage fetch/));
-    assert.equal(jobs.sources.steps[save].if, 'always()');
-    const sourcesKey = "coverage-sources-${{ hashFiles('engine/coverage-frame.json') }}-${{ github.run_id }}-${{ github.run_attempt }}";
-    assert.equal(jobs.sources.steps[save].with?.key, sourcesKey);
-    const restored = jobs.compile.steps[at('compile', /The sources the sources job fetched/)];
-    assert.equal(restored.with?.key, sourcesKey);
-    assert.equal(restored.with?.['restore-keys'], "coverage-sources-${{ hashFiles('engine/coverage-frame.json') }}-${{ github.run_id }}-");
+
+    // The frame without arXiv: the local job draws it from the pinned snapshot and keeps it in the cache, saved also
+    // on a failure under a key of its own per attempt; the compile jobs restore this run's newest entry.
+    assert.equal(jobs.local.if, "inputs.job == 'measure-local'");
+    const localKey = "coverage-local-${{ hashFiles('engine/coverage-local-frame.json', 'engine/bundle-pins.json') }}-${{ github.run_id }}-${{ github.run_attempt }}";
+    const localStage = at('local', /--stage local/);
+    const localSave = at('local', /Keep the sample/);
+    assert.ok(at('local', /The sample of earlier runs/) < localStage && localStage < localSave);
+    assert.equal(jobs.local.steps[localSave].if, 'always()');
+    assert.equal(jobs.local.steps[localSave].with?.key, localKey);
+    // The documentation archives have a cache of their own, which only the local job reads and writes.
+    // Its key shares no prefix with the sample's, so deleting "coverage-local-*" leaves the archives alone.
+    const archivesKey = "coverage-docarchives-${{ hashFiles('engine/bundle-pins.json') }}-${{ github.run_id }}-${{ github.run_attempt }}";
+    const archivesSave = jobs.local.steps[at('local', /Keep the documentation archives/)];
+    assert.deepEqual([archivesSave.if, archivesSave.with?.key, archivesSave.with?.path], ['always()', archivesKey, '${{ runner.temp }}/archives']);
+    assert.ok(!archivesKey.startsWith('coverage-local-'));
+    assert.match(run('local'), /--stage local --dir "\$RUNNER_TEMP\/coverage" --archives "\$RUNNER_TEMP\/archives"/);
+    assert.ok(!jobs.compile.steps.some((s) => /coverage-docarchives/.test(String(s.with?.key ?? ''))), 'the compile jobs never restore the archives');
+    // The local job's first step asks the snapshot's host for the tlpdb's signed checksum, before any other work.
+    const firstRun = jobs.local.steps.findIndex((s) => s.run);
+    assert.equal(jobs.local.steps[firstRun].run, 'node scripts/coverage.mjs --stage mirror-check');
+    // Every step that runs a coverage stage or coverageRun installs the lockfile first, except the stages known to
+    // import no package (profile, mirror-check, and the arXiv frame's templates, sample and fetch): a stage that
+    // starts importing one later is caught by default.
+    for (const [name, j] of Object.entries(jobs)) {
+      const install = j.steps.findIndex((s) => /npm ci --omit=optional/.test(s.run ?? ''));
+      for (const [i, s] of j.steps.entries()) {
+        const stage = /scripts\/coverage\.mjs --stage ([\w-]+)/.exec(s.run ?? '')?.[1];
+        if ((stage && !['profile', 'mirror-check', 'templates', 'sample', 'fetch'].includes(stage)) || /coverageRun\.js/.test(s.run ?? '')) {
+          assert.ok(install >= 0 && install < i, `${name}: ${s.name} runs before npm ci`);
+        }
+      }
+    }
+    // The bundle run is required: every compile job needs its data packages.
+    const inputs = (coverage.on as { workflow_dispatch: { inputs: Record<string, { required?: boolean; default?: string }> } }).workflow_dispatch.inputs;
+    assert.equal(inputs.bundle_run.required, true);
+    assert.equal(inputs.bundle_run.default, undefined);
+    const t0 = (jobs.local.steps[localStage] as Step & { 'timeout-minutes'?: number })['timeout-minutes'] ?? 0;
+    assert.ok(t0 > 0 && t0 < (jobs.local['timeout-minutes'] ?? 0), 'the local stage stops before its job, so the save runs');
+    const restored = jobs.compile.steps[at('compile', /The frame without arXiv's documents/)];
+    assert.equal(restored.if, "inputs.job == 'measure-local'");
+    assert.equal(restored.with?.key, localKey);
+    assert.equal(restored.with?.['restore-keys'], "coverage-local-${{ hashFiles('engine/coverage-local-frame.json', 'engine/bundle-pins.json') }}-${{ github.run_id }}-");
     assert.equal(restored.with?.['fail-on-cache-miss'], true);
-    // The job that reads untrusted sources saves no cache.
+    // The job that reads untrusted documents saves no cache.
     assert.ok(!jobs.compile.steps.some((s) => /^actions\/cache(\/save)?@/.test(s.uses ?? '')), 'compile saves a cache');
-    // The harvest and the fetch stop before the job does, so the save step always runs.
+    // The arXiv frame's harvest and fetch would stop before their job does (kept as they were).
     for (const re of [/--stage sample/, /--stage fetch/]) {
       const t = (jobs.sources.steps[at('sources', re)] as Step & { 'timeout-minutes'?: number })['timeout-minutes'] ?? 0;
       assert.ok(t > 0 && t < (jobs.sources['timeout-minutes'] ?? 0), String(re));
     }
-    for (const [name, job] of Object.entries(jobs)) {
-      for (const u of job.steps.filter((s) => s.uses?.startsWith('actions/upload-artifact@'))) {
-        assert.doesNotMatch(String(u.with?.path), /sources|work\/docs|\/coverage\s*$/, `${name} uploads sources`);
+    // Nothing but names, counts and outcomes is uploaded; every job but texlive keeps its report.
+    for (const [name, j] of Object.entries(jobs)) {
+      for (const u of j.steps.filter((s) => s.uses?.startsWith('actions/upload-artifact@'))) {
+        assert.doesNotMatch(String(u.with?.path), /sources|archive|work\/docs|\/coverage\s*$/, `${name} uploads documents`);
         assert.ok(Number(u.with?.['retention-days']) <= 7, `${name}: ${u.with?.name}`);
       }
       if (name !== 'texlive') {
-        assert.ok(job.steps.some((s) => s.uses?.startsWith('actions/upload-artifact@') && s.if === 'always()'), `${name} keeps its report`);
+        assert.ok(j.steps.some((s) => s.uses?.startsWith('actions/upload-artifact@') && s.if === 'always()'), `${name} keeps its report`);
       }
     }
+
     // The reference: scheme-full, its installer verified with gpg and the pinned key, installed without root.
     // install-tl (TeX Live's Perl installer) runs in the texlive job only; TeX Live's own Perl tools (repstopdf,
     // biber) run inside the reference step's sandbox below.
-    for (const [name, job] of Object.entries(jobs)) {
-      assert.equal(job.steps.filter((s) => /\bperl\b/.test(s.run ?? '')).length, name === 'texlive' ? 1 : 0, name);
+    for (const [name, j] of Object.entries(jobs)) {
+      assert.equal(j.steps.filter((s) => /\bperl\b/.test(s.run ?? '')).length, name === 'texlive' ? 1 : 0, name);
     }
     // Root in two lines only, both in the compile job: Ghostscript from Ubuntu's archive, and the reference's
     // network namespace, which drops back to the runner's user before anything runs in it.
@@ -245,31 +292,22 @@ describe('GitHub Actions workflows (G0 preparation)', () => {
     assert.ok(at('texlive', /install-tl-unx\.tar\.gz\.sha512\.asc/) < at('texlive', /perl \.\/install-tl/));
     assert.match(run('texlive'), /require\('\.\/engine\/bundle-pins\.json'\)\.signingKey\.fingerprint/);
     assert.match(run('texlive'), /--stage profile --texdir "\$TL"/);
+    assert.equal(jobs.texlive.if, "inputs.job == 'measure-local' || inputs.job == 'rehearse'");
     // The compile jobs: the extension's route with the stubs loaded, then the reference, each with its budget.
     assert.match(run('compile'), /node --require \.\/test\/stubs\/register-unit\.cjs out\/test\/engine\/coverageRun\.js .*--minutes 150/);
     assert.ok(at('compile', /--stage reference/) > at('compile', /coverageRun\.js/));
+    assert.match(jobs.compile.steps[at('compile', /--stage reference/)].run ?? '', /sudo unshare --net --setuid/);
     assert.equal(jobs.compile.steps.find((s) => s.with?.name === 'bundle-packages')?.with?.['run-id'], '${{ inputs.bundle_run }}');
-    assert.deepEqual(jobs.compile.needs, ['sources', 'texlive']);
-    assert.equal(jobs.report.if, "always() && (inputs.job == 'measure' || inputs.job == 'rehearse')");
-    // The rehearsal, the default job: texlive, compile and report on the public corpus and the probes. The sources
-    // job, the only one that asks arXiv, runs for "measure" alone; the compile job builds the rehearsal's documents
-    // from the repository instead of restoring the sources.
-    const job = (coverage.on as { workflow_dispatch: { inputs: { job: { options: string[]; default: string } } } }).workflow_dispatch.inputs.job;
-    assert.deepEqual([job.options, job.default], [['rehearse', 'measure', 'pin'], 'rehearse']);
-    assert.equal(jobs.sources.if, "inputs.job == 'measure'");
-    assert.equal(jobs.texlive.if, "inputs.job == 'measure' || inputs.job == 'rehearse'");
-    assert.match(String(jobs.compile.if), /needs\.sources\.result == 'success' \|\| inputs\.job == 'rehearse'/);
-    assert.equal(restored.if, "inputs.job == 'measure'");
+    assert.deepEqual(jobs.compile.needs, ['sources', 'local', 'texlive']);
+    assert.match(String(jobs.compile.if), /needs\.local\.result == 'success' \|\| inputs\.job == 'rehearse'/);
+    // The rehearsal: the compile job builds its documents from the repository; the report knows the shard count.
+    assert.equal(jobs.report.if, "always() && (inputs.job == 'measure-local' || inputs.job == 'rehearse')");
     for (const name of ['compile', 'report']) {
-      const step = jobs[name].steps[at(name, /--stage rehearse/)];
-      assert.equal(step?.if, "inputs.job == 'rehearse'", name);
+      assert.equal(jobs[name].steps[at(name, /--stage rehearse/)]?.if, "inputs.job == 'rehearse'", name);
     }
     assert.ok(at('compile', /--stage rehearse/) < at('compile', /--stage prepare/));
+    assert.ok(at('compile', /The frame without arXiv's documents/) < at('compile', /--stage prepare/));
     assert.ok(at('report', /--stage rehearse/) < at('report', /--stage report/));
-    // The reference runs without network; the templates have a cache key of their own, so re-pinning one keeps the
-    // arXiv sources; the report knows how many shards to expect, so a lost shard is counted.
-    assert.match(jobs.compile.steps[at('compile', /--stage reference/)].run ?? '', /sudo unshare --net --setuid/);
-    assert.ok(jobs.sources.steps.some((s) => s.with?.key === "coverage-templates-${{ hashFiles('engine/coverage-templates.json') }}"));
     assert.match(run('report'), /--stage report .*--shards "\$SHARDS"/);
   });
 

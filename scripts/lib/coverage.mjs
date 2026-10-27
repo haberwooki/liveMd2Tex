@@ -11,6 +11,7 @@
 //   - every sampled document's result or the reason it has none, and the report.
 
 import { createHash } from 'node:crypto';
+import { texmfPath } from './tlpdb.mjs';
 
 // ---- The reference ------------------------------------------------------------------------------------------------
 
@@ -175,31 +176,42 @@ export function sampleDocuments(papers, templates, seed, shards) {
 
 // ---- The rehearsal ------------------------------------------------------------------------------------------------
 
-/** A ustar archive of `files` ("/"-paths of at most 100 bytes to bytes), as arXiv serves a source before gzip. */
+/** One ustar header block. */
+function tarHeader(name, size, type) {
+  const h = Buffer.alloc(512);
+  h.write(name, 0, 100, 'utf8');
+  h.write('0000644\0', 100);
+  h.write('0000000\0', 108);
+  h.write('0000000\0', 116);
+  h.write(`${size.toString(8).padStart(11, '0')}\0`, 124);
+  h.write('00000000000\0', 136);
+  h.write(type, 156);
+  h.write('ustar\0', 257);
+  h.write('00', 263);
+  h.fill(0x20, 148, 156);
+  let sum = 0;
+  for (const b of h) {
+    sum += b;
+  }
+  h.write(`${sum.toString(8).padStart(6, '0')}\0 `, 148);
+  return h;
+}
+
+/**
+ * A tar archive of `files` ("/"-paths to bytes), as arXiv serves a source before gzip; a name longer than 100 bytes
+ * gets a GNU long-name entry before it, which readTar (scripts/lib/tar.mjs) reads.
+ */
 export function tarOf(files) {
   const blocks = [];
+  const pad = (n) => Buffer.alloc((512 - (n % 512)) % 512);
   for (const [name, data] of files) {
     const bytes = Buffer.from(data);
-    if (Buffer.byteLength(name) > 100) {
-      throw new Error(`a name longer than 100 bytes: ${name}`);
+    const nameBytes = Buffer.from(name, 'utf8');
+    if (nameBytes.length > 100) {
+      const long = Buffer.concat([nameBytes, Buffer.alloc(1)]);
+      blocks.push(tarHeader('././@LongLink', long.length, 'L'), long, pad(long.length));
     }
-    const h = Buffer.alloc(512);
-    h.write(name, 0, 100, 'utf8');
-    h.write('0000644\0', 100);
-    h.write('0000000\0', 108);
-    h.write('0000000\0', 116);
-    h.write(`${bytes.length.toString(8).padStart(11, '0')}\0`, 124);
-    h.write('00000000000\0', 136);
-    h.write('0', 156);
-    h.write('ustar\0', 257);
-    h.write('00', 263);
-    h.fill(0x20, 148, 156);
-    let sum = 0;
-    for (const b of h) {
-      sum += b;
-    }
-    h.write(`${sum.toString(8).padStart(6, '0')}\0 `, 148);
-    blocks.push(h, bytes, Buffer.alloc((512 - (bytes.length % 512)) % 512));
+    blocks.push(tarHeader(name, bytes.length, '0'), bytes, pad(bytes.length));
   }
   blocks.push(Buffer.alloc(1024));
   return Buffer.concat(blocks);
@@ -285,8 +297,9 @@ A figure the source lacks:
 
 /**
  * The rehearsal's checks, from assembled documents (assemble) and the shards' facts ({ offline, ghostscript }):
- * [{ key, what, ok, got }]. Every probe gives what it must; every corpus document compiles on TeX Live; every
- * document was measured on both sides; the reference ran without network and with Ghostscript.
+ * [{ key, what, ok, got }]. Every probe gives what it must; every corpus document compiles on TeX Live and, with
+ * core-data alone, on the extension; every corpus document and probe was measured on both sides; the reference ran
+ * without network and with Ghostscript.
  */
 export function rehearsalChecks(documents, facts) {
   const got = (r) =>
@@ -297,13 +310,126 @@ export function rehearsalChecks(documents, facts) {
     checks.push({ key: p.key, what: p.what, ok: Boolean(r) && p.ok(r), got: got(r) });
   }
   for (const d of documents.filter((x) => x.stratum === 'corpus')) {
-    checks.push({ key: d.key, what: 'TeX Live compiles this public corpus document', ok: Boolean(d.reference) && brokenRule(d.reference) === null, got: got(d.reference ?? null) });
+    // The corpus is the extension's own test set: it compiles with core-data alone, so a broken engine fails here.
+    const ours = d.core && d.reference ? judge(d.core, d.reference) : { compiles: null, why: 'not measured' };
+    checks.push({
+      key: d.key,
+      what: 'TeX Live, and the extension with core-data alone, compile this public corpus document',
+      ok: Boolean(d.reference) && brokenRule(d.reference) === null && ours.compiles === true,
+      got: `TeX Live: ${got(d.reference ?? null)}; the extension: ${ours.why}`,
+    });
   }
-  const unmeasured = documents.filter((d) => d.notMeasured);
-  checks.push({ key: 'all', what: 'every document was measured on both sides', ok: documents.length > 0 && unmeasured.length === 0, got: unmeasured.length ? unmeasured.map((d) => `${d.key}: ${d.notMeasured}`).join('; ') : `${documents.length} documents` });
+  const repository = documents.filter((d) => d.stratum === 'corpus' || d.stratum === 'probe');
+  const unmeasured = repository.filter((d) => d.notMeasured);
+  checks.push({
+    key: 'all',
+    what: 'every corpus document and probe was measured on both sides',
+    ok: repository.length > 0 && unmeasured.length === 0,
+    got: unmeasured.length ? unmeasured.map((d) => `${d.key}: ${d.notMeasured}`).join('; ') : `${repository.length} documents`,
+  });
   checks.push({ key: 'network', what: 'the reference ran without network in every shard', ok: facts.offline === true, got: String(facts.offline) });
   checks.push({ key: 'ghostscript', what: 'Ghostscript was there for the reference', ok: facts.ghostscript.length > 0, got: facts.ghostscript.join(', ') || 'none' });
   return checks;
+}
+
+// ---- The frame without arXiv ----------------------------------------------------------------------------------------
+
+/** Whether a Catalogue topic falls under a stratum's pattern: "font*" is a prefix, any other pattern the whole topic. */
+const topicMatches = (pattern, topic) => (pattern.endsWith('*') ? topic.startsWith(pattern.slice(0, -1)) : topic === pattern);
+
+/** A package's stratum: the first stratum, in the frame's order, that one of its Catalogue topics falls under; else "other". */
+export function topicStratum(topics, strata) {
+  for (const s of strata) {
+    if (s.topics.some((p) => topics.some((t) => topicMatches(p, t)))) {
+      return s.id;
+    }
+  }
+  return 'other';
+}
+
+/** A package's example files: the .tex files of its doc tree whose name matches `names` (case ignored), texmf-relative. */
+export function exampleFiles(pkg, names) {
+  const re = new RegExp(names, 'i');
+  return pkg.docfiles
+    .map((f) => texmfPath(f))
+    .filter((p) => p !== null && p.startsWith('doc/') && /\.tex$/i.test(p) && re.test(p.split('/').pop()));
+}
+
+/**
+ * The frame without arXiv (docs/coverage-method.md), from the pinned tlpdb (parseTlpdb) and engine/coverage-local-frame.json:
+ * every package (category Package) with at least one example file, in one of three parts. A package of the
+ * publishers' collection is a journal, conference or thesis template; a package with the presentation topic and
+ * "beamer" in its name is a Beamer package; every other one is a package example, in its topic stratum. Returns
+ * { examples: { stratum: [names in draw order] }, templates: [names in draw order], beamer: [...], counts }.
+ */
+export function localFrame(db, local) {
+  const publishers = new Set(db.get(local.templates.collection)?.depends ?? []);
+  const beamerName = new RegExp(local.templates.beamer.name, 'i');
+  const examples = {};
+  const templates = [];
+  const beamer = [];
+  for (const p of db.values()) {
+    if (p.category !== 'Package' || exampleFiles(p, local.names).length === 0) {
+      continue;
+    }
+    if (publishers.has(p.name)) {
+      templates.push(p.name);
+    } else if (p.topics.includes(local.templates.beamer.topic) && beamerName.test(p.name)) {
+      beamer.push(p.name);
+    } else {
+      (examples[topicStratum(p.topics, local.examples.strata)] ??= []).push(p.name);
+    }
+  }
+  const ordered = Object.fromEntries(Object.entries(examples).map(([s, names]) => [s, drawOrder(local.seed, names)]));
+  return {
+    examples: ordered,
+    templates: drawOrder(local.seed, templates),
+    beamer: drawOrder(local.seed, beamer),
+    counts: { examples: Object.fromEntries(Object.entries(ordered).map(([s, n]) => [s, n.length]).sort((a, b) => (a[0] < b[0] ? -1 : 1))), templates: templates.length, beamer: beamer.length },
+  };
+}
+
+/**
+ * The engine an example file's documentation tree names: doc/lualatex/ and doc/luatex/ hold LuaLaTeX packages,
+ * doc/xelatex/ XeLaTeX ones.
+ */
+export function docTreeEngine(file) {
+  return /^doc\/(lualatex|luatex)\//.test(file) ? 'lualatex' : /^doc\/xelatex\//.test(file) ? 'xelatex' : null;
+}
+
+/** A package's example files in the order they are tried: by the SHA-256 of "<seed>:<package>/<path>". */
+export function exampleOrder(seed, name, files) {
+  return files
+    .map((f) => ({ f, k: orderKey(seed, `${name}/${f}`) }))
+    .sort((a, b) => (a.k < b.k ? -1 : a.k > b.k ? 1 : 0))
+    .map((x) => x.f);
+}
+
+/** The folder of an example file: every file of its doc archive under the file's own directory, relative to it. */
+export function exampleFolder(archive, file) {
+  const dir = file.slice(0, file.lastIndexOf('/'));
+  return new Map([...archive].filter(([p]) => p.startsWith(`${dir}/`)).map(([p, b]) => [p.slice(dir.length + 1), b]));
+}
+
+/** The SHA-256 of a frame's members in draw order (strata sorted by name): it holds the frame exactly, not only its counts. */
+export function frameMembers(frame) {
+  const examples = Object.fromEntries(Object.entries(frame.examples).sort((x, y) => (x[0] < y[0] ? -1 : 1)));
+  return createHash('sha256').update(JSON.stringify({ examples, templates: frame.templates, beamer: frame.beamer })).digest('hex');
+}
+
+/**
+ * Whether a frame is the one written down (engine/coverage-local-frame.json "expected": its counts and the SHA-256
+ * of its members); else why not. `frame` is localFrame's result.
+ */
+export function frameDiffers(frame, expected) {
+  const { counts } = frame;
+  const a = JSON.stringify({ examples: counts.examples, templates: counts.templates, beamer: counts.beamer });
+  const b = JSON.stringify({ examples: Object.fromEntries(Object.entries(expected.examples).sort((x, y) => (x[0] < y[0] ? -1 : 1))), templates: expected.templates, beamer: expected.beamer });
+  if (a !== b) {
+    return `the frame from the tlpdb (${a}) is not the one written down (${b})`;
+  }
+  const members = frameMembers(frame);
+  return members === expected.members ? null : `the frame's members (SHA-256 ${members}) are not the ones written down (${expected.members})`;
 }
 
 // ---- The pacer ----------------------------------------------------------------------------------------------------
@@ -347,6 +473,19 @@ export class Pacer {
   mark() {
     this.last = this.clock.now();
   }
+}
+
+/** The engine files coverageRun hands to the engine service (dist/engine/): all must be there before a compile. */
+export const ENGINE_FILES = ['busytex.js', 'busytex.wasm', 'texmf-override.cnf', 'fonts.conf'];
+
+/** Which of `names` are missing, by `exists(name)`. */
+export function missingFiles(names, exists) {
+  return names.filter((n) => !exists(n));
+}
+
+/** Whether the arXiv frame may run: only when its frame file says so. It waits for arXiv's permission. */
+export function arxivEnabled(frame) {
+  return frame?.harvest?.enabled === true;
 }
 
 /**
@@ -508,7 +647,7 @@ export function chooseMain(files) {
       engine = 'latex';
     }
   }
-  if (engine === null && magic && /^(xelatex|lualatex|pdflatex)$/i.test(magic[1])) {
+  if (engine === null && magic && /^(xelatex|lualatex|pdflatex|latex)$/i.test(magic[1])) {
     engine = magic[1].toLowerCase();
   }
   return { main, engine, how };
@@ -550,9 +689,49 @@ export function fatalInLog(log) {
   return /^! Emergency stop|^!.*Fatal error|^\S+:\d+: Emergency stop|Fatal error occurred/m.test(log ?? '');
 }
 
+/** The kpathsea settings that decide how TeX writes its log's lines: the reference takes the extension's values. */
+export const LOG_LINE_SETTINGS = ['max_print_line', 'error_line', 'half_error_line'];
+
+/**
+ * The values of `names` in a kpathsea configuration text ("name = value" lines; "%" starts a comment), as strings.
+ * Throws when one is not set, so the reference never runs with TeX Live's defaults by mistake.
+ */
+export function cnfSettings(text, names) {
+  const values = {};
+  for (const line of text.split('\n')) {
+    const m = /^\s*([A-Za-z_][\w.]*)\s*=\s*([^%]*?)\s*(?:%.*)?$/.exec(line);
+    if (m && names.includes(m[1])) {
+      values[m[1]] = m[2];
+    }
+  }
+  const missing = names.filter((n) => !(n in values) || values[n] === '');
+  if (missing.length > 0) {
+    throw new Error(`not set in the configuration: ${missing.join(', ')}`);
+  }
+  return values;
+}
+
+/**
+ * The TeX errors in a log: lines that start with "!" or, with -file-line-error (both sides use it), with
+ * "file:line: ". Errors TeX recovers from are counted too: rule 4 compares them for a document run on another
+ * engine than TeX Live's (docs/coverage-method.md).
+ */
+export function errorsInLog(log) {
+  return (log ?? '').split('\n').filter((l) => /^!|^[^\s:]+:\d+: /.test(l)).length;
+}
+
 /** The files a log says were not found ("File `x' not found"), sorted. */
 export function notFoundInLog(log) {
   return [...new Set([...(log ?? '').matchAll(/File [`']([^`'\s]+)' not found/g)].map((m) => m[1]))].sort();
+}
+
+/**
+ * The engine TeX Live runs for a document: the one the document asks for ('latex' is the DVI route), else the one
+ * the extension chose by its own rule, which the extension's record or its in-flight mark holds
+ * (docs/coverage-method.md, "A document in flight counts"), else pdfLaTeX.
+ */
+export function referenceEngine(requested, ours) {
+  return requested ?? ours?.engine ?? 'pdflatex';
 }
 
 /**
@@ -561,6 +740,12 @@ export function notFoundInLog(log) {
  * missing: string[], timedOut?: boolean, unsupported?: string }.
  */
 export function brokenRule(outcome) {
+  if (outcome.crashed) {
+    return 'the process stopped during this document';
+  }
+  if (outcome.engineStopped) {
+    return outcome.restartFailed ? 'the engine stopped on this document, and a fresh one could not start after it' : 'the engine stopped on this document';
+  }
   if (outcome.unsupported) {
     return outcome.unsupported;
   }
@@ -580,12 +765,20 @@ export function brokenRule(outcome) {
 }
 
 /**
+ * Whether the extension ran another engine than TeX Live for a document: a LuaLaTeX request on XeTeX, or the DVI
+ * route (`latex`) on pdfLaTeX. `ours`: the engine the extension ran; `reference`: TeX Live's outcome.
+ */
+export function engineSwapped(ours, reference) {
+  return Boolean(ours && reference?.engine && ours !== reference.engine);
+}
+
+/**
  * Whether a compile of ours compiles, against the reference: { compiles, why }. Both sides are held to rules 1 and
  * 2 (brokenRule); a document whose reference breaks one is left out (compiles: null): with a missing file it is
  * broken as submitted, else it does not compile on TeX Live either. Rule 3 then compares the page counts. Either
  * side may be null when it was not measured; the report gives the reason (assemble).
  */
-export function judge(ours, reference, tolerance = 1) {
+export function judge(ours, reference, tolerance = 1, { swapped = false } = {}) {
   if (!ours) {
     return { compiles: null, why: 'not measured' };
   }
@@ -606,7 +799,37 @@ export function judge(ours, reference, tolerance = 1) {
   if (Math.abs(ours.pages - reference.pages) > tolerance) {
     return { compiles: false, why: `${ours.pages} page(s), TeX Live ${reference.pages}` };
   }
+  // Rule 4: on another engine than TeX Live's, no more TeX errors than TeX Live's log has (a package that does not
+  // work on that engine often stops with an error TeX recovers from, and the PDF lacks what it does).
+  if (swapped) {
+    if (typeof ours.errors !== 'number' || typeof reference.errors !== 'number') {
+      return { compiles: null, why: 'not measured: run on another engine than TeX Live, with no error count to compare' };
+    }
+    if (ours.errors > reference.errors) {
+      return { compiles: false, why: `${ours.errors} TeX error(s) on another engine than TeX Live's, which has ${reference.errors}` };
+    }
+  }
   return { compiles: true, why: 'compiles' };
+}
+
+/**
+ * One assembled document judged on both sides (assemble): { swapped, core, extra }, each side { compiles, why }. A
+ * document not measured is so on both sides; one whose compile with the add-on alone was rejected is not measured
+ * on that side only. The report and the bound on "not measured" both judge through this.
+ */
+export function judgeDocument(d, tolerance = 1) {
+  if (d.notMeasured) {
+    const out = { compiles: null, why: `not measured: ${d.notMeasured}` };
+    return { swapped: false, core: out, extra: out };
+  }
+  const swapped = engineSwapped(d.ourEngine, d.reference);
+  return {
+    swapped,
+    core: judge(d.core ?? null, d.reference ?? null, tolerance, { swapped }),
+    extra: d.extraNotMeasured
+      ? { compiles: null, why: `not measured: ${d.extraNotMeasured}` }
+      : judge(d.extra ?? d.core ?? null, d.reference ?? null, tolerance, { swapped }),
+  };
 }
 
 /** Whether the reference compile counts: it keeps rules 1 and 2. */
@@ -631,7 +854,7 @@ export function wilson(k, n, z = 1.96) {
   return { k, n, share: p, low: Math.max(0, centre - half), high: Math.min(1, centre + half) };
 }
 
-/** A share as "62.5 % (95 % interval 57.6 to 67.2 %, 300 of 480)". */
+/** A share as "62.5 % (95 % interval 58.1 to 66.7 %, 300 of 480)". */
 export function formatShare(s) {
   if (s.share === null) {
     return 'no documents';
@@ -655,7 +878,10 @@ export function assemble(sample, shards, results) {
   }
   const stopped = (file, side) => (file?.stopped ? `shard ${side}: ${file.stopped}` : `shard ${side}: the job stopped first`);
   const documents = sample.map((d) => {
-    const base = { key: d.key, kind: d.kind, stratum: d.stratum ?? null, shard: d.shard, engine: d.engine ?? null };
+    const base = { key: d.key, kind: d.kind, stratum: d.stratum ?? null, shard: d.shard, engine: d.engine ?? null, ...(d.pstricks ? { pstricks: true } : {}) };
+    if (d.unavailable) {
+      return { ...base, notMeasured: `its documentation archive could not be fetched (${d.unavailable})` };
+    }
     const r = results[d.shard];
     if (!r) {
       return { ...base, notMeasured: `shard ${d.shard} returned no results` };
@@ -667,12 +893,36 @@ export function assemble(sample, shards, results) {
     if (!(r.shard?.documents ?? []).some((x) => x.key === d.key)) {
       return { ...base, notMeasured: `it is missing from shard ${d.shard}'s list` };
     }
-    const o = r.ours?.documents?.[d.key];
+    // A document whose side recorded only that it started: its process stopped during it, which counts as a failure.
+    const crashed = (x) => ({ engine: x.engine ?? base.engine, pdf: false, pages: null, fatal: true, timedOut: false, missing: [], crashed: true });
+    const ours = r.ours?.documents?.[d.key];
+    const o = ours?.started && !ours.core ? { engine: ours.engine, core: crashed(ours), missingCore: [] } : ours;
+    // A compile the engine service rejected says nothing about the document: the shard's engine stopped working.
+    if (o?.rejected) {
+      return { ...base, notMeasured: `the engine rejected its compile (${o.rejected})` };
+    }
+    // Only the compile with the add-on was rejected: the core result stands; only the add-on side is not measured.
+    const extraNotMeasured = o?.extraRejected ? { extraNotMeasured: `the engine rejected its compile with the add-on (${o.extraRejected})` } : {};
     if (!o) {
       return { ...base, notMeasured: r.ours ? `the extension's side did not reach it (${stopped(r.ours, d.shard)})` : `shard ${d.shard} has no results on the extension's side` };
     }
-    const ref = r.reference?.documents?.[d.key];
-    const entry = { ...base, engine: ref?.engine ?? o.engine ?? base.engine, core: o.core, extra: o.extra ?? o.core, missingCore: o.missingCore ?? [], blocked: o.blocked ?? [] };
+    const theirs = r.reference?.documents?.[d.key];
+    const entry = {
+      ...base,
+      ...extraNotMeasured,
+      engine: theirs?.engine ?? o.engine ?? base.engine,
+      ourEngine: o.engine ?? null,
+      core: o.core,
+      extra: o.extraRejected ? null : (o.extra ?? o.core),
+      missingCore: o.missingCore ?? [],
+      blocked: o.blocked ?? [],
+    };
+    // The reference's process stopped during it: that is the runner's stop, not TeX Live's, so it is not measured
+    // (inside the bound on what is not measured), never left out.
+    if (theirs?.started && theirs.pdf === undefined) {
+      return { ...entry, reference: null, notMeasured: `TeX Live's process stopped during it (shard ${d.shard})` };
+    }
+    const ref = theirs;
     if (!ref) {
       const failed = r.reference?.unmeasured?.[d.key];
       const why = failed ? `TeX Live could not be run on it (${failed})` : r.reference ? `TeX Live did not reach it (${stopped(r.reference, d.shard)})` : `shard ${d.shard} has no results on TeX Live`;
@@ -683,29 +933,161 @@ export function assemble(sample, shards, results) {
   return { documents, missingShards };
 }
 
+/**
+ * The bound on what was not measured: for each part (kind), [{ key, what, ok, got }] with ok when at most `limit`
+ * (a share, 0.05 for 5 %) of its documents are not measured. Past it the run is not valid (docs/coverage-method.md).
+ */
+export function measuredChecks(documents, kinds, limit, tolerance = 1) {
+  // A document both sides measured that the rules still cannot judge (rule 4 without both error counts) is not
+  // measured too, and counts in the bound like every other cause.
+  const unjudged = (d, which) => !d.notMeasured && Boolean(d.core) && Boolean(d.reference) && judgeDocument(d, tolerance)[which].why.startsWith('not measured');
+  return kinds.map((kind) => {
+    const docs = documents.filter((d) => d.kind === kind);
+    // The core side, and the add-on side (a document whose compile with the add-on alone was rejected).
+    const missing = docs.filter((d) => d.notMeasured || unjudged(d, 'core')).length;
+    const missingExtra = docs.filter((d) => d.notMeasured || d.extraNotMeasured || unjudged(d, 'extra')).length;
+    const share = docs.length ? missing / docs.length : 0;
+    const shareExtra = docs.length ? missingExtra / docs.length : 0;
+    return {
+      key: `measured-${kind}`,
+      what: `at most ${(100 * limit).toFixed(0)} % of the ${kind} documents are not measured, with core alone and with the add-on`,
+      ok: docs.length > 0 && share <= limit && shareExtra <= limit,
+      got: `${missing} of ${docs.length} (${(100 * share).toFixed(1)} %) not measured; with the add-on ${missingExtra} (${(100 * shareExtra).toFixed(1)} %)`,
+    };
+  });
+}
+
+/**
+ * The bounds on what TeX Live leaves out: for each part, ok when at most `limits.fails` of its measured documents do
+ * not compile on TeX Live either, and at most `limits.broken` are broken as submitted (a file missing on TeX Live
+ * too). These are TeX Live's own documents on all of TeX Live, so past either bound the reference, not the
+ * documents, is in doubt (docs/coverage-method.md). The two kinds are told apart as judge() tells them apart.
+ */
+export function texLiveChecks(documents, kinds, limits) {
+  return kinds.flatMap((kind) => {
+    const measured = documents.filter((d) => d.kind === kind && !d.notMeasured && d.reference);
+    const why = measured.map((d) => brokenRule(d.reference)).filter((w) => w !== null);
+    const broken = why.filter((w) => w.startsWith('missing ')).length;
+    const fails = why.length - broken;
+    const share = (k) => (measured.length ? k / measured.length : 0);
+    const got = (k) => `${k} of ${measured.length} (${(100 * share(k)).toFixed(1)} %)`;
+    return [
+      {
+        key: `tex-live-${kind}`,
+        what: `at most ${(100 * limits.fails).toFixed(0)} % of the measured ${kind} documents do not compile on TeX Live either`,
+        ok: measured.length > 0 && share(fails) <= limits.fails,
+        got: got(fails),
+      },
+      {
+        key: `broken-${kind}`,
+        what: `at most ${(100 * limits.broken).toFixed(0)} % of the measured ${kind} documents are broken as submitted (a file missing on TeX Live too)`,
+        ok: measured.length > 0 && share(broken) <= limits.broken,
+        got: got(broken),
+      },
+    ];
+  });
+}
+
+/** P(X >= k) for X binomial with n trials and probability p: the upper tail, summed term by term. */
+export function binomialTail(n, k, p) {
+  if (k <= 0) {
+    return 1;
+  }
+  if (k > n) {
+    return 0;
+  }
+  let term = (1 - p) ** n;
+  let tail = 0;
+  for (let x = 0; x <= n; x++) {
+    if (x >= k) {
+      tail += term;
+    }
+    term *= ((n - x) / (x + 1)) * (p / (1 - p));
+  }
+  return Math.min(1, tail);
+}
+
+/**
+ * The shards' check on what TeX Live leaves out (failing on TeX Live too, or broken as submitted). The shards share
+ * the documents in hash order, so left-out documents fall on them by chance alone. For each shard: the chance of
+ * leaving out at least as many of its measured documents as it did, at the other shards' rate (one more left out
+ * and one more kept are added to that rate, so it is never 0 or 1). A shard fails when that chance is below `alpha`,
+ * so a TeX Live that lacks part of its tree in one shard cannot leave that shard's documents out quietly
+ * (docs/coverage-method.md). With one shard there is nothing to compare, and no check.
+ */
+export function leftOutShardChecks(documents, kinds, alpha) {
+  const measured = documents.filter((d) => kinds.includes(d.kind) && !d.notMeasured && d.reference && typeof d.shard === 'number');
+  const shards = [...new Set(measured.map((d) => d.shard))].sort((a, b) => a - b);
+  if (shards.length < 2) {
+    return [];
+  }
+  const out = (d) => brokenRule(d.reference) !== null;
+  return shards.map((s) => {
+    const mine = measured.filter((d) => d.shard === s);
+    const rest = measured.filter((d) => d.shard !== s);
+    const k = mine.filter(out).length;
+    const kRest = rest.filter(out).length;
+    const chance = binomialTail(mine.length, k, (kRest + 1) / (rest.length + 2));
+    return {
+      key: `left-out-shard-${s}`,
+      what: `TeX Live left out no more of this shard's documents than chance gives at the other shards' rate (a chance of at least ${alpha})`,
+      ok: chance >= alpha,
+      got: `${k} of ${mine.length} left out; the other shards ${kRest} of ${rest.length}; chance ${chance.toPrecision(2)}`,
+    };
+  });
+}
+
+/** The engines every canary record must hold: the two the extension has. */
+export const CANARY_ENGINES = ['pdflatex', 'xelatex'];
+
+/**
+ * The canaries: a known-good document for each of those engines, compiled with core-data alone on the extension's
+ * side and on TeX Live, before a shard's documents and after them. Written by the project; CC0.
+ */
+export const CANARY_DOCUMENTS = {
+  pdflatex: '\\documentclass{article}\n\\begin{document}\nThe canary: the engine works.\n\\end{document}\n',
+  xelatex: '\\documentclass{article}\n\\usepackage{fontspec}\n\\begin{document}\nThe canary: XeLaTeX and its fonts work (\u00e9, \u00fc, \u00df).\n\\end{document}\n',
+};
+
+/**
+ * The canary check of every shard: the extension's engine compiled its known-good documents (a pdfLaTeX one and a
+ * XeLaTeX one) before the shard's documents and after them. `shards`: [{ index, canary }] from ours.json, or from
+ * reference.json with `side` 'tex-live' (the same documents on TeX Live).
+ */
+export function canaryChecks(shards, side = 'extension') {
+  return shards.map((s) => {
+    const when = ['before', 'after'].map((w) => [w, s.canary?.[w] ?? null]);
+    // Both engines must be there and have passed: a record that lists no engine, or one, fails.
+    const bad = when.flatMap(([w, c]) => (c ? CANARY_ENGINES.filter((engine) => c[engine] !== true).map((engine) => `${engine} ${w}`) : [`none ${w}`]));
+    return {
+      key: side === 'tex-live' ? `canary-tex-live-shard-${s.index}` : `canary-shard-${s.index}`,
+      what: `${side === 'tex-live' ? 'TeX Live' : "the extension's engine"} compiled the known-good documents before and after this shard's documents`,
+      ok: bad.length === 0,
+      got: bad.length === 0 ? 'pdflatex and xelatex, before and after' : `failed: ${bad.join(', ')}`,
+    };
+  });
+}
+
+/** Whether a TeX text loads PSTricks (pstricks or a pst-* package), outside comments: such a file wants the DVI route. */
+export function loadsPstricks(text) {
+  return /\\(?:usepackage|RequirePackage)\s*(?:\[[^\]]*\])?\s*\{[^}]*\b(?:pstricks|pst-[\w-]+)\b/.test(withoutComments(text));
+}
+
 /** What a left-out document's reason says: 'not measured', 'broken as submitted' or 'fails on TeX Live'. */
 export function leftOutAs(why) {
   return why.startsWith('not measured') ? 'not measured' : why.startsWith('broken as submitted') ? 'broken as submitted' : 'fails on TeX Live';
 }
 
 /**
- * The report from the documents (assemble): [{ key, kind ('paper' | 'thesis' | 'beamer'), stratum, engine, core,
- * extra, reference, missingCore: [{ file, package, inExtra }], notMeasured? }]; `frame`: { strata: { id: { window,
- * eligible } } }. Returns the shares, the per-stratum table (with what was left out), the engines, the reweighted
- * sensitivity figure, the top missing packages and every document's outcome.
+ * The report from the documents (assemble): [{ key, kind, stratum, engine, core, extra, reference, missingCore:
+ * [{ file, package, inExtra }], notMeasured? }]; `frame`: { strata: { id: { window, eligible } } }; `mainKind`: the
+ * kind the strata belong to ('paper' in the arXiv frame, 'example' in the frame without arXiv). Returns the shares
+ * of every kind (`kinds`; `papers` is the main kind's), the per-stratum table (with what was left out), the engines,
+ * the reweighted sensitivity figure, the top missing packages (from every kind but the probes) and every
+ * document's outcome.
  */
-export function buildReport(documents, frame = { strata: {} }, tolerance = 1) {
-  const judged = documents.map((d) => {
-    if (d.notMeasured) {
-      const out = { compiles: null, why: `not measured: ${d.notMeasured}` };
-      return { ...d, core: out, extra: out };
-    }
-    return {
-      ...d,
-      core: judge(d.core ?? null, d.reference ?? null, tolerance),
-      extra: judge(d.extra ?? d.core ?? null, d.reference ?? null, tolerance),
-    };
-  });
+export function buildReport(documents, frame = { strata: {} }, tolerance = 1, mainKind = 'paper') {
+  const judged = documents.map((d) => ({ ...d, ...judgeDocument(d, tolerance) }));
   const share = (docs, which) => {
     const counted = docs.filter((d) => d[which].compiles !== null);
     return wilson(counted.filter((d) => d[which].compiles).length, counted.length);
@@ -717,7 +1099,7 @@ export function buildReport(documents, frame = { strata: {} }, tolerance = 1) {
     }
     return counts;
   };
-  const papers = judged.filter((d) => d.kind === 'paper');
+  const papers = judged.filter((d) => d.kind === mainKind);
   const strata = {};
   for (const id of [...new Set([...Object.keys(frame.strata ?? {}), ...papers.map((d) => d.stratum)])].sort()) {
     const docs = papers.filter((d) => d.stratum === id);
@@ -730,6 +1112,19 @@ export function buildReport(documents, frame = { strata: {} }, tolerance = 1) {
       extra: share(docs, 'extra'),
     };
   }
+  // The stratified share of the main kind: each stratum's share weighted by its documents in the frame ("eligible"),
+  // over the strata that have a counted document; beside the pooled share, which weights by counted documents.
+  const stratified = (which) => {
+    let weight = 0;
+    let sum = 0;
+    for (const s of Object.values(strata)) {
+      if (s.eligible && s[which].share !== null) {
+        weight += s.eligible;
+        sum += s.eligible * s[which].share;
+      }
+    }
+    return weight > 0 ? sum / weight : null;
+  };
   const engines = {};
   for (const d of papers) {
     const e = (engines[d.engine ?? 'not known'] ??= { papers: 0, leftOut: 0 });
@@ -749,7 +1144,7 @@ export function buildReport(documents, frame = { strata: {} }, tolerance = 1) {
     return weight > 0 ? sum / weight : null;
   };
   const missing = new Map();
-  for (const d of papers.filter((x) => x.core.compiles === false)) {
+  for (const d of judged.filter((x) => x.kind !== 'probe' && x.core.compiles === false)) {
     for (const m of d.missingCore ?? []) {
       const entry = missing.get(m.package) ?? { package: m.package, documents: 0, inExtra: m.inExtra, files: new Set() };
       entry.documents++;
@@ -767,6 +1162,38 @@ export function buildReport(documents, frame = { strata: {} }, tolerance = 1) {
       // A sensitivity figure for the CI report only (docs/coverage-method.md, Statistics), not for the README.
       reweighted: { core: reweighted('core'), extra: reweighted('extra') },
     },
+    main: mainKind,
+    stratified: { core: stratified('core'), extra: stratified('extra') },
+    kinds: Object.fromEntries(
+      [...new Set(judged.map((d) => d.kind))].map((k) => {
+        const docs = judged.filter((d) => d.kind === k);
+        // What the bound allows: each share again, with every document not measured counted as failing (the worst
+        // case) and as compiling (the best case), beside the share itself.
+        const notMeasured = (d, which) => d[which].compiles === null && d[which].why.startsWith('not measured');
+        const bound = (which, asCompiled) => {
+          const counted = docs.filter((d) => d[which].compiles !== null || notMeasured(d, which));
+          return wilson(counted.filter((d) => d[which].compiles === true || (asCompiled && notMeasured(d, which))).length, counted.length);
+        };
+        return [
+          k,
+          {
+            documents: docs.length,
+            core: share(docs, 'core'),
+            extra: share(docs, 'extra'),
+            leftOut: leftOut(docs),
+            worst: { core: bound('core', false), extra: bound('extra', false) },
+            best: { core: bound('core', true), extra: bound('extra', true) },
+            // Run on another engine than TeX Live's: how many, how many count as compiling with core alone, and how
+            // many fail only by rule 4 (more TeX errors than TeX Live's log).
+            swapped: {
+              documents: docs.filter((d) => d.swapped).length,
+              compiles: docs.filter((d) => d.swapped && d.core.compiles === true).length,
+              moreErrors: docs.filter((d) => d.swapped && d.core.compiles === false && / TeX error\(s\) on another engine/.test(d.core.why)).length,
+            },
+          },
+        ];
+      }),
+    ),
     thesis: { core: share(judged.filter((d) => d.kind === 'thesis'), 'core'), extra: share(judged.filter((d) => d.kind === 'thesis'), 'extra') },
     beamer: { core: share(judged.filter((d) => d.kind === 'beamer'), 'core'), extra: share(judged.filter((d) => d.kind === 'beamer'), 'extra') },
     strata,
@@ -776,6 +1203,15 @@ export function buildReport(documents, frame = { strata: {} }, tolerance = 1) {
       .sort((a, b) => b.documents - a.documents || (a.package < b.package ? -1 : 1)),
     excluded,
     blocked: judged.filter((d) => (d.blocked ?? []).length > 0).map((d) => ({ key: d.key, blocked: d.blocked })),
-    documents: judged.map((d) => ({ key: d.key, kind: d.kind, stratum: d.stratum ?? null, shard: d.shard ?? null, engine: d.engine ?? null, core: d.core.why, extra: d.extra.why })),
+    documents: judged.map((d) => ({
+      key: d.key,
+      kind: d.kind,
+      stratum: d.stratum ?? null,
+      shard: d.shard ?? null,
+      engine: d.engine ?? null,
+      ...(d.swapped ? { ranOn: d.ourEngine } : {}),
+      core: d.core.why,
+      extra: d.extra.why,
+    })),
   };
 }

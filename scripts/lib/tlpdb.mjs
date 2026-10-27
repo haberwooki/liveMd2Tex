@@ -10,8 +10,9 @@
  * @typedef {{ name: string, category: string, revision: number, depends: string[], executes: string[],
  *   runfiles: string[], runSize: number, containerSize: number, containerChecksum: string, license: string[],
  *   ctan: string, shortdesc: string, relocated: boolean, docfiles: string[], docContainerChecksum: string,
- *   docContainerSize: number, srcContainerChecksum: string, srcContainerSize: number }} TlPackage
- * docfiles and the doc and source archives' SHA-512 serve the data packages' licence files (scripts/lib/licence-texts.mjs).
+ *   docContainerSize: number, srcContainerChecksum: string, srcContainerSize: number, topics: string[] }} TlPackage
+ * docfiles and the doc and source archives' SHA-512 serve the data packages' licence files (scripts/lib/licence-texts.mjs);
+ * docfiles, the doc archives and the Catalogue topics also serve M5's frame without arXiv (scripts/lib/coverage.mjs).
  */
 
 /** Parses texlive.tlpdb text into packages by name. */
@@ -45,7 +46,7 @@ export function parseTlpdb(text) {
     const value = space < 0 ? '' : line.slice(space + 1);
     if (key === 'name') {
       finish();
-      pkg = { name: value, category: '', revision: 0, depends: [], executes: [], runfiles: [], runSize: 0, containerSize: 0, containerChecksum: '', license: [], ctan: '', shortdesc: '', relocated: false, docfiles: [], docContainerChecksum: '', docContainerSize: 0, srcContainerChecksum: '', srcContainerSize: 0 };
+      pkg = { name: value, category: '', revision: 0, depends: [], executes: [], runfiles: [], runSize: 0, containerSize: 0, containerChecksum: '', license: [], ctan: '', shortdesc: '', relocated: false, docfiles: [], docContainerChecksum: '', docContainerSize: 0, srcContainerChecksum: '', srcContainerSize: 0, topics: [] };
       continue;
     }
     if (!pkg) {
@@ -91,6 +92,9 @@ export function parseTlpdb(text) {
         break;
       case 'catalogue-license':
         pkg.license = value.split(/\s+/).filter(Boolean);
+        break;
+      case 'catalogue-topics':
+        pkg.topics = value.split(/\s+/).filter(Boolean);
         break;
       case 'catalogue-ctan':
         pkg.ctan = value;

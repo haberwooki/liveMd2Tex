@@ -16,7 +16,8 @@
 //     commit, not the same bytes: when only the bytes differ, the archive passes with a note and its new SHA-256;
 //   - TeXlyre's archive: its Makefile has the SHA-256 the manifest records, and the link lines the manifest copies.
 // A package of the extension itself (extension/dist/extension.js) must be released under the tag v<version>, its
-// package.json's version, and its README.md must give that tag's address, so its source pointer finds this tree.
+// package.json's version, and its README.md must name that tag of this repository as the source of the version, so
+// its source pointer finds this tree.
 // The tool starts no program and opens no connection: `list` writes a curl config and the commits for git, the
 // workflow's curl and git do the fetching, and `check` checks every file.
 //
@@ -38,7 +39,17 @@ const REPOSITORY = 'https://github.com/haberwooki/liveMd2Tex';
 /** A group or file name the tool accepts: a plain name, never a path. */
 const PLAIN = /^[A-Za-z0-9][A-Za-z0-9._+-]*$/;
 
-/** The address of a tag's tree, which README.md and THIRD_PARTY_NOTICES.md give as the source of this version. */
+/**
+ * How README.md and THIRD_PARTY_NOTICES.md name the source of this version: the tag of its version in this
+ * repository. They name the tag, not its tree's address, which opens only once the release has made the tag; the
+ * release's own page links the tree (sourceTree).
+ */
+export const sourceStatement = (tag) => `for this version, the tag \`${tag}\` of ${REPOSITORY}`;
+
+/** Whether a text (README.md, THIRD_PARTY_NOTICES.md) names a tag as the source, whatever its line breaks. */
+export const namesSource = (text, tag) => text.replace(/\s+/g, ' ').includes(sourceStatement(tag));
+
+/** The address of a tag's tree, for the release's own page. */
 export const sourceTree = (tag) => `${REPOSITORY}/tree/${tag}`;
 
 const sha = (algo, b) => createHash(algo).update(b).digest('hex');
@@ -83,8 +94,8 @@ export function releaseSources(packages, tag, engineNotices, bundlePins) {
       // vsce stores README.md as extension/readme.md.
       const readmeName = [...entries.keys()].find((n) => n.toLowerCase() === 'extension/readme.md');
       const readme = readmeName ? entries.get(readmeName).toString('utf8') : '';
-      if (!readme.includes(sourceTree(tag))) {
-        throw new Error(`${file}: README.md does not give ${sourceTree(tag)} as the source of this version`);
+      if (!namesSource(readme, tag)) {
+        throw new Error(`${file}: README.md does not name the tag ${tag} of ${REPOSITORY} as the source of this version`);
       }
     }
     if (entries.has('extension/dist/engine/busytex.wasm')) {

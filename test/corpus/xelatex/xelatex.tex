@@ -1,0 +1,16 @@
+% The XeLaTeX document of the public test corpus (docs/DESIGN.md#testing). Written by the project; dedicated to the
+% public domain (CC0 1.0). fontspec makes the extension choose XeLaTeX, so the coverage measurement's corpus check
+% covers the XeLaTeX path and its fonts on both sides (docs/coverage-method.md).
+\documentclass[11pt]{article}
+\usepackage{fontspec}
+\begin{document}
+\section{Unicode text}
+Thermal conductivity, written with the characters a Unicode engine reads directly: café, naïve, Straße, Ångström,
+and the en dash in 1–2.
+
+\section{A list}
+\begin{itemize}
+  \item The default fonts are Latin Modern's OpenType files.
+  \item Nothing here needs a font outside TeX Live.
+\end{itemize}
+\end{document}

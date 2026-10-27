@@ -18,8 +18,8 @@
 //     that ships) needs no holder of its own; one marked "anyHolder" (a licence that asks for no list of holders in
 //     a copy) covers any holder, and says why. These two hold only when their words start on the clause's own line.
 //     "unless" rules an own licence out when its pattern matches the clause's lines (the public-domain dedication's
-//     catches "not", "no longer", "never" and "no" up to 40 characters before "public domain"), and "files" limits
-//     it to some of the folder's files;
+//     catches "not", "n't", "no longer", "never" and "no" up to 40 characters before "public domain" in the same
+//     sentence, stopping at "." and ";"), and "files" limits it to some of the folder's files;
 //   - otherwise a rule must name the file: "notice" (a notice file that ships, which must be one of the folder's),
 //     "covered" (why the shipped notices cover it) or "skip" (why it is not compiled into the engine).
 // A file that is neither covered nor named, and a rule that names no flagged file, are problems. Known limits, which
