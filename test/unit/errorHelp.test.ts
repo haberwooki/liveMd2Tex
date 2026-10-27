@@ -6,6 +6,7 @@
 import * as assert from 'node:assert/strict';
 import { FONT_HELP_IDS, helpFor, HELP_IDS, problemMessage, withErrorHelp } from '../../src/extension/diagnostics/errorHelp';
 import { parseTexLog } from '../../src/extension/diagnostics/logParser';
+import { clockMessage, timeOf, withinClock } from '../support/clock';
 
 describe('plain-words help for TeX errors', () => {
   it('has twenty errors, each with its own id', () => {
@@ -130,11 +131,16 @@ describe('plain-words help for TeX errors', () => {
   });
 
   it('stays quick on a long message (it reads text from the document)', () => {
-    const long = `Undefined control sequence. (at: ${'x'.repeat(100000)}`;
-    const t0 = performance.now();
-    for (const m of [long, `Environment ${'a'.repeat(100000)}`, `Unicode character ${'b'.repeat(100000)}`]) {
-      helpFor(m);
-    }
-    assert.ok(performance.now() - t0 < 200);
+    const messages = (n: number) => [`Undefined control sequence. (at: ${'x'.repeat(n)}`, `Environment ${'a'.repeat(n)}`, `Unicode character ${'b'.repeat(n)}`];
+    // The reference: the same characters in 100 messages a hundredth as long. Help that reads a message in linear
+    // time takes about as long for both; a pattern that backtracks on a long message does not.
+    const short = messages(1000);
+    const reference = timeOf(() => {
+      for (let k = 0; k < 100; k++) {
+        short.forEach((m) => helpFor(m));
+      }
+    });
+    const elapsed = timeOf(() => messages(100000).forEach((m) => helpFor(m)));
+    assert.ok(withinClock(elapsed, 200, reference, 10), clockMessage('three 100 000-character messages', elapsed, 200, reference, 10));
   });
 });

@@ -8,6 +8,8 @@ import { convertMarkdown } from '../../src/converter/markdownToLatex';
 import { globMatches, MAX_GLOB_LENGTH } from '../../src/converter/preset/glob';
 import { MAX_DROP_LINES, MAX_ENTRIES, modeForFile, parsePresetFile, resolveMode, type PresetFile } from '../../src/converter/preset/load';
 import { compileSafePattern, MAX_STATES, MAX_TEXT_LENGTH, PATTERN_BUDGET, withPatternBudget, type SafePattern } from '../../src/converter/preset/safePattern';
+// The clock checks a busy machine cannot break: under the fixed limit, or within a multiple of a reference.
+import { timeOf, withinClock } from '../support/clock';
 
 const BS = '\\';
 
@@ -22,6 +24,19 @@ function largest(make: (n: number) => string): string {
     }
   }
   throw new Error('no size fits');
+}
+
+/** The time to spend one whole step budget: 20 unanchored patterns on 1,000 lines of 4,000 characters. */
+function fullBudgetMs(): number {
+  const patterns = Array.from({ length: MAX_DROP_LINES }, (_, k) => compileSafePattern(`zz${k}`));
+  const lines = Array.from({ length: 1000 }, () => 'a'.repeat(MAX_TEXT_LENGTH - 1));
+  return timeOf(() => {
+    withPatternBudget(() => {
+      for (const line of lines) {
+        patterns.some((p) => p.test(line));
+      }
+    });
+  });
 }
 
 /** Patterns at the caps that keep every automaton state alive on a line of "a": the matcher's worst case. */
@@ -46,11 +61,18 @@ describe('preset patterns are bounded', () => {
 
   it('matches a 14-star entry at once (233 s for 12 stars as a RegExp)', () => {
     const preset = { name: 'p', modes: { a: { entry: `${'*'.repeat(14)}#` }, b: { entry: '*.md' } } } as unknown as PresetFile;
-    const t0 = performance.now();
-    for (let k = 0; k < 100; k++) {
-      assert.equal(modeForFile(preset, 'notes-for-the-group-meeting.md'), 'b');
-    }
-    assert.ok(performance.now() - t0 < 100, `${Math.round(performance.now() - t0)} ms for 100 lookups`);
+    const plain = { name: 'p', modes: { b: { entry: '*.md' } } } as unknown as PresetFile;
+    const reference = timeOf(() => {
+      for (let k = 0; k < 100; k++) {
+        modeForFile(plain, 'notes-for-the-group-meeting.md');
+      }
+    });
+    const elapsed = timeOf(() => {
+      for (let k = 0; k < 100; k++) {
+        assert.equal(modeForFile(preset, 'notes-for-the-group-meeting.md'), 'b');
+      }
+    });
+    assert.ok(withinClock(elapsed, 100, reference, 200), `${Math.round(elapsed)} ms for 100 lookups (${reference.toFixed(2)} ms with one plain entry)`);
     assert.equal(globMatches('*'.repeat(MAX_GLOB_LENGTH + 1), 'a.md'), false);
   });
 
@@ -106,9 +128,11 @@ describe('preset patterns are bounded', () => {
     const resolved = resolveMode(preset as PresetFile, 'paper', { 'p.tex': `${BS}documentclass{article}` });
     assert.deepEqual(resolved.problems, []);
     const appendix = ['a'.repeat(1_000_000), ...Array.from({ length: 200 }, () => 'a'.repeat(MAX_TEXT_LENGTH - 1))].join('\n');
-    const t0 = performance.now();
-    const result = convertMarkdown('Body text.\n', { preset: resolved.mode, appendix });
-    const total = performance.now() - t0;
+    const reference = fullBudgetMs();
+    let result!: ReturnType<typeof convertMarkdown>;
+    const total = timeOf(() => {
+      result = convertMarkdown('Body text.\n', { preset: resolved.mode, appendix });
+    });
     const work = result.patternWork;
     assert.ok(work, 'no pattern work recorded');
     // The bound is the matcher's own step count, not the clock: the budget, plus what one character's work can add
@@ -116,8 +140,9 @@ describe('preset patterns are bounded', () => {
     assert.ok(work.steps <= PATTERN_BUDGET + 2 * MAX_STATES, `${work.steps} steps`);
     const codes = result.diagnostics.map((d) => d.code);
     assert.ok(codes.includes('preset-patterns') && codes.includes('preset-pattern-length'), codes.join(','));
-    // One generous sanity check on the clock, which a busy machine cannot break.
-    assert.ok(total < 2000, `${Math.round(total)} ms for the whole conversion`);
+    // One generous sanity check on the clock: the conversion costs about one step budget, so it takes under 2 s,
+    // or under 10 times one budget measured just before, under the same load.
+    assert.ok(withinClock(total, 2000, reference, 10), `${Math.round(total)} ms for the whole conversion (${Math.round(reference)} ms for one budget)`);
   });
 
   it('counts reading the text too: each character read is a step, so 20 patterns on 4 MB of long lines stay inside the budget', () => {
@@ -133,6 +158,7 @@ describe('preset patterns are bounded', () => {
     };
     const anchored = Array.from({ length: MAX_DROP_LINES }, (_, k) => compileSafePattern(`^x${k}`));
     const unanchored = Array.from({ length: MAX_DROP_LINES }, (_, k) => compileSafePattern(`zz${k}`));
+    const reference = fullBudgetMs();
     const t0 = performance.now();
 
     // An unanchored search reads every character, and each one costs steps: at least one, and here at most three
@@ -156,8 +182,10 @@ describe('preset patterns are bounded', () => {
     assert.equal(scan.exhausted, true);
     assert.equal(scan.steps, PATTERN_BUDGET);
 
-    // One generous sanity check on the clock, which a busy machine cannot break.
-    assert.ok(performance.now() - t0 < 2000, `${Math.round(performance.now() - t0)} ms`);
+    // One generous sanity check on the clock: about one budget of work here, so under 2 s, or under 10 times one
+    // budget measured just before, under the same load.
+    const elapsed = performance.now() - t0;
+    assert.ok(withinClock(elapsed, 2000, reference, 10), `${Math.round(elapsed)} ms (${Math.round(reference)} ms for one budget)`);
   });
 
   it('ordinary patterns on an ordinary appendix stay far inside the budget', () => {

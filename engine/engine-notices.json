@@ -1,0 +1,1921 @@
+{
+  "about": "The components of the TeX engine (dist/engine/busytex.wasm and busytex.js, TeXlyre's build 46ebb62), with each one's licence and the notice files that ship with it in dist/licenses (THIRD_PARTY_NOTICES.md, 'Inside the engine'). 'links' are the archives and objects TeXlyre's Makefile links for it; 'makefile' holds the link lines they come from, verbatim, and test/unit/engineNotices.test.ts checks that every one is a component's. 'files' pins each notice file under LICENSES/engine/ with its source. 'search' records the search of the linked libraries' sources for code by other authors (scripts/engine-notice-search.mjs). 'sources' is the engine's corresponding source, which the release workflow attaches to every release before it is published (.github/workflows/release-sources.yml).",
+  "build": {
+    "texlyre": {
+      "repository": "https://github.com/TeXlyre/texlyre-busytex-build",
+      "commit": "46ebb6216a5c1fe63dd1dc885831d1a8cef2dc86",
+      "release": "build_wasm_46ebb6216a5c1fe63dd1dc885831d1a8cef2dc86_31802832436_1"
+    },
+    "texLive": {
+      "tag": "texlive-2026.0",
+      "repository": "https://github.com/TeX-Live/texlive-source",
+      "commit": "f26cc5ed05a1f784d1e694fe5b9cfc3ce992c03d"
+    },
+    "emscripten": "5.0.4",
+    "patches": "engine/patches/busytex-glue.mjs and engine/patches/busytex.js.diff, at the release tag of https://github.com/haberwooki/liveMd2Tex"
+  },
+  "makefile": {
+    "url": "https://raw.githubusercontent.com/TeXlyre/texlyre-busytex-build/46ebb6216a5c1fe63dd1dc885831d1a8cef2dc86/Makefile",
+    "sha256": "26201f38673d387c72f3422fddd7d4ec4ff4c941acc17fae9020e3d49b9da0cd",
+    "lines": {
+      "77": "OBJ_LUAHBTEX  = luatexdir/luahbtex-luatex.o mplibdir/luahbtex-lmplib.o libluahbtexspecific.a libluaharfbuzz.a  libluaharfbuzzsubset.a  busytex_libluahbtex.a libff.a libluamisc.a libluasocket.a libluaffi.a libmplibcore.a libmputil.a libunilib.a libmd5.a lib/lib.a",
+      "78": "OBJ_LUATEX    = luatexdir/luatex-luatex.o   mplibdir/luatex-lmplib.o  libluatexspecific.a                     busytex_libluatex.a libff.a libluamisc.a libluasocket.a libluaffi.a libmplibcore.a libmputil.a libunilib.a libmd5.a lib/lib.a ",
+      "79": "OBJ_PDFTEX    = synctexdir/pdftex-synctex.o pdftex-pdftexini.o pdftex-pdftex0.o pdftex-pdftex-pool.o pdftexdir/pdftex-pdftexextra.o lib/lib.a libmd5.a busytex_libpdftex.a",
+      "80": "OBJ_XETEX     = synctexdir/xetex-synctex.o xetex-xetexini.o xetex-xetex0.o xetex-xetex-pool.o xetexdir/xetex-xetexextra.o lib/lib.a libmd5.a busytex_libxetex.a",
+      "81": "OBJ_DVIPDF    = texlive/texk/dvipdfm-x/busytex_xdvipdfmx.a",
+      "82": "OBJ_MAKEINDEX = texlive/texk/makeindexk/busytex_makeindex.a",
+      "83": "OBJ_BIBTEX    = texlive/texk/bibtex-x/busytex_bibtex8.a",
+      "84": "OBJ_KPATHSEA  = busytex_kpsewhich.o busytex_kpsestat.o busytex_kpseaccess.o busytex_kpsereadlink.o .libs/libkpathsea.a",
+      "86": "OBJ_DEPS      = $(addprefix texlive/libs/, harfbuzz/libharfbuzz.a graphite2/libgraphite2.a teckit/libTECkit.a libpng/libpng.a) fontconfig/src/.libs/libfontconfig.a $(addprefix texlive/libs/, freetype2/libfreetype.a pplib/libpplib.a zlib/libz.a zziplib/libzzip.a libpaper/libpaper.a icu/icu-build/lib/libicuuc.a icu/icu-build/lib/libicudata.a lua53/.libs/libtexlua53.a xpdf/libxpdf.a) texlive/texk/kpathsea/.libs/libkpathsea.a expat/libexpat.a",
+      "376": "\t$(CXX_$*) -o $@ $(basename $@).o build/$*/kpse_remote.o build/$*/font_index.o $(addprefix build/$*/texlive/texk/web2c/, $(OBJ_XETEX) $(OBJ_PDFTEX) $(OBJ_LUAHBTEX)) $(addprefix build/$*/, $(OBJ_BIBTEX) $(OBJ_DVIPDF) $(OBJ_DEPS) $(OBJ_MAKEINDEX))  $(addprefix build/$*/texlive/texk/kpathsea/, $(OBJ_KPATHSEA))   $(OPTS_BUSYTEX_LINK_$*)"
+    },
+    "linked": "the link line is 376; it links busytex.o, kpse_remote.o, font_index.o, OBJ_XETEX, OBJ_PDFTEX, OBJ_LUAHBTEX, OBJ_BIBTEX, OBJ_DVIPDF, OBJ_DEPS, OBJ_MAKEINDEX and OBJ_KPATHSEA (OBJ_LUATEX, line 78, is not on it)"
+  },
+  "search": {
+    "about": "The search of the linked libraries' compiled sources for licence clauses (the licence gates, F2-M1 to L5-01), an aid to reading, not a proof: scripts/engine-notice-search.mjs reads the four archives of 'sources' and checks every file below each folder for the patterns of 'clauses'. It guarantees that every clause matching a pattern, on one line or across two adjacent lines, is either covered by one of the folder's own licences that may cover that kind of clause ('own': the clause kinds it covers, its words, and the notice files that hold it; the notice files must name every holder on the copyright lines up to 25 lines above the clause, unless 'reference' or 'anyHolder' says otherwise, and those two hold only in their own words on the clause's own line), or its file is named by a rule a person wrote. Not seen, and so for the person's reading: words no pattern knows, a clause split over three lines or more, a holder more than 25 lines above its clause, a denial of a dedication in other words than the guard's, and a second author's grant of the same kind with no copyright line of its own. On every change of the engine pin, a person reads the new hits (--since engine/engine-notice-search.report.json, the recorded run) and the problems, and writes the rules, before a release (docs/DEVELOPING.md, 'When the engine pin changes').",
+    "run": "node scripts/engine-notice-search.mjs --archives DIR [--since engine/engine-notice-search.report.json] [--report FILE], with DIR holding the archives of 'sources' by their names",
+    "date": "2026-10-27",
+    "clauses": [
+      {
+        "id": "granted",
+        "pattern": "Permission\\s+is\\s+hereby\\s+granted"
+      },
+      {
+        "id": "redistribution",
+        "pattern": "Redistribution\\s+and\\s+use\\s+in\\s+source\\s+and\\s+binary"
+      },
+      {
+        "id": "permission-to-use",
+        "pattern": "Permission\\s+to\\s+use,\\s+copy,\\s+modify"
+      },
+      {
+        "id": "as-is",
+        "pattern": "provided\\s+'as-is'"
+      },
+      {
+        "id": "icu-license",
+        "pattern": "under\\s+the\\s+terms\\s+of\\s+the\\s+ICU\\s+License"
+      },
+      {
+        "id": "notice-appear",
+        "pattern": "permission\\s+notice\\s+appear"
+      },
+      {
+        "id": "released-under",
+        "pattern": "Released\\s+under"
+      },
+      {
+        "id": "licensed-under",
+        "pattern": "licen[cs]ed\\s+under"
+      },
+      {
+        "id": "distributed-under",
+        "pattern": "Distributed\\s+under"
+      },
+      {
+        "id": "governed-by",
+        "pattern": "governed\\s+by"
+      },
+      {
+        "id": "spdx",
+        "pattern": "SPDX-License-Identifier"
+      },
+      {
+        "id": "public-domain",
+        "pattern": "public\\s+domain"
+      },
+      {
+        "id": "boost",
+        "pattern": "Boost\\s+Software\\s+License"
+      },
+      {
+        "id": "terms-of-use",
+        "pattern": "terms\\s+of\\s+use"
+      },
+      {
+        "id": "see-notice",
+        "pattern": "See\\s+Copyright\\s+Notice\\s+in"
+      },
+      {
+        "id": "license-found-in",
+        "pattern": "licen[cs]e\\s+found\\s+in"
+      }
+    ],
+    "extensions": "\\.(c|cc|cpp|cxx|h|hh|hpp|w|ch|web|inc)$",
+    "window": 25,
+    "folders": [
+      {
+        "archive": "texlive-source-f26cc5e.tar.gz",
+        "path": "libs/harfbuzz/harfbuzz-src/src",
+        "components": [
+          "harfbuzz"
+        ],
+        "notices": [
+          "LICENSES/engine/HarfBuzz-COPYING.txt",
+          "LICENSES/engine/HarfBuzz-ucd-notice.txt",
+          "LICENSES/engine/HarfBuzz-fasthash-notice.txt",
+          "LICENSES/engine/HarfBuzz-base-notice.txt",
+          "LICENSES/ICU.txt"
+        ],
+        "own": [
+          {
+            "text": "Permission is hereby granted, without written agreement",
+            "notices": [
+              "LICENSES/engine/HarfBuzz-COPYING.txt",
+              "LICENSES/engine/HarfBuzz-base-notice.txt"
+            ],
+            "clauses": [
+              "granted"
+            ]
+          },
+          {
+            "text": "unicode.org/terms_of_use",
+            "notices": [
+              "LICENSES/ICU.txt"
+            ],
+            "clauses": [
+              "terms-of-use"
+            ]
+          }
+        ],
+        "rules": [
+          {
+            "files": [
+              "hb-ucd.cc"
+            ],
+            "notice": "LICENSES/engine/HarfBuzz-ucd-notice.txt"
+          },
+          {
+            "files": [
+              "hb-algs.hh"
+            ],
+            "notice": "LICENSES/engine/HarfBuzz-fasthash-notice.txt"
+          },
+          {
+            "files": [
+              "test-*.cc",
+              "failing-alloc.c"
+            ],
+            "skip": "a test program, not in libharfbuzz.a"
+          },
+          {
+            "files": [
+              "hb-alloc-pool.hh",
+              "hb-bit-vector.hh",
+              "hb-directwrite-shape.cc",
+              "hb-directwrite.hh",
+              "hb-fontations.h",
+              "hb-harfrust.cc",
+              "hb-kbts.cc"
+            ],
+            "covered": "HarfBuzz's Old MIT licence with no copyright line of the file's own; HarfBuzz-COPYING.txt holds the licence"
+          },
+          {
+            "files": [
+              "hb-cairo-utils.cc"
+            ],
+            "skip": "HarfBuzz's cairo integration, which TeX Live's build (harfbuzz.cc and the subset files) does not compile"
+          }
+        ]
+      },
+      {
+        "archive": "texlive-source-f26cc5e.tar.gz",
+        "path": "libs/freetype2/freetype-src/src",
+        "components": [
+          "freetype",
+          "harfbuzz",
+          "zlib"
+        ],
+        "notices": [
+          "LICENSES/engine/FreeType-LICENSE.txt",
+          "LICENSES/engine/FreeType-bdf-notice.txt",
+          "LICENSES/engine/FreeType-fthash-notice.txt",
+          "LICENSES/engine/FreeType-pcf-notice.txt",
+          "LICENSES/engine/FreeType-pcfutil-notice.txt",
+          "LICENSES/engine/HarfBuzz-COPYING.txt",
+          "LICENSES/engine/zlib-LICENSE.txt"
+        ],
+        "own": [
+          {
+            "text": "FreeType project license",
+            "notices": [
+              "LICENSES/engine/FreeType-LICENSE.txt",
+              "LICENSES/engine/FreeType-FTL.txt"
+            ],
+            "anyHolder": true,
+            "why": "FreeType's own licence, taken here under its GPL option (GPL-2.0-or-later), which asks for no list of holders in a binary; FreeType's LICENSE.TXT and FTL.TXT ship",
+            "clauses": [
+              "distributed-under"
+            ]
+          },
+          {
+            "text": "see copyright notice in zlib.h",
+            "notices": [
+              "LICENSES/engine/zlib-LICENSE.txt"
+            ],
+            "reference": true,
+            "clauses": [
+              "see-notice"
+            ]
+          }
+        ],
+        "rules": [
+          {
+            "files": [
+              "bdf/*"
+            ],
+            "notice": "LICENSES/engine/FreeType-bdf-notice.txt"
+          },
+          {
+            "files": [
+              "base/fthash.c"
+            ],
+            "notice": "LICENSES/engine/FreeType-fthash-notice.txt"
+          },
+          {
+            "files": [
+              "pcf/pcfutil.c"
+            ],
+            "notice": "LICENSES/engine/FreeType-pcfutil-notice.txt"
+          },
+          {
+            "files": [
+              "pcf/*"
+            ],
+            "notice": "LICENSES/engine/FreeType-pcf-notice.txt"
+          },
+          {
+            "files": [
+              "base/md5.c",
+              "base/md5.h"
+            ],
+            "covered": "Alexander Peslyak's MD5 code: dedicated to the public domain, and otherwise 'Redistribution and use in source and binary forms, with or without modification, are permitted', with no notice condition"
+          },
+          {
+            "files": [
+              "autofit/ft-hb-*",
+              "autofit/hb-script-list.h"
+            ],
+            "covered": "HarfBuzz's own code under its Old MIT licence, with holders that HarfBuzz-COPYING.txt names (Red Hat, Google)"
+          },
+          {
+            "files": [
+              "gzip/zlib.h"
+            ],
+            "covered": "zlib's header, the same notice as zlib-LICENSE.txt"
+          },
+          {
+            "files": [
+              "tools/**"
+            ],
+            "skip": "FreeType's tools, not in libfreetype.a"
+          },
+          {
+            "files": [
+              "dlg/*"
+            ],
+            "skip": "dlg, FreeType's debug logging (Boost Software License), compiled only with FT_DEBUG_LOGGING, which a release build leaves out"
+          }
+        ]
+      },
+      {
+        "archive": "texlive-source-f26cc5e.tar.gz",
+        "path": "libs/freetype2/freetype-src/include",
+        "components": [
+          "freetype"
+        ],
+        "notices": [
+          "LICENSES/engine/FreeType-LICENSE.txt",
+          "LICENSES/engine/FreeType-fthash-notice.txt",
+          "LICENSES/engine/FreeType-FTL.txt"
+        ],
+        "own": [
+          {
+            "text": "FreeType project license",
+            "notices": [
+              "LICENSES/engine/FreeType-LICENSE.txt",
+              "LICENSES/engine/FreeType-FTL.txt"
+            ],
+            "anyHolder": true,
+            "why": "FreeType's own licence, taken here under its GPL option (GPL-2.0-or-later), which asks for no list of holders in a binary; FreeType's LICENSE.TXT and FTL.TXT ship",
+            "clauses": [
+              "distributed-under"
+            ]
+          }
+        ],
+        "rules": [
+          {
+            "files": [
+              "freetype/internal/fthash.h"
+            ],
+            "notice": "LICENSES/engine/FreeType-fthash-notice.txt"
+          },
+          {
+            "files": [
+              "dlg/*"
+            ],
+            "skip": "dlg, FreeType's debug logging (Boost Software License), compiled only with FT_DEBUG_LOGGING, which a release build leaves out"
+          },
+          {
+            "files": [
+              "freetype/ftmodapi.h"
+            ],
+            "covered": "no licence: a note that the TrueType bytecode interpreter 'was governed by patents until May 2010'"
+          }
+        ]
+      },
+      {
+        "archive": "texlive-source-f26cc5e.tar.gz",
+        "path": "libs/pplib/pplib-src/src",
+        "components": [
+          "pplib"
+        ],
+        "notices": [
+          "LICENSES/engine/pplib-utilsha-notice.txt",
+          "LICENSES/engine/pplib-utilmd5-notice.txt"
+        ],
+        "own": [],
+        "rules": [
+          {
+            "files": [
+              "util/utilsha.c"
+            ],
+            "notice": "LICENSES/engine/pplib-utilsha-notice.txt"
+          },
+          {
+            "files": [
+              "util/utilmd5.c"
+            ],
+            "notice": "LICENSES/engine/pplib-utilmd5-notice.txt"
+          }
+        ]
+      },
+      {
+        "archive": "texlive-source-f26cc5e.tar.gz",
+        "path": "libs/zlib/zlib-src",
+        "components": [
+          "zlib"
+        ],
+        "notices": [
+          "LICENSES/engine/zlib-LICENSE.txt"
+        ],
+        "own": [
+          {
+            "text": "This software is provided 'as-is'",
+            "notices": [
+              "LICENSES/engine/zlib-LICENSE.txt"
+            ],
+            "clauses": [
+              "as-is"
+            ]
+          },
+          {
+            "text": "see copyright notice in zlib.h",
+            "notices": [
+              "LICENSES/engine/zlib-LICENSE.txt"
+            ],
+            "reference": true,
+            "clauses": [
+              "see-notice"
+            ]
+          }
+        ],
+        "rules": [
+          {
+            "files": [
+              "contrib/**",
+              "examples/**",
+              "test/**"
+            ],
+            "skip": "zlib's contributed code and examples, not in libz.a"
+          }
+        ]
+      },
+      {
+        "archive": "texlive-source-f26cc5e.tar.gz",
+        "path": "libs/lua53/lua53-src/src",
+        "components": [
+          "lua"
+        ],
+        "notices": [
+          "LICENSES/engine/Lua-notice.txt"
+        ],
+        "own": [
+          {
+            "text": "Permission is hereby granted, free of charge",
+            "notices": [
+              "LICENSES/engine/Lua-notice.txt"
+            ],
+            "clauses": [
+              "granted"
+            ]
+          },
+          {
+            "text": "See Copyright Notice in lua.h",
+            "notices": [
+              "LICENSES/engine/Lua-notice.txt"
+            ],
+            "reference": true,
+            "clauses": [
+              "see-notice"
+            ]
+          }
+        ],
+        "rules": []
+      },
+      {
+        "archive": "texlive-source-f26cc5e.tar.gz",
+        "path": "libs/libpng/libpng-src",
+        "components": [
+          "libpng"
+        ],
+        "notices": [
+          "LICENSES/engine/libpng-LICENSE.txt"
+        ],
+        "own": [
+          {
+            "text": "Permission is hereby granted to use, copy, modify, and distribute",
+            "notices": [
+              "LICENSES/engine/libpng-LICENSE.txt"
+            ],
+            "clauses": [
+              "granted"
+            ]
+          },
+          {
+            "text": "released under the libpng license",
+            "notices": [
+              "LICENSES/engine/libpng-LICENSE.txt"
+            ],
+            "anyHolder": true,
+            "why": "libpng's own licence, whose one notice condition is for source copies ('may not be removed or altered from any source or altered source distribution'); its LICENSE ships",
+            "clauses": [
+              "released-under"
+            ]
+          }
+        ],
+        "rules": [
+          {
+            "files": [
+              "contrib/**"
+            ],
+            "skip": "libpng's contributed programs, not in libpng.a"
+          },
+          {
+            "files": [
+              "example.c"
+            ],
+            "skip": "libpng's example program, not in libpng.a"
+          },
+          {
+            "files": [
+              "png.h"
+            ],
+            "covered": "libpng's own notice (libpng-LICENSE.txt holds it), which says that some files in contrib/ and some configure-generated files are under other licences; none of those is in libpng.a"
+          }
+        ]
+      },
+      {
+        "archive": "texlive-source-f26cc5e.tar.gz",
+        "path": "libs/zziplib/zziplib-src/zzip",
+        "components": [
+          "zziplib"
+        ],
+        "notices": [
+          "LICENSES/engine/zziplib-README-COPYING.txt"
+        ],
+        "own": [
+          {
+            "notices": [],
+            "anyHolder": true,
+            "why": "a public-domain dedication (\"... is in the public domain.\", \"placed in the public domain\", \"public domain software\"), which asks nothing of a copy. A sentence with \"not\", \"no longer\", \"never\" or \"no\" up to 40 characters before \"public domain\" is not taken as one; a denial in other words is a known limit",
+            "pattern": "public\\s+domain\\s*[.;(]|\\b(?:released|put|placed|dedicated)\\s+(?:explicit(?:e)?ly\\s+)?(?:in(?:to)?|to)\\s+(?:the\\s+)?public\\s+domain|\\bpublic\\s+domain\\s+(?:software|program)\\b",
+            "unless": "(?:\\bnot\\b|n't\\b|\\bno\\b|\\bnever\\b)[^.;]{0,40}public\\s+domain",
+            "clauses": [
+              "public-domain"
+            ]
+          }
+        ],
+        "rules": []
+      },
+      {
+        "archive": "texlive-source-f26cc5e.tar.gz",
+        "path": "libs/teckit/TECkit-src/source",
+        "components": [
+          "teckit"
+        ],
+        "notices": [
+          "LICENSES/engine/TECkit-LICENSING.txt"
+        ],
+        "own": [],
+        "rules": []
+      },
+      {
+        "archive": "texlive-source-f26cc5e.tar.gz",
+        "path": "libs/graphite2/graphite2-src/src",
+        "components": [
+          "graphite2"
+        ],
+        "notices": [
+          "LICENSES/engine/graphite2-COPYING.txt"
+        ],
+        "own": [],
+        "rules": []
+      },
+      {
+        "archive": "texlive-source-f26cc5e.tar.gz",
+        "path": "libs/icu/icu-src/source/common",
+        "components": [
+          "icu"
+        ],
+        "notices": [
+          "LICENSES/ICU.txt"
+        ],
+        "own": [
+          {
+            "text": "License & terms of use: http://www.unicode.org/copyright.html",
+            "notices": [
+              "LICENSES/ICU.txt"
+            ],
+            "reference": true,
+            "clauses": [
+              "terms-of-use"
+            ]
+          },
+          {
+            "text": "License & terms of use: https://www.unicode.org/copyright.html",
+            "notices": [
+              "LICENSES/ICU.txt"
+            ],
+            "reference": true,
+            "clauses": [
+              "terms-of-use"
+            ]
+          }
+        ],
+        "rules": [
+          {
+            "files": [
+              "punycode.cpp"
+            ],
+            "covered": "Adam M. Costello's Punycode code from RFC 3492, with ICU's own notice: anyone may use, modify and distribute it, provided derivative works carry no misleading author or version information; it asks for no notice"
+          }
+        ]
+      },
+      {
+        "archive": "texlive-source-f26cc5e.tar.gz",
+        "path": "libs/icu/icu-src/source/stubdata",
+        "components": [
+          "icu"
+        ],
+        "notices": [
+          "LICENSES/ICU.txt"
+        ],
+        "own": [
+          {
+            "text": "License & terms of use: http://www.unicode.org/copyright.html",
+            "notices": [
+              "LICENSES/ICU.txt"
+            ],
+            "reference": true,
+            "clauses": [
+              "terms-of-use"
+            ]
+          },
+          {
+            "text": "License & terms of use: https://www.unicode.org/copyright.html",
+            "notices": [
+              "LICENSES/ICU.txt"
+            ],
+            "reference": true,
+            "clauses": [
+              "terms-of-use"
+            ]
+          }
+        ],
+        "rules": []
+      },
+      {
+        "archive": "texlive-source-f26cc5e.tar.gz",
+        "path": "libs/xpdf/xpdf-src",
+        "components": [
+          "xpdf"
+        ],
+        "notices": [
+          "LICENSES/engine/xpdf-README.txt"
+        ],
+        "own": [],
+        "rules": []
+      },
+      {
+        "archive": "texlive-source-f26cc5e.tar.gz",
+        "path": "texk/kpathsea",
+        "components": [
+          "kpathsea"
+        ],
+        "notices": [
+          "LICENSES/LGPL-2.1.txt"
+        ],
+        "own": [
+          {
+            "notices": [],
+            "anyHolder": true,
+            "why": "a public-domain dedication (\"... is in the public domain.\", \"placed in the public domain\", \"public domain software\"), which asks nothing of a copy. A sentence with \"not\", \"no longer\", \"never\" or \"no\" up to 40 characters before \"public domain\" is not taken as one; a denial in other words is a known limit",
+            "pattern": "public\\s+domain\\s*[.;(]|\\b(?:released|put|placed|dedicated)\\s+(?:explicit(?:e)?ly\\s+)?(?:in(?:to)?|to)\\s+(?:the\\s+)?public\\s+domain|\\bpublic\\s+domain\\s+(?:software|program)\\b",
+            "unless": "(?:\\bnot\\b|n't\\b|\\bno\\b|\\bnever\\b)[^.;]{0,40}public\\s+domain",
+            "clauses": [
+              "public-domain"
+            ]
+          }
+        ],
+        "rules": []
+      },
+      {
+        "archive": "texlive-source-f26cc5e.tar.gz",
+        "path": "texk/web2c/lib",
+        "components": [
+          "web2c"
+        ],
+        "notices": [],
+        "own": [
+          {
+            "notices": [],
+            "anyHolder": true,
+            "why": "a public-domain dedication (\"... is in the public domain.\", \"placed in the public domain\", \"public domain software\"), which asks nothing of a copy. A sentence with \"not\", \"no longer\", \"never\" or \"no\" up to 40 characters before \"public domain\" is not taken as one; a denial in other words is a known limit",
+            "pattern": "public\\s+domain\\s*[.;(]|\\b(?:released|put|placed|dedicated)\\s+(?:explicit(?:e)?ly\\s+)?(?:in(?:to)?|to)\\s+(?:the\\s+)?public\\s+domain|\\bpublic\\s+domain\\s+(?:software|program)\\b",
+            "unless": "(?:\\bnot\\b|n't\\b|\\bno\\b|\\bnever\\b)[^.;]{0,40}public\\s+domain",
+            "clauses": [
+              "public-domain"
+            ]
+          }
+        ],
+        "rules": [
+          {
+            "files": [
+              "texmfmp.c"
+            ],
+            "skip": "AT&T's notice covers John Hobby's floating-point code, which texmfmp.c compiles only for Metafont (#ifndef TeX); every engine here defines TeX"
+          },
+          {
+            "files": [
+              "printversion.c"
+            ],
+            "covered": "Karl Berry's file, 'Public domain.' in its header; its other hit is no licence but a comment on the program's banner ('... isn't, it means the original program is public domain'), which the public-domain dedication's denial guard ('n't') rules out"
+          }
+        ]
+      },
+      {
+        "archive": "texlive-source-f26cc5e.tar.gz",
+        "path": "texk/web2c/libmd5",
+        "components": [
+          "libmd5"
+        ],
+        "notices": [
+          "LICENSES/engine/libmd5-notice.txt"
+        ],
+        "own": [
+          {
+            "text": "This software is provided 'as-is'",
+            "notices": [
+              "LICENSES/engine/libmd5-notice.txt"
+            ],
+            "clauses": [
+              "as-is"
+            ]
+          }
+        ],
+        "rules": []
+      },
+      {
+        "archive": "texlive-source-f26cc5e.tar.gz",
+        "path": "texk/web2c/synctexdir",
+        "components": [
+          "synctex"
+        ],
+        "notices": [
+          "LICENSES/engine/SyncTeX-notice.txt",
+          "LICENSES/engine/SyncTeX-luatex-notice.txt"
+        ],
+        "own": [
+          {
+            "text": "Permission is hereby granted, free of charge",
+            "notices": [
+              "LICENSES/engine/SyncTeX-notice.txt",
+              "LICENSES/engine/SyncTeX-luatex-notice.txt"
+            ],
+            "clauses": [
+              "granted"
+            ]
+          }
+        ],
+        "rules": [
+          {
+            "files": [
+              "synctex-common.h"
+            ],
+            "covered": "SyncTeX's MIT licence with no copyright line of the file's own; SyncTeX-notice.txt holds the licence"
+          }
+        ]
+      },
+      {
+        "archive": "texlive-source-f26cc5e.tar.gz",
+        "path": "texk/web2c/mplibdir",
+        "components": [
+          "metapost"
+        ],
+        "notices": [
+          "LICENSES/engine/MetaPost-decNumber-notice.txt",
+          "LICENSES/ICU.txt"
+        ],
+        "own": [
+          {
+            "notices": [],
+            "anyHolder": true,
+            "why": "a public-domain dedication (\"... is in the public domain.\", \"placed in the public domain\", \"public domain software\"), which asks nothing of a copy. A sentence with \"not\", \"no longer\", \"never\" or \"no\" up to 40 characters before \"public domain\" is not taken as one; a denial in other words is a known limit",
+            "pattern": "public\\s+domain\\s*[.;(]|\\b(?:released|put|placed|dedicated)\\s+(?:explicit(?:e)?ly\\s+)?(?:in(?:to)?|to)\\s+(?:the\\s+)?public\\s+domain|\\bpublic\\s+domain\\s+(?:software|program)\\b",
+            "unless": "(?:\\bnot\\b|n't\\b|\\bno\\b|\\bnever\\b)[^.;]{0,40}public\\s+domain",
+            "clauses": [
+              "public-domain"
+            ]
+          }
+        ],
+        "rules": [
+          {
+            "files": [
+              "decNumber.c",
+              "decNumber.h",
+              "decNumberLocal.h",
+              "decContext.c",
+              "decContext.h"
+            ],
+            "notice": "LICENSES/engine/MetaPost-decNumber-notice.txt"
+          }
+        ]
+      },
+      {
+        "archive": "texlive-source-f26cc5e.tar.gz",
+        "path": "texk/web2c/luatexdir",
+        "components": [
+          "luahbtex",
+          "fontforge",
+          "luaharfbuzz",
+          "luamisc",
+          "luasocket",
+          "luaffi",
+          "lua"
+        ],
+        "notices": [
+          "LICENSES/engine/FontForge-LICENSE.txt",
+          "LICENSES/engine/FontForge-unilib-notice.txt",
+          "LICENSES/engine/FontForge-stemdb-notice.txt",
+          "LICENSES/engine/Lua-notice.txt",
+          "LICENSES/engine/LuaTeX-texluac-notice.txt",
+          "LICENSES/engine/lzlib-README.txt",
+          "LICENSES/engine/luaffi-LICENSE.txt",
+          "LICENSES/engine/luaffi-dynasm-notice.txt",
+          "LICENSES/engine/slnunicode-notice.txt"
+        ],
+        "own": [
+          {
+            "text": "Redistribution and use in source and binary forms",
+            "notices": [
+              "LICENSES/engine/FontForge-LICENSE.txt",
+              "LICENSES/engine/FontForge-unilib-notice.txt",
+              "LICENSES/engine/FontForge-stemdb-notice.txt"
+            ],
+            "clauses": [
+              "redistribution"
+            ]
+          },
+          {
+            "text": "Permission is hereby granted, free of charge",
+            "notices": [
+              "LICENSES/engine/Lua-notice.txt",
+              "LICENSES/engine/LuaTeX-texluac-notice.txt",
+              "LICENSES/engine/luaffi-LICENSE.txt",
+              "LICENSES/engine/luaffi-dynasm-notice.txt"
+            ],
+            "clauses": [
+              "granted"
+            ]
+          },
+          {
+            "text": "licensed under the BSD-style license found in the LICENSE file",
+            "notices": [
+              "LICENSES/engine/luaffi-LICENSE.txt"
+            ],
+            "reference": true,
+            "files": [
+              "luaffi/*"
+            ],
+            "clauses": [
+              "licensed-under",
+              "license-found-in"
+            ]
+          },
+          {
+            "text": "Released under the MIT license. See dynasm.lua",
+            "notices": [
+              "LICENSES/engine/luaffi-dynasm-notice.txt"
+            ],
+            "reference": true,
+            "files": [
+              "luaffi/dynasm/*"
+            ],
+            "clauses": [
+              "released-under"
+            ]
+          },
+          {
+            "text": "See Copyright Notice in lua.h",
+            "notices": [
+              "LICENSES/engine/Lua-notice.txt",
+              "LICENSES/engine/LuaTeX-texluac-notice.txt"
+            ],
+            "reference": true,
+            "files": [
+              "lua/*"
+            ],
+            "clauses": [
+              "see-notice"
+            ]
+          },
+          {
+            "notices": [],
+            "anyHolder": true,
+            "why": "a public-domain dedication (\"... is in the public domain.\", \"placed in the public domain\", \"public domain software\"), which asks nothing of a copy. A sentence with \"not\", \"no longer\", \"never\" or \"no\" up to 40 characters before \"public domain\" is not taken as one; a denial in other words is a known limit",
+            "pattern": "public\\s+domain\\s*[.;(]|\\b(?:released|put|placed|dedicated)\\s+(?:explicit(?:e)?ly\\s+)?(?:in(?:to)?|to)\\s+(?:the\\s+)?public\\s+domain|\\bpublic\\s+domain\\s+(?:software|program)\\b",
+            "unless": "(?:\\bnot\\b|n't\\b|\\bno\\b|\\bnever\\b)[^.;]{0,40}public\\s+domain",
+            "clauses": [
+              "public-domain"
+            ]
+          }
+        ],
+        "rules": [
+          {
+            "files": [
+              "luazlib/lgzip.c",
+              "luazlib/lzlib.c"
+            ],
+            "covered": "Tiago Dionizio's MIT notice, which states its author on an 'Author' line, not a copyright line; lzlib-README.txt holds it"
+          },
+          {
+            "files": [
+              "slnunicode/**"
+            ],
+            "notice": "LICENSES/engine/slnunicode-notice.txt"
+          },
+          {
+            "files": [
+              "luaffi/msvc/**"
+            ],
+            "skip": "luaffi's headers for Microsoft's compiler"
+          },
+          {
+            "files": [
+              "lang/hnjalloc.c",
+              "lang/hnjalloc.h",
+              "lang/hyphen.h",
+              "lang/hyphen.c"
+            ],
+            "covered": "LibHnj's code in LuaTeX's hyphenation, dual-licensed under the LGPL and the MPL, as these files say; it is part of LuaTeX (GPL-2.0-or-later), and the LGPL lets its code be used under the GPL (LGPL-2.1, section 3); the GPL's texts ship"
+          },
+          {
+            "files": [
+              "lua/texluajitc.c"
+            ],
+            "skip": "LuajitTeX's Lua compiler, not part of LuaHBTeX"
+          }
+        ]
+      },
+      {
+        "archive": "texlive-source-f26cc5e.tar.gz",
+        "path": "texk/web2c/pdftexdir",
+        "components": [
+          "pdftex"
+        ],
+        "notices": [],
+        "own": [
+          {
+            "notices": [],
+            "anyHolder": true,
+            "why": "a public-domain dedication (\"... is in the public domain.\", \"placed in the public domain\", \"public domain software\"), which asks nothing of a copy. A sentence with \"not\", \"no longer\", \"never\" or \"no\" up to 40 characters before \"public domain\" is not taken as one; a denial in other words is a known limit",
+            "pattern": "public\\s+domain\\s*[.;(]|\\b(?:released|put|placed|dedicated)\\s+(?:explicit(?:e)?ly\\s+)?(?:in(?:to)?|to)\\s+(?:the\\s+)?public\\s+domain|\\bpublic\\s+domain\\s+(?:software|program)\\b",
+            "unless": "(?:\\bnot\\b|n't\\b|\\bno\\b|\\bnever\\b)[^.;]{0,40}public\\s+domain",
+            "clauses": [
+              "public-domain"
+            ]
+          }
+        ],
+        "rules": []
+      },
+      {
+        "archive": "texlive-source-f26cc5e.tar.gz",
+        "path": "texk/web2c/xetexdir",
+        "components": [
+          "xetex"
+        ],
+        "notices": [
+          "LICENSES/engine/XeTeX-COPYING.txt",
+          "LICENSES/engine/XeTeX-web-notice.txt"
+        ],
+        "own": [
+          {
+            "text": "Permission is hereby granted, free of charge",
+            "notices": [
+              "LICENSES/engine/XeTeX-COPYING.txt",
+              "LICENSES/engine/XeTeX-web-notice.txt"
+            ],
+            "clauses": [
+              "granted"
+            ]
+          },
+          {
+            "notices": [],
+            "anyHolder": true,
+            "why": "a public-domain dedication (\"... is in the public domain.\", \"placed in the public domain\", \"public domain software\"), which asks nothing of a copy. A sentence with \"not\", \"no longer\", \"never\" or \"no\" up to 40 characters before \"public domain\" is not taken as one; a denial in other words is a known limit",
+            "pattern": "public\\s+domain\\s*[.;(]|\\b(?:released|put|placed|dedicated)\\s+(?:explicit(?:e)?ly\\s+)?(?:in(?:to)?|to)\\s+(?:the\\s+)?public\\s+domain|\\bpublic\\s+domain\\s+(?:software|program)\\b",
+            "unless": "(?:\\bnot\\b|n't\\b|\\bno\\b|\\bnever\\b)[^.;]{0,40}public\\s+domain",
+            "clauses": [
+              "public-domain"
+            ]
+          }
+        ],
+        "rules": [
+          {
+            "files": [
+              "*_Mac.*",
+              "XeTeX_mac.c"
+            ],
+            "skip": "XeTeX's macOS font code, not compiled for this target"
+          }
+        ]
+      },
+      {
+        "archive": "texlive-source-f26cc5e.tar.gz",
+        "path": "texk/dvipdfm-x",
+        "components": [
+          "xdvipdfmx"
+        ],
+        "notices": [
+          "LICENSES/engine/xdvipdfmx-mt19937ar-notice.txt"
+        ],
+        "own": [
+          {
+            "notices": [],
+            "anyHolder": true,
+            "why": "a public-domain dedication (\"... is in the public domain.\", \"placed in the public domain\", \"public domain software\"), which asks nothing of a copy. A sentence with \"not\", \"no longer\", \"never\" or \"no\" up to 40 characters before \"public domain\" is not taken as one; a denial in other words is a known limit",
+            "pattern": "public\\s+domain\\s*[.;(]|\\b(?:released|put|placed|dedicated)\\s+(?:explicit(?:e)?ly\\s+)?(?:in(?:to)?|to)\\s+(?:the\\s+)?public\\s+domain|\\bpublic\\s+domain\\s+(?:software|program)\\b",
+            "unless": "(?:\\bnot\\b|n't\\b|\\bno\\b|\\bnever\\b)[^.;]{0,40}public\\s+domain",
+            "clauses": [
+              "public-domain"
+            ]
+          }
+        ],
+        "rules": [
+          {
+            "files": [
+              "mt19937ar.c"
+            ],
+            "notice": "LICENSES/engine/xdvipdfmx-mt19937ar-notice.txt"
+          },
+          {
+            "files": [
+              "dpxcrypt.c"
+            ],
+            "covered": "dvipdfmx's own file (GPL-2.0-or-later, Jin-Hwan Cho and Shunsaku Hirata), whose MD5, SHA-256, SHA-384/512 and ARC4 code comes from libgcrypt (LGPL-2.1-or-later, Free Software Foundation) and whose AES code is based on Philip J. Erdelsky's public-domain code. The LGPL lets its code be used under the GPL (LGPL-2.1, section 3); the GPL and LGPL texts ship, and the xdvipdfmx row names the libgcrypt code"
+          }
+        ]
+      },
+      {
+        "archive": "texlive-source-f26cc5e.tar.gz",
+        "path": "texk/makeindexk",
+        "components": [
+          "makeindex"
+        ],
+        "notices": [
+          "LICENSES/MakeIndex.txt"
+        ],
+        "own": [
+          {
+            "notices": [],
+            "anyHolder": true,
+            "why": "a public-domain dedication (\"... is in the public domain.\", \"placed in the public domain\", \"public domain software\"), which asks nothing of a copy. A sentence with \"not\", \"no longer\", \"never\" or \"no\" up to 40 characters before \"public domain\" is not taken as one; a denial in other words is a known limit",
+            "pattern": "public\\s+domain\\s*[.;(]|\\b(?:released|put|placed|dedicated)\\s+(?:explicit(?:e)?ly\\s+)?(?:in(?:to)?|to)\\s+(?:the\\s+)?public\\s+domain|\\bpublic\\s+domain\\s+(?:software|program)\\b",
+            "unless": "(?:\\bnot\\b|n't\\b|\\bno\\b|\\bnever\\b)[^.;]{0,40}public\\s+domain",
+            "clauses": [
+              "public-domain"
+            ]
+          }
+        ],
+        "rules": []
+      },
+      {
+        "archive": "texlive-source-f26cc5e.tar.gz",
+        "path": "texk/bibtex-x",
+        "components": [
+          "bibtex8"
+        ],
+        "notices": [],
+        "own": [],
+        "rules": []
+      },
+      {
+        "archive": "fontconfig-2.13.96.tar.gz",
+        "path": "src",
+        "components": [
+          "fontconfig"
+        ],
+        "notices": [
+          "LICENSES/engine/fontconfig-COPYING.txt",
+          "LICENSES/engine/fontconfig-fcmatrix-notice.txt"
+        ],
+        "own": [
+          {
+            "text": "Permission to use, copy, modify, distribute, and sell this software",
+            "notices": [
+              "LICENSES/engine/fontconfig-COPYING.txt",
+              "LICENSES/engine/fontconfig-fcmatrix-notice.txt"
+            ],
+            "clauses": [
+              "permission-to-use",
+              "notice-appear"
+            ]
+          },
+          {
+            "text": "Permission is hereby granted, without written agreement",
+            "notices": [
+              "LICENSES/engine/fontconfig-COPYING.txt"
+            ],
+            "clauses": [
+              "granted"
+            ]
+          },
+          {
+            "text": "Permission is hereby granted, free of charge",
+            "notices": [
+              "LICENSES/engine/fontconfig-COPYING.txt"
+            ],
+            "clauses": [
+              "granted"
+            ]
+          },
+          {
+            "notices": [],
+            "anyHolder": true,
+            "why": "a public-domain dedication (\"... is in the public domain.\", \"placed in the public domain\", \"public domain software\"), which asks nothing of a copy. A sentence with \"not\", \"no longer\", \"never\" or \"no\" up to 40 characters before \"public domain\" is not taken as one; a denial in other words is a known limit",
+            "pattern": "public\\s+domain\\s*[.;(]|\\b(?:released|put|placed|dedicated)\\s+(?:explicit(?:e)?ly\\s+)?(?:in(?:to)?|to)\\s+(?:the\\s+)?public\\s+domain|\\bpublic\\s+domain\\s+(?:software|program)\\b",
+            "unless": "(?:\\bnot\\b|n't\\b|\\bno\\b|\\bnever\\b)[^.;]{0,40}public\\s+domain",
+            "clauses": [
+              "public-domain"
+            ]
+          }
+        ],
+        "rules": [
+          {
+            "files": [
+              "fcwindows.h"
+            ],
+            "skip": "fontconfig's Windows header"
+          },
+          {
+            "files": [
+              "fcweight.c"
+            ],
+            "covered": "fontconfig's own HPND text with no copyright line; fontconfig-COPYING.txt holds it"
+          }
+        ]
+      },
+      {
+        "archive": "fontconfig-2.13.96.tar.gz",
+        "path": "fontconfig",
+        "components": [
+          "fontconfig"
+        ],
+        "notices": [
+          "LICENSES/engine/fontconfig-COPYING.txt"
+        ],
+        "own": [
+          {
+            "text": "Permission to use, copy, modify, distribute, and sell this software",
+            "notices": [
+              "LICENSES/engine/fontconfig-COPYING.txt"
+            ],
+            "clauses": [
+              "permission-to-use",
+              "notice-appear"
+            ]
+          }
+        ],
+        "rules": []
+      },
+      {
+        "archive": "expat-2.5.0.tar.gz",
+        "path": "lib",
+        "components": [
+          "expat"
+        ],
+        "notices": [
+          "LICENSES/engine/expat-COPYING.txt",
+          "LICENSES/engine/expat-file-notices.txt"
+        ],
+        "own": [
+          {
+            "text": "Permission is hereby granted, free of charge",
+            "notices": [
+              "LICENSES/engine/expat-COPYING.txt",
+              "LICENSES/engine/expat-file-notices.txt"
+            ],
+            "clauses": [
+              "granted"
+            ]
+          },
+          {
+            "text": "Licensed under the MIT license",
+            "notices": [
+              "LICENSES/engine/expat-COPYING.txt",
+              "LICENSES/engine/expat-file-notices.txt"
+            ],
+            "clauses": [
+              "licensed-under"
+            ]
+          }
+        ],
+        "rules": [
+          {
+            "files": [
+              "winconfig.h"
+            ],
+            "skip": "Expat's Windows configuration, not compiled for this target"
+          },
+          {
+            "files": [
+              "siphash.h"
+            ],
+            "covered": "William Ahern's SipHash, 'Licensed under the CC0 Public Domain Dedication license', which asks nothing of a copy"
+          }
+        ]
+      },
+      {
+        "archive": "texlyre-busytex-build-46ebb62.tar.gz",
+        "path": "",
+        "components": [
+          "texlyre",
+          "busytex"
+        ],
+        "notices": [
+          "LICENSES/engine/TeXlyre-BusyTeX-NOTICE.txt"
+        ],
+        "own": [],
+        "rules": []
+      }
+    ],
+    "notSearched": {
+      "emscripten": "Emscripten's system libraries (musl, libc++, libc++abi, compiler-rt) are compiled from Emscripten 5.0.4's own tree, which is not among the four archives. Their notices are Emscripten's LICENSE, musl's COPYRIGHT (which lists musl's contributors and the third-party code it holds) and LLVM's LICENSE.TXT.",
+      "musl": "inside Emscripten 5.0.4 (see emscripten)",
+      "llvm": "inside Emscripten 5.0.4 (see emscripten)",
+      "minilz4": "Emscripten's LZ4 decoder in busytex.js, whose notice stays in that file",
+      "libpaper": "none of its code is in the engine (scripts/vsix-scan.mjs checks this)"
+    },
+    "report": "engine/engine-notice-search.report.json"
+  },
+  "sources": [
+    {
+      "name": "texlyre-busytex-build-46ebb62.tar.gz",
+      "url": "https://github.com/TeXlyre/texlyre-busytex-build/archive/46ebb6216a5c1fe63dd1dc885831d1a8cef2dc86.tar.gz",
+      "sha256": "b5356166679565d3f7dc00710cd37c687e1bbe886debbceb9ca30237fa86f8d4",
+      "bytes": 117762,
+      "what": "TeXlyre's build scripts and C files at commit 46ebb6216a5c1fe63dd1dc885831d1a8cef2dc86",
+      "repository": "https://github.com/TeXlyre/texlyre-busytex-build",
+      "commit": "46ebb6216a5c1fe63dd1dc885831d1a8cef2dc86"
+    },
+    {
+      "name": "texlive-source-f26cc5e.tar.gz",
+      "url": "https://github.com/TeX-Live/texlive-source/archive/f26cc5ed05a1f784d1e694fe5b9cfc3ce992c03d.tar.gz",
+      "sha256": "34d0a84101893a26bf1a2805e7b545b40faa3da3c84b5ac6d15f35fb707ca697",
+      "bytes": 149469490,
+      "what": "TeX Live's source tree at commit f26cc5ed05a1f784d1e694fe5b9cfc3ce992c03d, the head of branch tags/texlive-2026.0, which TeXlyre's Makefile fetches",
+      "repository": "https://github.com/TeX-Live/texlive-source",
+      "commit": "f26cc5ed05a1f784d1e694fe5b9cfc3ce992c03d"
+    },
+    {
+      "name": "expat-2.5.0.tar.gz",
+      "url": "https://github.com/libexpat/libexpat/releases/download/R_2_5_0/expat-2.5.0.tar.gz",
+      "sha256": "6b902ab103843592be5e99504f846ec109c1abb692e85347587f237a4ffa1033",
+      "bytes": 719235,
+      "what": "Expat 2.5.0"
+    },
+    {
+      "name": "fontconfig-2.13.96.tar.gz",
+      "url": "https://github.com/TeXlyre/texlyre-busytex-build/releases/download/fontconfig-2.13.96/fontconfig-2.13.96.tar.gz",
+      "sha256": "dbabc038d41cfc3f14da1b173ae103ba7cc678efb17e091b9e801c6286b3f684",
+      "bytes": 2133746,
+      "what": "fontconfig 2.13.96, as TeXlyre hosts it"
+    }
+  ],
+  "components": [
+    {
+      "id": "texlyre",
+      "name": "TeXlyre-BusyTeX build (busytex.c changes, kpse_remote.c, font_index.cpp, the JavaScript glue)",
+      "version": "build 46ebb62",
+      "licence": "AGPL-3.0-only",
+      "copyright": "Copyright (c) 2026 Fares Abawi (TeXlyre)",
+      "links": [
+        "busytex.o",
+        "kpse_remote.o",
+        "font_index.o"
+      ],
+      "notices": [
+        "LICENSES/engine/TeXlyre-BusyTeX-NOTICE.txt",
+        "LICENSES/AGPL-3.0.txt"
+      ]
+    },
+    {
+      "id": "busytex",
+      "name": "BusyTeX (the original BusyTeX build, which TeXlyre-BusyTeX is based on)",
+      "version": "main eb36aae (the commit its README was read at)",
+      "licence": "MIT",
+      "copyright": "by Vadim Kantorov, who made 2,046 of its 2,069 contributions on GitHub (read 2026-10-26); its README states the MIT licence, and BusyTeX has no LICENSE file",
+      "links": [],
+      "notices": [
+        "LICENSES/engine/BusyTeX-README-License.txt",
+        "LICENSES/MIT.txt"
+      ]
+    },
+    {
+      "id": "pdftex",
+      "name": "pdfTeX",
+      "version": "TeX Live 2026",
+      "licence": "GPL-2.0-or-later",
+      "links": [
+        "pdftex-pdftexini.o",
+        "pdftex-pdftex0.o",
+        "pdftex-pdftex-pool.o",
+        "pdftex-pdftexextra.o",
+        "busytex_libpdftex.a"
+      ],
+      "notices": [
+        "LICENSES/GPL-2.0.txt",
+        "LICENSE"
+      ]
+    },
+    {
+      "id": "xetex",
+      "name": "XeTeX (and XeTeX_web.h's further copyright line, Peter Breitenlohner)",
+      "version": "TeX Live 2026",
+      "licence": "MIT/X11",
+      "links": [
+        "xetex-xetexini.o",
+        "xetex-xetex0.o",
+        "xetex-xetex-pool.o",
+        "xetex-xetexextra.o",
+        "busytex_libxetex.a"
+      ],
+      "notices": [
+        "LICENSES/engine/XeTeX-COPYING.txt",
+        "LICENSES/engine/XeTeX-web-notice.txt"
+      ]
+    },
+    {
+      "id": "luahbtex",
+      "name": "LuaHBTeX (LuaTeX with HarfBuzz; the engine host runs it in ini mode only, and liveMd2Tex offers no LuaLaTeX)",
+      "version": "TeX Live 2026",
+      "licence": "GPL-2.0-or-later; its hyphenation code (lang/hyphen.c, lang/hnjalloc.c) is derived from LibHnj, under the GNU Library GPL version 2 or later, or the MPL: LGPL code inside a GPL program",
+      "links": [
+        "luahbtex-luatex.o",
+        "libluahbtexspecific.a",
+        "busytex_libluahbtex.a"
+      ],
+      "notices": [
+        "LICENSES/engine/LuaTeX-notice.txt",
+        "LICENSES/GPL-2.0.txt",
+        "LICENSE",
+        "LICENSES/engine/LuaTeX-texluac-notice.txt",
+        "LICENSES/LGPL-2.1.txt"
+      ]
+    },
+    {
+      "id": "metapost",
+      "name": "MetaPost library (mplib), inside LuaHBTeX, with IBM's decNumber",
+      "version": "TeX Live 2026",
+      "licence": "LGPL-3.0-or-later (its source is public domain; the executables are under the LGPL); decNumber: Copyright (c) IBM Corporation, the ICU License 1.8.1 (in ICU.txt, 'ICU License - ICU 1.8.1 to ICU 57.1')",
+      "links": [
+        "luahbtex-lmplib.o",
+        "libmplibcore.a",
+        "libmputil.a"
+      ],
+      "notices": [
+        "LICENSES/engine/MetaPost-notice.txt",
+        "LICENSES/engine/MetaPost-lmplib-notice.txt",
+        "LICENSES/LGPL-3.0.txt",
+        "LICENSE",
+        "LICENSES/engine/MetaPost-decNumber-notice.txt",
+        "LICENSES/ICU.txt"
+      ]
+    },
+    {
+      "id": "fontforge",
+      "name": "FontForge's code in LuaTeX (libff, LuaTeX's font loader; unilib), by George Williams, and in stemdb.c with Alexey Kryukov",
+      "version": "TeX Live 2026",
+      "licence": "BSD-3-Clause (George Williams)",
+      "links": [
+        "libff.a",
+        "libunilib.a"
+      ],
+      "notices": [
+        "LICENSES/engine/FontForge-LICENSE.txt",
+        "LICENSES/engine/FontForge-unilib-notice.txt",
+        "LICENSES/engine/FontForge-stemdb-notice.txt"
+      ]
+    },
+    {
+      "id": "luaharfbuzz",
+      "name": "luaharfbuzz",
+      "version": "TeX Live 2026",
+      "licence": "MIT",
+      "links": [
+        "libluaharfbuzz.a",
+        "libluaharfbuzzsubset.a"
+      ],
+      "notices": [
+        "LICENSES/engine/luaharfbuzz-LICENSE.txt"
+      ]
+    },
+    {
+      "id": "luamisc",
+      "name": "LuaTeX's Lua libraries: LuaFileSystem, LPeg 1.0.1, LuaZip, lzlib, slnunicode, luamd5",
+      "version": "TeX Live 2026",
+      "licence": "MIT; slnunicode: the Lua 5.0 licence (MIT) and Tcl's terms; luamd5 states none in TeX Live's copy",
+      "links": [
+        "libluamisc.a"
+      ],
+      "notices": [
+        "LICENSES/engine/LuaFileSystem-LICENSE.txt",
+        "LICENSES/engine/LPeg-notice.txt",
+        "LICENSES/engine/LuaZip-notice.txt",
+        "LICENSES/engine/lzlib-README.txt",
+        "LICENSES/engine/slnunicode-notice.txt",
+        "LICENSES/MIT.txt"
+      ]
+    },
+    {
+      "id": "luasocket",
+      "name": "LuaSocket (compiled in; the engine host never uses it)",
+      "version": "TeX Live 2026",
+      "licence": "MIT",
+      "links": [
+        "libluasocket.a"
+      ],
+      "notices": [
+        "LICENSES/engine/luasocket-LICENSE.txt"
+      ]
+    },
+    {
+      "id": "luaffi",
+      "name": "luaffi: Facebook's luaffifb, which contains James R. McKaskill's luaffi. On wasm32 luaffi builds only TeX Live's stub luaopen_ffi, so neither luaffifb's own code nor DynASM (Mike Pall) is in busytex.wasm; their notices ship all the same",
+      "version": "TeX Live 2026",
+      "licence": "BSD-3-Clause (Copyright (c) 2015, Facebook, Inc.) AND MIT (Copyright (c) 2011 James R. McKaskill), as its LICENSE gives them; its PATENTS file is Facebook's 'Additional Grant of Patent Rights Version 2'; DynASM: MIT",
+      "links": [
+        "libluaffi.a"
+      ],
+      "notices": [
+        "LICENSES/engine/luaffi-LICENSE.txt",
+        "LICENSES/engine/luaffi-PATENTS.txt",
+        "LICENSES/engine/luaffi-dynasm-notice.txt"
+      ]
+    },
+    {
+      "id": "lua",
+      "name": "Lua",
+      "version": "5.3.6",
+      "licence": "MIT",
+      "links": [
+        "libtexlua53.a"
+      ],
+      "notices": [
+        "LICENSES/engine/Lua-notice.txt"
+      ]
+    },
+    {
+      "id": "web2c",
+      "name": "web2c's library and TeX's own code (TeX, e-TeX)",
+      "version": "TeX Live 2026",
+      "licence": "Knuth's terms and web2c's (permissive)",
+      "links": [
+        "lib.a"
+      ],
+      "notices": []
+    },
+    {
+      "id": "libmd5",
+      "name": "libmd5 (L. Peter Deutsch, Aladdin Enterprises)",
+      "version": "TeX Live 2026",
+      "licence": "Zlib-style",
+      "links": [
+        "libmd5.a"
+      ],
+      "notices": [
+        "LICENSES/engine/libmd5-notice.txt"
+      ]
+    },
+    {
+      "id": "synctex",
+      "name": "SyncTeX (Jérôme Laurens; its LuaTeX glue by Taco Hoekwater)",
+      "version": "TeX Live 2026",
+      "licence": "MIT",
+      "links": [
+        "pdftex-synctex.o",
+        "xetex-synctex.o"
+      ],
+      "notices": [
+        "LICENSES/engine/SyncTeX-notice.txt",
+        "LICENSES/engine/SyncTeX-luatex-notice.txt"
+      ]
+    },
+    {
+      "id": "bibtex8",
+      "name": "bibtex8",
+      "version": "TeX Live 2026",
+      "licence": "GPL-1.0-or-later",
+      "links": [
+        "busytex_bibtex8.a"
+      ],
+      "notices": [
+        "LICENSES/GPL-2.0.txt",
+        "LICENSE"
+      ]
+    },
+    {
+      "id": "xdvipdfmx",
+      "name": "xdvipdfmx (dvipdfmx), with the Mersenne Twister (Makoto Matsumoto and Takuji Nishimura)",
+      "version": "TeX Live 2026",
+      "licence": "GPL-2.0-or-later; mt19937ar.c: BSD-3-Clause; the MD5, SHA-256, SHA-384/512 and ARC4 code in dpxcrypt.c comes from libgcrypt (LGPL-2.1-or-later, Free Software Foundation): LGPL code inside a GPL program",
+      "links": [
+        "busytex_xdvipdfmx.a"
+      ],
+      "notices": [
+        "LICENSES/GPL-2.0.txt",
+        "LICENSE",
+        "LICENSES/engine/xdvipdfmx-mt19937ar-notice.txt",
+        "LICENSES/LGPL-2.1.txt"
+      ]
+    },
+    {
+      "id": "makeindex",
+      "name": "MakeIndex",
+      "version": "TeX Live 2026",
+      "licence": "MakeIndex Distribution Notice",
+      "links": [
+        "busytex_makeindex.a"
+      ],
+      "notices": [
+        "LICENSES/MakeIndex.txt"
+      ]
+    },
+    {
+      "id": "kpathsea",
+      "name": "kpathsea, with kpsewhich, kpsestat, kpseaccess and kpsereadlink",
+      "version": "TeX Live 2026",
+      "licence": "LGPL-2.1-or-later",
+      "links": [
+        "libkpathsea.a",
+        "busytex_kpsewhich.o",
+        "busytex_kpsestat.o",
+        "busytex_kpseaccess.o",
+        "busytex_kpsereadlink.o"
+      ],
+      "notices": [
+        "LICENSES/LGPL-2.1.txt"
+      ]
+    },
+    {
+      "id": "harfbuzz",
+      "name": "HarfBuzz (with hb-subset), with Grigori Goronzy's hb-ucd.cc, Zilong Tan's fasthash, and Elie Roux's line in its BASE table",
+      "version": "12.3.2",
+      "licence": "Old MIT; hb-ucd.cc: ISC; fasthash (in hb-algs.hh): MIT; its Unicode data tables: the Unicode License V3, in ICU.txt",
+      "links": [
+        "libharfbuzz.a"
+      ],
+      "notices": [
+        "LICENSES/engine/HarfBuzz-COPYING.txt",
+        "LICENSES/engine/HarfBuzz-ucd-notice.txt",
+        "LICENSES/engine/HarfBuzz-fasthash-notice.txt",
+        "LICENSES/engine/HarfBuzz-base-notice.txt",
+        "LICENSES/ICU.txt"
+      ]
+    },
+    {
+      "id": "graphite2",
+      "name": "Graphite2",
+      "version": "1.3.14",
+      "licence": "LGPL-2.1-or-later (or MPL-2.0 or GPL-2.0-or-later); the LGPL taken",
+      "links": [
+        "libgraphite2.a"
+      ],
+      "notices": [
+        "LICENSES/engine/graphite2-COPYING.txt",
+        "LICENSES/LGPL-2.1.txt"
+      ]
+    },
+    {
+      "id": "teckit",
+      "name": "TECkit",
+      "version": "2.5.13",
+      "licence": "LGPL-2.1-or-later (or CPL-0.5); the LGPL taken",
+      "links": [
+        "libTECkit.a"
+      ],
+      "notices": [
+        "LICENSES/engine/TECkit-LICENSING.txt",
+        "LICENSES/LGPL-2.1.txt"
+      ]
+    },
+    {
+      "id": "freetype",
+      "name": "FreeType, with its BDF and PCF drivers and its hash code (Francesco Zappa Nardelli; Computing Research Labs, New Mexico State University; The Open Group)",
+      "version": "2.14.1",
+      "licence": "GPL-2.0-or-later: the GPL option of FreeType's dual licence (FTL or GPL-2.0-or-later), since the engine also holds GPL code; the BDF and PCF drivers and fthash: MIT, and pcfutil.c: The Open Group's X11 terms",
+      "links": [
+        "libfreetype.a"
+      ],
+      "notices": [
+        "LICENSES/engine/FreeType-LICENSE.txt",
+        "LICENSES/engine/FreeType-FTL.txt",
+        "LICENSES/GPL-2.0.txt",
+        "LICENSES/engine/FreeType-bdf-notice.txt",
+        "LICENSES/engine/FreeType-fthash-notice.txt",
+        "LICENSES/engine/FreeType-pcf-notice.txt",
+        "LICENSES/engine/FreeType-pcfutil-notice.txt"
+      ]
+    },
+    {
+      "id": "libpng",
+      "name": "libpng",
+      "version": "1.6.55",
+      "licence": "libpng-2.0",
+      "links": [
+        "libpng.a"
+      ],
+      "notices": [
+        "LICENSES/engine/libpng-LICENSE.txt"
+      ]
+    },
+    {
+      "id": "zlib",
+      "name": "zlib",
+      "version": "1.3.2",
+      "licence": "Zlib",
+      "links": [
+        "libz.a"
+      ],
+      "notices": [
+        "LICENSES/engine/zlib-LICENSE.txt"
+      ]
+    },
+    {
+      "id": "zziplib",
+      "name": "zziplib",
+      "version": "0.13.72",
+      "licence": "LGPL-2.0-or-later (or MPL-1.1); the LGPL taken",
+      "links": [
+        "libzzip.a"
+      ],
+      "notices": [
+        "LICENSES/engine/zziplib-README-COPYING.txt",
+        "LICENSES/engine/zziplib-COPYING.LIB.txt"
+      ]
+    },
+    {
+      "id": "pplib",
+      "name": "pplib (Paweł Jackowski), used by LuaTeX and pdfTeX",
+      "version": "2.05.0",
+      "licence": "pplib's own files state no licence: recorded as shipped as part of LuaTeX, under LuaTeX's terms (GPL-2.0-or-later). Two of its files state their authors' terms: util/utilsha.c (SHA-2, Aaron D. Gifford): BSD-3-Clause; util/utilmd5.c (MD5, L. Peter Deutsch, Aladdin Enterprises): Zlib-style",
+      "links": [
+        "libpplib.a"
+      ],
+      "notices": [
+        "LICENSES/GPL-2.0.txt",
+        "LICENSES/engine/pplib-utilsha-notice.txt",
+        "LICENSES/engine/pplib-utilmd5-notice.txt"
+      ]
+    },
+    {
+      "id": "xpdf",
+      "name": "xpdf (its PDF reading code, used by pdfTeX)",
+      "version": "4.06",
+      "licence": "GPL-2.0 or GPL-3.0",
+      "links": [
+        "libxpdf.a"
+      ],
+      "notices": [
+        "LICENSES/engine/xpdf-README.txt",
+        "LICENSES/GPL-2.0.txt",
+        "LICENSE"
+      ]
+    },
+    {
+      "id": "icu",
+      "name": "ICU (and its data file, icudt78l.dat)",
+      "version": "78.2",
+      "licence": "Unicode-3.0",
+      "links": [
+        "libicuuc.a",
+        "libicudata.a"
+      ],
+      "notices": [
+        "LICENSES/ICU.txt"
+      ]
+    },
+    {
+      "id": "fontconfig",
+      "name": "fontconfig (and fcmatrix.c's notice, Tuomas J. Lukka)",
+      "version": "2.13.96 (the tarball TeXlyre hosts)",
+      "licence": "HPND (MIT-style)",
+      "links": [
+        "libfontconfig.a"
+      ],
+      "notices": [
+        "LICENSES/engine/fontconfig-COPYING.txt",
+        "LICENSES/engine/fontconfig-fcmatrix-notice.txt"
+      ]
+    },
+    {
+      "id": "expat",
+      "name": "Expat (and each source file's copyright lines)",
+      "version": "2.5.0",
+      "licence": "MIT",
+      "links": [
+        "libexpat.a"
+      ],
+      "notices": [
+        "LICENSES/engine/expat-COPYING.txt",
+        "LICENSES/engine/expat-file-notices.txt"
+      ]
+    },
+    {
+      "id": "libpaper",
+      "name": "libpaper",
+      "version": "TeX Live 2026",
+      "licence": "GPL-2.0-only",
+      "links": [
+        "libpaper.a"
+      ],
+      "absent": "on the link line, but none of its code is in the WebAssembly (no PAPERCONF or /etc/papersize string; scripts/vsix-scan.mjs checks this): it ships nothing, and it would not combine with the AGPL-3.0 parts",
+      "notices": []
+    },
+    {
+      "id": "emscripten",
+      "name": "Emscripten's runtime (in busytex.js) and system libraries (in busytex.wasm)",
+      "version": "5.0.4",
+      "licence": "MIT or NCSA",
+      "links": [],
+      "notices": [
+        "LICENSES/engine/Emscripten-LICENSE.txt"
+      ]
+    },
+    {
+      "id": "musl",
+      "name": "musl libc, inside Emscripten",
+      "version": "Emscripten 5.0.4",
+      "licence": "MIT",
+      "links": [],
+      "notices": [
+        "LICENSES/engine/musl-COPYRIGHT.txt"
+      ]
+    },
+    {
+      "id": "llvm",
+      "name": "libc++, libc++abi and compiler-rt, inside Emscripten",
+      "version": "Emscripten 5.0.4",
+      "licence": "Apache-2.0 WITH LLVM-exception (no notice needed for compiled forms)",
+      "links": [],
+      "notices": [
+        "LICENSES/engine/LLVM-libcxx-LICENSE.txt",
+        "LICENSES/Apache-2.0.txt"
+      ]
+    },
+    {
+      "id": "minilz4",
+      "name": "MiniLZ4, Emscripten's LZ4 decoder in busytex.js (Pierre Curto)",
+      "version": "",
+      "licence": "MIT",
+      "links": [],
+      "notices": [],
+      "note": "its notice is kept in dist/engine/busytex.js"
+    }
+  ],
+  "files": {
+    "LICENSES/engine/BusyTeX-README-License.txt": {
+      "sha256": "416352db33d71f9eea13d7186dca3bb31494e4b23cfb1da36e3938a025cd7f79",
+      "from": "BusyTeX's README at commit eb36aae169f7d71e70760a84ef80156b33c0f820 (https://github.com/busytex/busytex/blob/eb36aae169f7d71e70760a84ef80156b33c0f820/README.md), lines 23-24. BusyTeX has no LICENSE file; its main author is Vadim Kantorov (https://github.com/vadimkantorov). The MIT License's text: ../MIT.txt."
+    },
+    "LICENSES/engine/Emscripten-LICENSE.txt": {
+      "sha256": "620a78084fc7ca97c0b5dea9abf891f3ffcadfdbf305276f099c9c4e12fc1d86",
+      "from": "LICENSE of Emscripten 5.0.4 (https://github.com/emscripten-core/emscripten/blob/5.0.4/LICENSE)"
+    },
+    "LICENSES/engine/FontForge-LICENSE.txt": {
+      "sha256": "11fb6e09af93c49bef7ff02c13622ae8a9ff5128c3a92eca0ad5dc7ef335cbd5",
+      "from": "texk/web2c/luatexdir/luafontloader/fontforge/LICENSE in TeX Live's source tree at tag texlive-2026.0 (https://github.com/TeX-Live/texlive-source/blob/tags/texlive-2026.0/texk/web2c/luatexdir/luafontloader/fontforge/LICENSE)"
+    },
+    "LICENSES/engine/FontForge-stemdb-notice.txt": {
+      "sha256": "af53023f6caacb81024eb1e834c571ae184f1720eeb969c9e5201f363d1a27f0",
+      "from": "texk/web2c/luatexdir/luafontloader/fontforge/fontforge/stemdb.c in TeX Live's source tree at tag texlive-2026.0 (https://github.com/TeX-Live/texlive-source/blob/tags/texlive-2026.0/texk/web2c/luatexdir/luafontloader/fontforge/fontforge/stemdb.c), lines 1-26: a FontForge file by George Williams and Alexey Kryukov"
+    },
+    "LICENSES/engine/FontForge-unilib-notice.txt": {
+      "sha256": "24e64dc51a2901ec91cdab6567e38bc27cf1176450e542ed4a3eb278ccb1cf8e",
+      "from": "texk/web2c/luatexdir/unilib/char.c in TeX Live's source tree at tag texlive-2026.0 (https://github.com/TeX-Live/texlive-source/blob/tags/texlive-2026.0/texk/web2c/luatexdir/unilib/char.c), lines 1-26: the notice of FontForge's unilib, which LuaTeX links"
+    },
+    "LICENSES/engine/FreeType-FTL.txt": {
+      "sha256": "5a5ee54c5001bbad1cdc1a57cc3dd4c42199b2da09d39c7ee41fab002d02967f",
+      "from": "libs/freetype2/freetype-src/docs/FTL.TXT in TeX Live's source tree at tag texlive-2026.0 (https://github.com/TeX-Live/texlive-source/blob/tags/texlive-2026.0/libs/freetype2/freetype-src/docs/FTL.TXT)"
+    },
+    "LICENSES/engine/FreeType-LICENSE.txt": {
+      "sha256": "bd36c8b474855fa294c2ec5c184544478ef3720aad37d65a6296a4f264fd2d3b",
+      "from": "libs/freetype2/freetype-src/LICENSE.TXT in TeX Live's source tree at tag texlive-2026.0 (https://github.com/TeX-Live/texlive-source/blob/tags/texlive-2026.0/libs/freetype2/freetype-src/LICENSE.TXT)"
+    },
+    "LICENSES/engine/FreeType-bdf-notice.txt": {
+      "sha256": "ca126a73a49c69689eca80912ebe37b4d2aa8ef3eee373e0a6954c1778fed415",
+      "from": "libs/freetype2/freetype-src/src/bdf/README in TeX Live's source tree at tag texlive-2026.0 (https://github.com/TeX-Live/texlive-source/blob/tags/texlive-2026.0/libs/freetype2/freetype-src/src/bdf/README), lines 99-144: the licence of FreeType's BDF driver"
+    },
+    "LICENSES/engine/FreeType-fthash-notice.txt": {
+      "sha256": "c4bdb5886fab4c27e071702e65a43bdf21736fa7b8acc98ae0135f081f0142f4",
+      "from": "libs/freetype2/freetype-src/src/base/fthash.c in TeX Live's source tree at tag texlive-2026.0 (https://github.com/TeX-Live/texlive-source/blob/tags/texlive-2026.0/libs/freetype2/freetype-src/src/base/fthash.c), lines 9-39: FreeType's hash functions, from the BDF code"
+    },
+    "LICENSES/engine/FreeType-pcf-notice.txt": {
+      "sha256": "d8ae87f1f31d8f97fd111e4135de5b9a5567bbf24e9eb0969f99aae005177640",
+      "from": "libs/freetype2/freetype-src/src/pcf/README in TeX Live's source tree at tag texlive-2026.0 (https://github.com/TeX-Live/texlive-source/blob/tags/texlive-2026.0/libs/freetype2/freetype-src/src/pcf/README), lines 66-96: the licence of FreeType's PCF driver"
+    },
+    "LICENSES/engine/FreeType-pcfutil-notice.txt": {
+      "sha256": "4e537d105d33c00b6e6675fe2479092222ea65fd0e360bf3cfb2e7d8e7e08dda",
+      "from": "libs/freetype2/freetype-src/src/pcf/pcfutil.c in TeX Live's source tree at tag texlive-2026.0 (https://github.com/TeX-Live/texlive-source/blob/tags/texlive-2026.0/libs/freetype2/freetype-src/src/pcf/pcfutil.c), lines 1-32: the PCF driver's bitmap utilities, from X11"
+    },
+    "LICENSES/engine/HarfBuzz-COPYING.txt": {
+      "sha256": "ba8f810f2455c2f08e2d56bb49b72f37fcf68f1f4fade38977cfd7372050ad64",
+      "from": "libs/harfbuzz/harfbuzz-src/COPYING in TeX Live's source tree at tag texlive-2026.0 (https://github.com/TeX-Live/texlive-source/blob/tags/texlive-2026.0/libs/harfbuzz/harfbuzz-src/COPYING)"
+    },
+    "LICENSES/engine/HarfBuzz-base-notice.txt": {
+      "sha256": "e78ed80f60812b97c12f40691981b4ada0eabb4b2c43bb22f3e7bddbe2ea5f47",
+      "from": "libs/harfbuzz/harfbuzz-src/src/hb-ot-layout-base-table.hh in TeX Live's source tree at tag texlive-2026.0 (https://github.com/TeX-Live/texlive-source/blob/tags/texlive-2026.0/libs/harfbuzz/harfbuzz-src/src/hb-ot-layout-base-table.hh), lines 1-27: HarfBuzz's BASE table, with Elie Roux's copyright line, which HarfBuzz's COPYING does not list"
+    },
+    "LICENSES/engine/HarfBuzz-fasthash-notice.txt": {
+      "sha256": "bb2d4e3ac890d665cf83bd3cfbed52c4ce50d5d38740b36551dedad47beb6745",
+      "from": "libs/harfbuzz/harfbuzz-src/src/hb-algs.hh in TeX Live's source tree at tag texlive-2026.0 (https://github.com/TeX-Live/texlive-source/blob/tags/texlive-2026.0/libs/harfbuzz/harfbuzz-src/src/hb-algs.hh), lines 399-422: the fasthash function in HarfBuzz, by Zilong Tan"
+    },
+    "LICENSES/engine/HarfBuzz-ucd-notice.txt": {
+      "sha256": "48894cb62d119eecaf03fc0265a21ffdb52b17330fea16484ee58f6996f89e7b",
+      "from": "libs/harfbuzz/harfbuzz-src/src/hb-ucd.cc in TeX Live's source tree at tag texlive-2026.0 (https://github.com/TeX-Live/texlive-source/blob/tags/texlive-2026.0/libs/harfbuzz/harfbuzz-src/src/hb-ucd.cc), lines 1-15: HarfBuzz's own Unicode functions, by Grigori Goronzy"
+    },
+    "LICENSES/engine/LLVM-libcxx-LICENSE.txt": {
+      "sha256": "539dd7aed86e8a4f12cbdd0e6c50c189c7d74847e4fecc64ce2c6ee3a01da38b",
+      "from": "system/lib/libcxx/LICENSE.TXT of Emscripten 5.0.4 (https://github.com/emscripten-core/emscripten/blob/5.0.4/system/lib/libcxx/LICENSE.TXT)"
+    },
+    "LICENSES/engine/LPeg-notice.txt": {
+      "sha256": "6e4345fe6840cb6969b5ff025f64c80f098ec1e1ef187861fbfed3841115b019",
+      "from": "texk/web2c/luatexdir/luapeg/lpeg.h in TeX Live's source tree at tag texlive-2026.0 (https://github.com/TeX-Live/texlive-source/blob/tags/texlive-2026.0/texk/web2c/luatexdir/luapeg/lpeg.h), lines 1-6 (LPeg is under the MIT License, as lpeg.html in LPeg's own distribution states; its text: ../MIT.txt)"
+    },
+    "LICENSES/engine/Lua-notice.txt": {
+      "sha256": "fcdfe9dfdaec828db3e2df3b2a50017876cdaf79f9c68280b874868d755b4b97",
+      "from": "libs/lua53/lua53-src/src/lua.h in TeX Live's source tree at tag texlive-2026.0 (https://github.com/TeX-Live/texlive-source/blob/tags/texlive-2026.0/libs/lua53/lua53-src/src/lua.h): Lua 5.3.6's copyright notice, at the end of the file"
+    },
+    "LICENSES/engine/LuaFileSystem-LICENSE.txt": {
+      "sha256": "beb2c9eed6466d572c3888028a77421206053a3c023429cbd69e5015badba842",
+      "from": "texk/web2c/luatexdir/luafilesystem/LICENSE in TeX Live's source tree at tag texlive-2026.0 (https://github.com/TeX-Live/texlive-source/blob/tags/texlive-2026.0/texk/web2c/luatexdir/luafilesystem/LICENSE)"
+    },
+    "LICENSES/engine/LuaTeX-notice.txt": {
+      "sha256": "04508031995e2038f7f284fa7778163bd10eb660f892e13e87361b1118f3433a",
+      "from": "texk/web2c/luatexdir/tex/textcodes.c in TeX Live's source tree at tag texlive-2026.0 (https://github.com/TeX-Live/texlive-source/blob/tags/texlive-2026.0/texk/web2c/luatexdir/tex/textcodes.c), lines 1-22: the notice each LuaTeX source file carries"
+    },
+    "LICENSES/engine/LuaTeX-texluac-notice.txt": {
+      "sha256": "07a8543c7b95ffe5f4b8e6f75b5fe0c0622075f0b8fe53852280d4ae718ed225",
+      "from": "texk/web2c/luatexdir/lua/texluac.c in TeX Live's source tree at tag texlive-2026.0 (https://github.com/TeX-Live/texlive-source/blob/tags/texlive-2026.0/texk/web2c/luatexdir/lua/texluac.c), lines 1-28: LuaTeX's Lua compiler, by Lua.org and Taco Hoekwater"
+    },
+    "LICENSES/engine/LuaZip-notice.txt": {
+      "sha256": "6bc2564efb2c3f129bd7a292557a82f58a36c15f285fd065e70a05e1e0c908f0",
+      "from": "texk/web2c/luatexdir/luazip/src/luazip.c in TeX Live's source tree at tag texlive-2026.0 (https://github.com/TeX-Live/texlive-source/blob/tags/texlive-2026.0/texk/web2c/luatexdir/luazip/src/luazip.c), lines 1-7 (the Kepler Project's libraries are under the MIT License; its text: ../MIT.txt)"
+    },
+    "LICENSES/engine/MetaPost-decNumber-notice.txt": {
+      "sha256": "3b94be03fd19a904da503082bb362d6254f55ac91f80c541f610551bf79a018e",
+      "from": "texk/web2c/mplibdir/decNumber.c in TeX Live's source tree at tag texlive-2026.0 (https://github.com/TeX-Live/texlive-source/blob/tags/texlive-2026.0/texk/web2c/mplibdir/decNumber.c), lines 1-18: IBM's decNumber in MetaPost's libmputil. The ICU License 1.8.1 that it names is in full in ../ICU.txt, \"ICU License - ICU 1.8.1 to ICU 57.1\"; and texk/web2c/mplibdir/decNumber.h in TeX Live's source tree at tag texlive-2026.0 (https://github.com/TeX-Live/texlive-source/blob/tags/texlive-2026.0/texk/web2c/mplibdir/decNumber.h), lines 1-7; and texk/web2c/mplibdir/decContext.c in TeX Live's source tree at tag texlive-2026.0 (https://github.com/TeX-Live/texlive-source/blob/tags/texlive-2026.0/texk/web2c/mplibdir/decContext.c), lines 1-7"
+    },
+    "LICENSES/engine/MetaPost-lmplib-notice.txt": {
+      "sha256": "2c000a1b8b3ed2bfa16186194cb9e0dfa1bcc30b4fec0bed70112910ce7fa354",
+      "from": "texk/web2c/mplibdir/lmplib.c in TeX Live's source tree at tag texlive-2026.0 (https://github.com/TeX-Live/texlive-source/blob/tags/texlive-2026.0/texk/web2c/mplibdir/lmplib.c), lines 1-20"
+    },
+    "LICENSES/engine/MetaPost-notice.txt": {
+      "sha256": "719e100bdabe67b22c87faab91dba4094f15c654d68f8ee8d9a25783976f4fa6",
+      "from": "texk/web2c/mplibdir/mpost.w in TeX Live's source tree at tag texlive-2026.0 (https://github.com/TeX-Live/texlive-source/blob/tags/texlive-2026.0/texk/web2c/mplibdir/mpost.w), lines 1136-1145: the statement MetaPost prints with --version"
+    },
+    "LICENSES/engine/SyncTeX-luatex-notice.txt": {
+      "sha256": "2020694317511ba49a08e09fec6a9f6be87e0f0dc9e6667df1c80549d9129967",
+      "from": "texk/web2c/synctexdir/synctex-luatex.h in TeX Live's source tree at tag texlive-2026.0 (https://github.com/TeX-Live/texlive-source/blob/tags/texlive-2026.0/texk/web2c/synctexdir/synctex-luatex.h), lines 1-35: SyncTeX's LuaTeX glue, by Taco Hoekwater"
+    },
+    "LICENSES/engine/SyncTeX-notice.txt": {
+      "sha256": "9e70f87046dcdb044a27e7a9be51c4bb2227d6d388c78d6a38494cf9e5a7900b",
+      "from": "texk/web2c/synctexdir/synctex_parser.c in TeX Live's source tree at tag texlive-2026.0 (https://github.com/TeX-Live/texlive-source/blob/tags/texlive-2026.0/texk/web2c/synctexdir/synctex_parser.c), lines 1-37"
+    },
+    "LICENSES/engine/TECkit-LICENSING.txt": {
+      "sha256": "a152c5165bcd7ef08f4a5911517de106cbc7b2a3fb448d07923dc84ca1711bf8",
+      "from": "libs/teckit/TECkit-src/license/LICENSING.txt in TeX Live's source tree at tag texlive-2026.0 (https://github.com/TeX-Live/texlive-source/blob/tags/texlive-2026.0/libs/teckit/TECkit-src/license/LICENSING.txt)"
+    },
+    "LICENSES/engine/TeXlyre-BusyTeX-NOTICE.txt": {
+      "sha256": "984c51c84d462e27d93386f65a07c4e7177f18a1b2f9c8d8c4b2f343e89f0c56",
+      "from": "NOTICE of TeXlyre-BusyTeX at commit 46ebb6216a5c1fe63dd1dc885831d1a8cef2dc86 (https://github.com/TeXlyre/texlyre-busytex-build/blob/46ebb6216a5c1fe63dd1dc885831d1a8cef2dc86/NOTICE)"
+    },
+    "LICENSES/engine/XeTeX-COPYING.txt": {
+      "sha256": "5bf166af469a06c013cb1c5613cdb54007eecb37c145b3ea71bb08bf34b474ff",
+      "from": "texk/web2c/xetexdir/COPYING in TeX Live's source tree at tag texlive-2026.0 (https://github.com/TeX-Live/texlive-source/blob/tags/texlive-2026.0/texk/web2c/xetexdir/COPYING)"
+    },
+    "LICENSES/engine/XeTeX-web-notice.txt": {
+      "sha256": "b3cff0a656b3a3a63bd62d76cfea8764447e5b14bd31d546b27ea8fe67cbe8f9",
+      "from": "texk/web2c/xetexdir/XeTeX_web.h in TeX Live's source tree at tag texlive-2026.0 (https://github.com/TeX-Live/texlive-source/blob/tags/texlive-2026.0/texk/web2c/xetexdir/XeTeX_web.h), lines 1-34: a XeTeX header with one more copyright line than XeTeX's COPYING (Peter Breitenlohner)"
+    },
+    "LICENSES/engine/expat-COPYING.txt": {
+      "sha256": "122f2c27000472a201d337b9b31f7eb2b52d091b02857061a8880371612d9534",
+      "from": "expat/COPYING of expat 2.5.0 (https://github.com/libexpat/libexpat/blob/R_2_5_0/expat/COPYING)"
+    },
+    "LICENSES/engine/expat-file-notices.txt": {
+      "sha256": "ba2300d0e4501185928dbbe716c9d0a981d1e4e7cc6e9ca33fe0e1d0d7aafd94",
+      "from": "17 excerpts, each named in the file: lib/ascii.h, lib/asciitab.h, lib/expat.h, lib/expat_external.h, lib/iasciitab.h, lib/internal.h, lib/latin1tab.h, lib/nametab.h, lib/utf8tab.h, lib/xmlparse.c, lib/xmlrole.c, lib/xmlrole.h, lib/xmltok.c, lib/xmltok.h, lib/xmltok_impl.c, lib/xmltok_impl.h, lib/xmltok_ns.c"
+    },
+    "LICENSES/engine/fontconfig-COPYING.txt": {
+      "sha256": "51a51aa9823704fd90bccc616cdd17ebabb5b2b3e9cbde886ca02c7002288067",
+      "from": "COPYING of fontconfig 2.13.96 (https://github.com/TeXlyre/texlyre-busytex-build/releases/download/fontconfig-2.13.96/fontconfig-2.13.96.tar.gz)"
+    },
+    "LICENSES/engine/fontconfig-fcmatrix-notice.txt": {
+      "sha256": "943dd7186bdbb511d34d3855530714a2f609d6b057f5f144f683980022d1c95a",
+      "from": "src/fcmatrix.c of fontconfig 2.13.96 (https://github.com/TeXlyre/texlyre-busytex-build/releases/download/fontconfig-2.13.96/fontconfig-2.13.96.tar.gz), lines 1-23: fontconfig's matrix code, by Tuomas J. Lukka"
+    },
+    "LICENSES/engine/graphite2-COPYING.txt": {
+      "sha256": "2c272829ff23f182c8bf7ea12fedea69b0ae148663123ed5240c117cb129c9c1",
+      "from": "libs/graphite2/graphite2-src/COPYING in TeX Live's source tree at tag texlive-2026.0 (https://github.com/TeX-Live/texlive-source/blob/tags/texlive-2026.0/libs/graphite2/graphite2-src/COPYING)"
+    },
+    "LICENSES/engine/libmd5-notice.txt": {
+      "sha256": "fac80217aee749702817036c681764fef93f2f825832f45e2e49548b944fa767",
+      "from": "texk/web2c/libmd5/md5.c in TeX Live's source tree at tag texlive-2026.0 (https://github.com/TeX-Live/texlive-source/blob/tags/texlive-2026.0/texk/web2c/libmd5/md5.c), lines 1-23"
+    },
+    "LICENSES/engine/libpng-LICENSE.txt": {
+      "sha256": "bdb0a645ea18c60507d0368379b1ac5474b92255fcc2d115e07486a7672ba526",
+      "from": "libs/libpng/libpng-src/LICENSE in TeX Live's source tree at tag texlive-2026.0 (https://github.com/TeX-Live/texlive-source/blob/tags/texlive-2026.0/libs/libpng/libpng-src/LICENSE)"
+    },
+    "LICENSES/engine/luaffi-LICENSE.txt": {
+      "sha256": "2f448a0212a14871692bc7ea879a3b9e70f87ef53463b4ab0c2f51d403191bf5",
+      "from": "texk/web2c/luatexdir/luaffi/LICENSE in TeX Live's source tree at tag texlive-2026.0 (https://github.com/TeX-Live/texlive-source/blob/tags/texlive-2026.0/texk/web2c/luatexdir/luaffi/LICENSE)"
+    },
+    "LICENSES/engine/luaffi-PATENTS.txt": {
+      "sha256": "575261f8ffaf6027dbf4054b4cb5e8045545d29e8622e7cc9145574bbf1b6b7e",
+      "from": "texk/web2c/luatexdir/luaffi/PATENTS in TeX Live's source tree at tag texlive-2026.0 (https://github.com/TeX-Live/texlive-source/blob/tags/texlive-2026.0/texk/web2c/luatexdir/luaffi/PATENTS), the whole file; the same bytes as PATENTS in Facebook's archived repository, https://github.com/facebookarchive/luaffifb (master a1cb731b08c91643b0665935eb5622b3d621211b)"
+    },
+    "LICENSES/engine/luaffi-dynasm-notice.txt": {
+      "sha256": "78ef4126a33dcc5a18ded3888e9fa7f0710006db5ab1e905b7d17c292d4b6380",
+      "from": "texk/web2c/luatexdir/luaffi/dynasm/dasm_x86.h in TeX Live's source tree at tag texlive-2026.0 (https://github.com/TeX-Live/texlive-source/blob/tags/texlive-2026.0/texk/web2c/luatexdir/luaffi/dynasm/dasm_x86.h), lines 1-5: DynASM's x86 encoding engine, which luaffi's call.c includes. On wasm32 luaffi builds only TeX Live's stub luaopen_ffi, so DynASM is not in busytex.wasm; its notice ships all the same; and texk/web2c/luatexdir/luaffi/dynasm/dynasm.lua in TeX Live's source tree at tag texlive-2026.0 (https://github.com/TeX-Live/texlive-source/blob/tags/texlive-2026.0/texk/web2c/luatexdir/luaffi/dynasm/dynasm.lua), lines 20-41: DynASM's full copyright notice, to which dasm_x86.h points"
+    },
+    "LICENSES/engine/luaharfbuzz-LICENSE.txt": {
+      "sha256": "0adbe9a18a0e2c10e939b4cf136d1aa59cce294aa11bce0aaf318b4ae1959c8a",
+      "from": "texk/web2c/luatexdir/luaharfbuzz/LICENSE in TeX Live's source tree at tag texlive-2026.0 (https://github.com/TeX-Live/texlive-source/blob/tags/texlive-2026.0/texk/web2c/luatexdir/luaharfbuzz/LICENSE)"
+    },
+    "LICENSES/engine/luasocket-LICENSE.txt": {
+      "sha256": "8e8c6314d9e78fe452ee355167f2c40cfbee8207e14dcb5ddd4a2655cb5c6aad",
+      "from": "texk/web2c/luatexdir/luasocket/LICENSE in TeX Live's source tree at tag texlive-2026.0 (https://github.com/TeX-Live/texlive-source/blob/tags/texlive-2026.0/texk/web2c/luatexdir/luasocket/LICENSE)"
+    },
+    "LICENSES/engine/lzlib-README.txt": {
+      "sha256": "30ab419ee8cc0952ac099c449d3fe756a5a5b02369cd98bddfc6cabc9cf2d6b3",
+      "from": "texk/web2c/luatexdir/luazlib/README in TeX Live's source tree at tag texlive-2026.0 (https://github.com/TeX-Live/texlive-source/blob/tags/texlive-2026.0/texk/web2c/luatexdir/luazlib/README)"
+    },
+    "LICENSES/engine/musl-COPYRIGHT.txt": {
+      "sha256": "f9bc4423732350eb0b3f7ed7e91d530298476f8fec0c6c427a1c04ade22655af",
+      "from": "system/lib/libc/musl/COPYRIGHT of Emscripten 5.0.4 (https://github.com/emscripten-core/emscripten/blob/5.0.4/system/lib/libc/musl/COPYRIGHT)"
+    },
+    "LICENSES/engine/pplib-utilmd5-notice.txt": {
+      "sha256": "a56331778df9248fc9900b00ed37c5a561ed54e48e0bf85a17c077aa6a1c42fe",
+      "from": "libs/pplib/pplib-src/src/util/utilmd5.c in TeX Live's source tree at tag texlive-2026.0 (https://github.com/TeX-Live/texlive-source/blob/tags/texlive-2026.0/libs/pplib/pplib-src/src/util/utilmd5.c), lines 2-28: pplib's MD5 code, by L. Peter Deutsch"
+    },
+    "LICENSES/engine/pplib-utilsha-notice.txt": {
+      "sha256": "e90e4fae3f5166024d9b882b4fbdb48e231f7910f103fc7c32f51ef4a80526ba",
+      "from": "libs/pplib/pplib-src/src/util/utilsha.c in TeX Live's source tree at tag texlive-2026.0 (https://github.com/TeX-Live/texlive-source/blob/tags/texlive-2026.0/libs/pplib/pplib-src/src/util/utilsha.c), lines 1-34: pplib's SHA-2 code, by Aaron D. Gifford"
+    },
+    "LICENSES/engine/slnunicode-notice.txt": {
+      "sha256": "d69f16e55f6a040845918ff2f4f0403ecb3365bdcb7e3777ba629d6351d696fd",
+      "from": "texk/web2c/luatexdir/slnunicode/slnunico.c in TeX Live's source tree at tag texlive-2026.0 (https://github.com/TeX-Live/texlive-source/blob/tags/texlive-2026.0/texk/web2c/luatexdir/slnunicode/slnunico.c), lines 1-58"
+    },
+    "LICENSES/engine/xdvipdfmx-mt19937ar-notice.txt": {
+      "sha256": "74966811667d80c990bda715f392f1362617133aacd0d9ee73e2ae0ba2efddc7",
+      "from": "texk/dvipdfm-x/mt19937ar.c in TeX Live's source tree at tag texlive-2026.0 (https://github.com/TeX-Live/texlive-source/blob/tags/texlive-2026.0/texk/dvipdfm-x/mt19937ar.c), lines 1-42: the Mersenne Twister in xdvipdfmx, by Makoto Matsumoto and Takuji Nishimura"
+    },
+    "LICENSES/engine/xpdf-README.txt": {
+      "sha256": "680aa3d935860a0c69c4d33af2a3b444567a4e4133e33ff5b1c2e5220cb9848b",
+      "from": "libs/xpdf/xpdf-src/README in TeX Live's source tree at tag texlive-2026.0 (https://github.com/TeX-Live/texlive-source/blob/tags/texlive-2026.0/libs/xpdf/xpdf-src/README)"
+    },
+    "LICENSES/engine/zlib-LICENSE.txt": {
+      "sha256": "e32ff4e00d9d94930537635291da39e7e612703334bf6fde8c7f1686fe8a45a2",
+      "from": "libs/zlib/zlib-src/LICENSE in TeX Live's source tree at tag texlive-2026.0 (https://github.com/TeX-Live/texlive-source/blob/tags/texlive-2026.0/libs/zlib/zlib-src/LICENSE)"
+    },
+    "LICENSES/engine/zziplib-COPYING.LIB.txt": {
+      "sha256": "94b03f1a60a7fd5007149530626a895a6ef5a8b9342abfd56860c5f3956f5d23",
+      "from": "libs/zziplib/zziplib-src/docs/COPYING.LIB in TeX Live's source tree at tag texlive-2026.0 (https://github.com/TeX-Live/texlive-source/blob/tags/texlive-2026.0/libs/zziplib/zziplib-src/docs/COPYING.LIB)"
+    },
+    "LICENSES/engine/zziplib-README-COPYING.txt": {
+      "sha256": "ed456c5724da38daaf7f8bbfe9058f2effc22c7279416386cf6f9ff1fda0164d",
+      "from": "libs/zziplib/zziplib-src/README in TeX Live's source tree at tag texlive-2026.0 (https://github.com/TeX-Live/texlive-source/blob/tags/texlive-2026.0/libs/zziplib/zziplib-src/README), lines 7-24"
+    }
+  }
+}

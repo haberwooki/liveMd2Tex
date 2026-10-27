@@ -7,7 +7,7 @@
       "release": "https://github.com/TeXlyre/texlyre-busytex-build/releases/tag/build_wasm_46ebb6216a5c1fe63dd1dc885831d1a8cef2dc86_31802832436_1",
       "tag": "build_wasm_46ebb6216a5c1fe63dd1dc885831d1a8cef2dc86_31802832436_1",
       "published": "2026-08-14T13:56:30Z",
-      "licence": "Build scripts AGPL-3.0-or-later (TeXlyre); engines: pdfTeX, dvipdfmx GPL-2.0-or-later, XeTeX MIT/X11, bibtex8 GPL-1.0-or-later, kpathsea LGPL-2.1-or-later; TeX Live data under each package licence (docs/DESIGN.md#store-and-packaging).",
+      "licence": "TeXlyre-BusyTeX (its build scripts, its C files in busytex.wasm and its glue busytex.js): AGPL-3.0, Copyright (c) 2026 Fares Abawi, based on BusyTeX (MIT); every part it links: engine/engine-notices.json; engines: pdfTeX, dvipdfmx GPL-2.0-or-later, XeTeX MIT/X11, bibtex8 GPL-1.0-or-later, kpathsea LGPL-2.1-or-later; TeX Live data under each package licence (docs/DESIGN.md#store-and-packaging).",
       "note": "SHA-256 values are GitHub release-asset digests, rechecked after download.",
       "files": [
         {
@@ -90,8 +90,8 @@
         }
       ],
       "patchedGlue": {
-        "file": "derived/busytex.patched.js",
-        "sha256": "52058bd65220fa6ce58e517305ddf392d6d0ca3c6e99617c538aea17fd4d57f1",
+        "file": "derived/04e79dfbb1e77b63/busytex.patched.js",
+        "sha256": "04e79dfbb1e77b6325f0a43f78cffd538fdf861b5b9f85399430aac2c955dcb8",
         "note": "engine/patches/busytex-glue.mjs applied to busytex.js by scripts/engine-patch.mjs; stage-engine and the test-copy scan check it (build gate 1, G1S-08)"
       }
     },

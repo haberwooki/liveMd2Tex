@@ -81,9 +81,10 @@ These rules hold for everyone who installs the extension.
 
 ## Engine and data
 
-- **Engine.** TeXlyre's BusyTeX build (pdfTeX, XeTeX, bibtex8, xdvipdfmx, makeindex, kpathsea; TeX Live
-  2026), driven by our own code. The JavaScript glue is patched so that no route out remains: no shell, no
-  network fetch for a missing file, no socket. Shell escape and font generation are off.
+- **Engine.** TeXlyre's BusyTeX build (pdfTeX, XeTeX, bibtex8, xdvipdfmx, makeindex, kpathsea, and LuaHBTeX,
+  run in ini mode only; TeX Live 2026), driven by our own code. It ships in the extension's own package
+  (`dist/engine/`), since data extensions carry no code. The JavaScript glue is patched so that no route out
+  remains: no shell, no network fetch for a missing file, no socket. Shell escape and font generation are off.
 - **Pinned inputs.** Every engine and data file is named in `engine/pins.json` with its address, size and
   SHA-256, and checked before use. The patched glue is pinned too.
 - **Data sets.** The core data ships with the extension. More packages come from data extensions, today the
@@ -214,9 +215,13 @@ These rules hold for everyone who installs the extension.
   source maps, no `node_modules` (dependencies are bundled). Every file is scanned before release.
 - **Data extensions** carry no code. The Extra Packages add-on is never a dependency: the user installs it from
   the same store through VS Code's Extensions view.
-- **Licences.** The extension is GPL-3.0-or-later; the engine's JavaScript wrapper keeps its AGPL-3.0 terms
-  inside the combined work. Every bundled package's licence text ships in `dist/licenses/`;
-  `THIRD_PARTY_NOTICES.md` lists the parts by others.
+- **Licences.** The extension is GPL-3.0-or-later; TeXlyre's BusyTeX build (its JavaScript glue and the engine
+  WebAssembly) keeps its AGPL-3.0 terms inside the combined work. Every bundled package's licence text ships in
+  `dist/licenses/`, and so does the notice of every part linked into the engine (`dist/licenses/engine/`,
+  pinned in `engine/engine-notices.json`). `THIRD_PARTY_NOTICES.md` lists the parts by others. Each release
+  is tagged `v<version>`, README.md and the notices give that tag's tree as the source, and the release carries
+  the engine's source archives and the data packages' GPL sources, attached to the draft release before it is
+  published and before any package reaches a store (`.github/workflows/release-sources.yml`).
 - **What is copied into users' folders is CC0.** The starting documents (`templates/`) and the example presets
   (`examples/presets/`) are dedicated to the public domain (CC0 1.0), so a paper, thesis or preset built from
   them carries no conditions. Each folder has a `LICENSE.md` notice, each file with a comment form an SPDX

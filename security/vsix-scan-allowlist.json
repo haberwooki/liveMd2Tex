@@ -78,70 +78,70 @@
     },
     {
       "file": "extension/dist/engine/busytex.js",
-      "line": 175,
+      "line": 177,
       "match": "XMLHttpRequest",
       "text": "var xhr = new XMLHttpRequest();",
       "reason": "Patched TeXlyre glue (busytex.js, sha256 875b8779... before patches). readBinary for a browser worker. Emscripten runtime for the web (ENVIRONMENT_IS_WEB or a browser worker). Under Node the glue reads files with fs, and the engine passes its compiled module through instantiateWasm, so this is not reached."
     },
     {
       "file": "extension/dist/engine/busytex.js",
-      "line": 190,
+      "line": 192,
       "match": "XMLHttpRequest",
       "text": "var xhr = new XMLHttpRequest();",
       "reason": "Patched TeXlyre glue (busytex.js, sha256 875b8779... before patches). readAsync for file: URLs in a browser. Emscripten runtime for the web (ENVIRONMENT_IS_WEB or a browser worker). Under Node the glue reads files with fs, and the engine passes its compiled module through instantiateWasm, so this is not reached."
     },
     {
       "file": "extension/dist/engine/busytex.js",
-      "line": 204,
+      "line": 206,
       "match": "fetch",
       "text": "var response = await fetch(url, { credentials: 'same-origin' });",
       "reason": "Patched TeXlyre glue (busytex.js, sha256 875b8779... before patches). readAsync in a browser. Emscripten runtime for the web (ENVIRONMENT_IS_WEB or a browser worker). Under Node the glue reads files with fs, and the engine passes its compiled module through instantiateWasm, so this is not reached."
     },
     {
       "file": "extension/dist/engine/busytex.js",
-      "line": 604,
+      "line": 606,
       "match": "fetch",
       "text": "var response = fetch(binaryFile, { credentials: 'same-origin' });",
       "reason": "Patched TeXlyre glue (busytex.js, sha256 875b8779... before patches). instantiateAsync streaming path: skipped under Node (!ENVIRONMENT_IS_NODE) and never reached, because the engine supplies instantiateWasm."
     },
     {
       "file": "extension/dist/engine/busytex.js",
-      "line": 3960,
+      "line": 3962,
       "match": "XMLHttpRequest",
       "text": "if (globalThis.XMLHttpRequest) {",
       "reason": "Patched TeXlyre glue (busytex.js, sha256 875b8779... before patches). FS.forceLoadFile: a feature test for lazy files (XMLHttpRequest does not exist in Node); the engine creates no lazy files."
     },
     {
       "file": "extension/dist/engine/busytex.js",
-      "line": 3989,
+      "line": 3991,
       "match": "XMLHttpRequest",
       "text": "var xhr = new XMLHttpRequest();",
       "reason": "Patched TeXlyre glue (busytex.js, sha256 875b8779... before patches). FS.createLazyFile range loader; the engine creates no lazy files (the image is mounted from memory)."
     },
     {
       "file": "extension/dist/engine/busytex.js",
-      "line": 4008,
+      "line": 4010,
       "match": "XMLHttpRequest",
       "text": "var xhr = new XMLHttpRequest();",
       "reason": "Patched TeXlyre glue (busytex.js, sha256 875b8779... before patches). FS.createLazyFile range loader, as above."
     },
     {
       "file": "extension/dist/engine/busytex.js",
-      "line": 4063,
+      "line": 4065,
       "match": "XMLHttpRequest",
       "text": "if (globalThis.XMLHttpRequest) {",
       "reason": "Patched TeXlyre glue (busytex.js, sha256 875b8779... before patches). FS.createLazyFile feature test, as above."
     },
     {
       "file": "extension/dist/engine/busytex.js",
-      "line": 4312,
+      "line": 4314,
       "match": "WebSocket",
       "text": "WebSocketConstructor = WebSocket;",
       "reason": "Patched TeXlyre glue (busytex.js, sha256 875b8779... before patches). SOCKFS browser WebSocket; unreachable: the no-sockets patch makes createSocket throw EACCES first (engine/patches/busytex-glue.mjs)."
     },
     {
       "file": "extension/dist/engine/busytex.js",
-      "line": 6989,
+      "line": 6991,
       "match": "XMLHttpRequest",
       "text": "var xhr = new XMLHttpRequest();",
       "reason": "Patched TeXlyre glue (busytex.js, sha256 875b8779... before patches). TeXlyre KPSE_REMOTE.fetch; unreachable: the no-remote-fetch-xhr patch returns null before it, and no-remote-fetch stops its caller."

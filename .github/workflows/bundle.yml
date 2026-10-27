@@ -10,7 +10,8 @@
 #   or unknown (GB1E-01). Read the lists, then commit the printed "tlpdb" entry into engine/bundle-pins.json.
 # - fetch: every archive into the cache, each checked against the tlpdb's SHA-512. The cache is saved even when
 #   the fetch fails, so a second attempt downloads only what is missing. curl downloads, not the builder:
-#   texlive.info's bot check lets only curl, wget and TeX Live's own programs through. The builder lists what to
+#   texlive.info runs a bot check (Anubis) that gives a browser, and Node's fetch, a challenge page, while curl gets
+#   the files. The builder lists what to
 #   download and checks it, and opens no connection itself (--local).
 # - build: unpacks, generates, builds the formats, the images and the two data packages. The packages' SHA-256 goes
 #   into the job summary before any later job runs.

@@ -150,6 +150,13 @@ const PACKAGES: Record<string, { record: string[]; files?: Record<string, string
     record: ['category Package', 'relocated 1', 'runfiles size=1', ' RELOC/tex/latex/noncommercial/noncommercial.sty', 'catalogue-license nosell'],
     files: { 'tex/latex/noncommercial/noncommercial.sty': '% not free\n' },
   },
+  // An Apache-2.0 package with a NOTICE file in its doc archive, which no set selects unless a test does (the
+  // licence gate, L-04: Apache-2.0 section 4(d) asks that a NOTICE go with the work).
+  apachepkg: {
+    record: ['category Package', 'relocated 1', 'runfiles size=1', ' RELOC/tex/latex/apachepkg/apachepkg.sty', 'catalogue-license apache2'],
+    files: { 'tex/latex/apachepkg/apachepkg.sty': '\\ProvidesPackage{apachepkg}\n' },
+    doc: { 'doc/latex/apachepkg/NOTICE': 'apachepkg\nCopyright 2026 A. Made-Up Author\n', 'doc/latex/apachepkg/apachepkg.pdf': '%PDF made up\n' },
+  },
 };
 
 describe('B1 bundle builder, without the engine (scripts/build-bundle.mjs)', function () {
@@ -278,7 +285,9 @@ describe('B1 bundle builder, without the engine (scripts/build-bundle.mjs)', fun
     // the date of the build (GPL change notices: decided by the maintainer, 2026-10-26).
     const changes = readFileSync(path.join(out, 'core-data', 'LICENSES', 'CHANGES-GPL'), 'utf8').split('\n').filter((l) => l && !l.startsWith('#'));
     const date = (report as unknown as { started: string }).started.slice(0, 10);
-    assert.deepEqual(changes, [`${font}\tcm-super\t${sha('sha256', PFB)}\tstored with its eexec and charstring encryption removed for compression; restored byte for byte before use\t${date}`]);
+    // Each line names the snapshot archive that holds the unmodified original (L-09).
+    const original = 'https://texlive.info/tlnet-archive/2026/10/15/tlnet/archive/cm-super.tar.xz';
+    assert.deepEqual(changes, [`${font}\tcm-super\t${sha('sha256', PFB)}\t${original}\tstored with its eexec and charstring encryption removed for compression; restored byte for byte before use\t${date}`]);
     assert.deepEqual((report as unknown as { packed: unknown }).packed, { method: 't1c', files: 1, kept: ['amsfonts'], byClass: { lppl: [], vera: [], gpl: ['cm-super'] }, unpacked: {}, gplChanges: 1 });
     assert.equal(extra.image.packed, undefined, 'extra-data is not packed');
     assert.match(get('/texlive/texmf-dist/ls-R'), /^% ls-R -- filename database for kpathsea; do not change this line\.\n\.\/:\n/);
@@ -291,6 +300,12 @@ describe('B1 bundle builder, without the engine (scripts/build-bundle.mjs)', fun
     assert.deepEqual(extraIndex.metadata.files.map((f: { filename: string }) => f.filename), ['/fonts/map/dvips/extrapkg/extra.map', '/ls-R', '/tex/latex/extrapkg/extrapkg.sty']);
     const licences = JSON.parse(readFileSync(path.join(out, 'core-data', 'data', 'licences.json'), 'utf8'));
     assert.deepEqual(licences.amsfonts, { licence: ['ofl'], ctan: '/fonts/amsfonts', revision: 0 });
+    // A package under the GPL also gets its archives in the pinned snapshot, with the tlpdb's SHA-512 (M6): the source
+    // of the version shipped.
+    const cmSuper = readFileSync(path.join(snapshot, 'archive', 'cm-super.tar.xz'));
+    assert.deepEqual(licences['cm-super'].archives, [{ kind: 'run', url: original, sha512: sha('sha512', cmSuper) }]);
+    const extraLicences = JSON.parse(readFileSync(path.join(out, 'extra-data', 'data', 'licences.json'), 'utf8'));
+    assert.deepEqual(extraLicences.extrapkg.archives.map((a: { url: string }) => a.url), ['https://texlive.info/tlnet-archive/2026/10/15/tlnet/archive/extrapkg.tar.xz']);
     assert.match(readFileSync(path.join(out, 'report-build.txt'), 'utf8'), /core-data: \d+ packages/);
     // Where the bytes go: by kind and by file, with no documentation and no sources.
     const sizes = (JSON.parse(readFileSync(path.join(out, 'report-build.json'), 'utf8')) as { sizes: Record<string, { byKind: Record<string, number>; topFiles: { name: string; bytes: number }[] }> }).sizes;
@@ -323,7 +338,7 @@ describe('B1 bundle builder, without the engine (scripts/build-bundle.mjs)', fun
       'xcolor\tlppl1.3c\ttexts/LPPL-1.3c.txt',
     ]);
     assert.deepEqual(rows('extra-data'), ['extrapkg\tgpl2+\ttexts/GPL-2.0.txt texts/GPL-3.0.txt']);
-    assert.ok(licenceFile('core-data', 'texts/GPL-2.0.txt').equals(readFileSync(path.join(root, 'engine', 'licence-texts', 'GPL-2.0.txt'))));
+    assert.ok(licenceFile('core-data', 'texts/GPL-2.0.txt').equals(readFileSync(path.join(root, 'LICENSES', 'GPL-2.0.txt'))));
     assert.ok(licenceFile('core-data', 'texts/GPL-3.0.txt').equals(readFileSync(path.join(root, 'LICENSE'))));
     assert.equal(licenceFile('core-data', 'texts/TeX-Live-LICENSE.TL.txt').toString('utf8'), 'TeX Live licence, made up.\n');
     assert.equal(licenceFile('core-data', 'packages/amsfonts/doc/fonts/amsfonts/OFL.txt').toString('utf8'), '"cmex7" is a Reserved Font Name for this Font Software.\n');
@@ -389,6 +404,12 @@ describe('B1 bundle builder, without the engine (scripts/build-bundle.mjs)', fun
     assert.match(index, /\noldstyle\tother-free\tpackages\/oldstyle\/doc\/latex\/oldstyle\/README\n/);
     assert.match(index, /\nheaderterms\tother-free\tterms in data:tex\/latex\/headerterms\/headerterms\.sty\n/);
     assert.deepEqual((found.report as unknown as { licences: Record<string, { termsFound: { package: string }[] }> }).licences['extra-data'].termsFound.map((f) => f.package), ['headerterms', 'oldstyle'], 'listed for a person to check');
+    // An Apache-2.0 package's NOTICE ships with it, from its doc archive (L-04), beside the Apache-2.0 text.
+    const apache = await build1('apache', ['apachepkg']);
+    assert.deepEqual(apache.report.problems, []);
+    const apacheIndex = readFileSync(path.join(apache.outDir, 'extra-data', 'LICENSES', 'INDEX'), 'utf8');
+    assert.match(apacheIndex, /\napachepkg\tapache2\ttexts\/Apache-2\.0\.txt packages\/apachepkg\/doc\/latex\/apachepkg\/NOTICE\n/);
+    assert.equal(readFileSync(path.join(apache.outDir, 'extra-data', 'LICENSES', 'packages', 'apachepkg', 'doc', 'latex', 'apachepkg', 'NOTICE'), 'utf8'), 'apachepkg\nCopyright 2026 A. Made-Up Author\n');
     // A package that states its terms nowhere stops the build.
     const missing = await build1('mute', ['mute']);
     assert.equal(missing.status, 1);
@@ -401,7 +422,7 @@ describe('B1 bundle builder, without the engine (scripts/build-bundle.mjs)', fun
     writeFileSync(rulesFile, JSON.stringify(rules));
     const wrong = await build1('wrong-text', [], rulesFile);
     assert.equal(wrong.status, 1);
-    assert.ok(wrong.report.problems.some((p) => /^licence text GPL-2\.0: engine\/licence-texts\/GPL-2\.0\.txt is not the pinned text/.test(p)), wrong.report.problems.join('\n'));
+    assert.ok(wrong.report.problems.some((p) => /^licence text GPL-2\.0: LICENSES\/GPL-2\.0\.txt is not the pinned text/.test(p)), wrong.report.problems.join('\n'));
     assert.ok(wrong.report.problems.includes('core-data: cm-super needs the licence text GPL-2.0, which the build does not have'));
     assert.ok(wrong.report.problems.includes('core-data: xcolor is under the licence "lppl1.3c", which engine/bundle-licences.json has no rule for'));
   });

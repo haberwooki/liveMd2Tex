@@ -633,9 +633,11 @@ const reasonOf = (why) => why.replace(/\s*\(.*$/, '');
 
 /**
  * The report stage (exported for its test): every sampled document, from papers.json and the pinned templates.
- * Returns { complete, checks }: in a rehearsal, a check that fails makes the stage fail.
+ * `commit` is the commit the report runs on (the workflow's GITHUB_SHA, which the caller passes; null when unknown),
+ * so the report depends on its arguments, not on the environment. Returns { complete, checks }: in a rehearsal, a
+ * check that fails makes the stage fail.
  */
-export function report(dir, results, out, shardsArg) {
+export function report(dir, results, out, shardsArg, { commit = null } = {}) {
   const frame = existsSync(path.join(dir, 'frame.json')) ? readJson(path.join(dir, 'frame.json')) : { strata: {} };
   const papersFile = existsSync(path.join(dir, 'papers.json')) ? readJson(path.join(dir, 'papers.json')) : null;
   const rules = readJson(path.join(root, 'engine', 'coverage-frame.json'));
@@ -680,10 +682,14 @@ export function report(dir, results, out, shardsArg) {
   if (papersFile?.complete === true && short.length > 0) {
     notes.push(`Stratum ${short.map(([s, q, n]) => `${s} has ${n} of its ${q}`).join(', ')} (it ran out of eligible papers with LaTeX sources).`);
   }
-  const commit = process.env.GITHUB_SHA ?? null;
-  const commits = [...new Set(found.map((f) => f.shard.commit ?? null))];
-  if (commit && commits.some((c) => c !== commit)) {
-    notes.push(`The shards ran on commit(s) ${commits.join(', ')}, the report on ${commit}.`);
+  // The shards and the report must have run on one commit; a shard that recorded none is named as such.
+  const unrecorded = found.filter((f) => !f.shard.commit).map((f) => f.index);
+  const others = [...new Set(found.map((f) => f.shard.commit).filter((c) => c && c !== commit))];
+  if (commit && unrecorded.length > 0) {
+    notes.push(`Shard(s) ${unrecorded.join(', ')} recorded no commit; the report ran on ${commit}.`);
+  }
+  if (commit && others.length > 0) {
+    notes.push(`Shards ran on commit(s) ${others.join(', ')}, the report on ${commit}.`);
   }
   const fileHash = (rel) => sha256(readFileSync(path.join(root, rel)));
   const references = found.map((f) => f.reference).filter(Boolean);
@@ -830,7 +836,9 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     } else if (stage === 'profile') {
       process.stdout.write(referenceProfile(path.resolve(arg('--texdir') ?? '')));
     } else if (stage === 'report') {
-      const { checks } = report(dir, path.resolve(arg('--results') ?? path.join(dir, 'results')), path.resolve(arg('--out') ?? path.join(dir, 'report')), arg('--shards'));
+      const { checks } = report(dir, path.resolve(arg('--results') ?? path.join(dir, 'results')), path.resolve(arg('--out') ?? path.join(dir, 'report')), arg('--shards'), {
+        commit: process.env.GITHUB_SHA ?? null,
+      });
       if (checks && checks.some((c) => !c.ok)) {
         process.exitCode = 1;
       }

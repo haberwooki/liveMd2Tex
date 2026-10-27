@@ -1,0 +1,12 @@
+Source: texk/web2c/mplibdir/mpost.w in TeX Live's source tree at tag texlive-2026.0 (https://github.com/TeX-Live/texlive-source/blob/tags/texlive-2026.0/texk/web2c/mplibdir/mpost.w), lines 1136-1145: the statement MetaPost prints with --version
+
+"The MetaPost source code in the public domain.\n"
+"MetaPost also uses code available under the\n"
+"GNU Lesser General Public License (version 3 or later);\n"
+"therefore MetaPost executables are covered by the LGPL.\n"
+"There is NO warranty.\n"
+"For more information about these matters, see the file\n"
+"COPYING.LESSER or <http://gnu.org/licenses/lgpl.html>.\n"
+"Original author of MetaPost: John Hobby.\n"
+"Author of the CWEB MetaPost: Taco Hoekwater.\n"
+"Current maintainer of MetaPost: Luigi Scarso.\n\n"

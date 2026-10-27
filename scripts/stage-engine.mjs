@@ -2,7 +2,8 @@
 // Development tool: puts the engine (and, with --data, the interim TeX data) inside dist/ so that F5, the
 // integration tests and a test-copy VSIX find them where the extension looks (src/extension/engine/
 // engineService.ts):
-//   dist/engine/  busytex.js (the patched glue), busytex.wasm, texmf-override.cnf, fonts.conf
+//   dist/engine/  busytex.js (the patched glue pinned in engine/pins.json, from ../engine_assets/derived/<its
+//                 SHA-256's first 16 digits>/), busytex.wasm, texmf-override.cnf, fonts.conf
 //   dist/data/    texlive-extra.data (TeXlyre's image, unchanged), texlive-extra.index.json (its loader's
 //                 metadata as JSON, so no loader script ships), manifest.json, packages.json (the package index
 //                 of docs/DESIGN.md#architecture, #engine-and-data, built from the image's own .sty and .cls files and cached in
@@ -19,6 +20,7 @@ import { createHash } from 'node:crypto';
 import { copyFileSync, existsSync, linkSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { pinnedGluePath } from './lib/derived-glue.mjs';
 import { engineAbi, standinManifest } from './lib/extra-standin.mjs';
 import { openImage } from './lib/image-files.mjs';
 import { buildPackageIndex, INDEX_FORMAT } from './lib/package-index.mjs';
@@ -71,9 +73,10 @@ export function stageEngine({ data = false } = {}) {
     }
     return file;
   };
-  const glue = path.join(assets, 'derived', 'busytex.patched.js');
+  // The glue of these pins only, from its own folder (scripts/lib/derived-glue.mjs): another worktree's glue is never read.
+  const glue = pinnedGluePath(assets, pins);
   if (!existsSync(glue)) {
-    throw new Error('the patched glue is missing; run node scripts/engine-patch.mjs');
+    throw new Error(`the patched glue ${path.relative(assets, glue)} is missing; run node scripts/engine-patch.mjs`);
   }
   // The patched glue is pinned too: a glue without one of the patches must not reach a package (G1S-08).
   if (tl.patchedGlue && sha256File(glue) !== tl.patchedGlue.sha256) {

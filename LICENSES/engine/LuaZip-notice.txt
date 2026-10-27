@@ -1,0 +1,9 @@
+Source: texk/web2c/luatexdir/luazip/src/luazip.c in TeX Live's source tree at tag texlive-2026.0 (https://github.com/TeX-Live/texlive-source/blob/tags/texlive-2026.0/texk/web2c/luatexdir/luazip/src/luazip.c), lines 1-7 (the Kepler Project's libraries are under the MIT License; its text: ../MIT.txt)
+
+/*
+ LuaZip - Reading files inside zip files.
+ http://www.keplerproject.org/luazip/
+
+ Author: Danilo Tuler
+ Copyright (c) 2003-2006 Kepler Project
+

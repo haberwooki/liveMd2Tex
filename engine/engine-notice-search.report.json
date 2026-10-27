@@ -1,0 +1,6238 @@
+{
+ "date": "2026-10-27",
+ "folders": [
+  {
+   "archive": "texlive-source-f26cc5e.tar.gz",
+   "path": "libs/harfbuzz/harfbuzz-src/src",
+   "files": 423,
+   "covered": 300,
+   "ruled": [
+    {
+     "file": "failing-alloc.c",
+     "how": "skip",
+     "why": "a test program, not in libharfbuzz.a"
+    },
+    {
+     "file": "hb-algs.hh",
+     "how": "notice",
+     "why": "LICENSES/engine/HarfBuzz-fasthash-notice.txt"
+    },
+    {
+     "file": "hb-alloc-pool.hh",
+     "how": "covered",
+     "why": "HarfBuzz's Old MIT licence with no copyright line of the file's own; HarfBuzz-COPYING.txt holds the licence"
+    },
+    {
+     "file": "hb-bit-vector.hh",
+     "how": "covered",
+     "why": "HarfBuzz's Old MIT licence with no copyright line of the file's own; HarfBuzz-COPYING.txt holds the licence"
+    },
+    {
+     "file": "hb-cairo-utils.cc",
+     "how": "skip",
+     "why": "HarfBuzz's cairo integration, which TeX Live's build (harfbuzz.cc and the subset files) does not compile"
+    },
+    {
+     "file": "hb-directwrite-shape.cc",
+     "how": "covered",
+     "why": "HarfBuzz's Old MIT licence with no copyright line of the file's own; HarfBuzz-COPYING.txt holds the licence"
+    },
+    {
+     "file": "hb-directwrite.hh",
+     "how": "covered",
+     "why": "HarfBuzz's Old MIT licence with no copyright line of the file's own; HarfBuzz-COPYING.txt holds the licence"
+    },
+    {
+     "file": "hb-fontations.h",
+     "how": "covered",
+     "why": "HarfBuzz's Old MIT licence with no copyright line of the file's own; HarfBuzz-COPYING.txt holds the licence"
+    },
+    {
+     "file": "hb-harfrust.cc",
+     "how": "covered",
+     "why": "HarfBuzz's Old MIT licence with no copyright line of the file's own; HarfBuzz-COPYING.txt holds the licence"
+    },
+    {
+     "file": "hb-kbts.cc",
+     "how": "covered",
+     "why": "HarfBuzz's Old MIT licence with no copyright line of the file's own; HarfBuzz-COPYING.txt holds the licence"
+    },
+    {
+     "file": "hb-ucd.cc",
+     "how": "notice",
+     "why": "LICENSES/engine/HarfBuzz-ucd-notice.txt"
+    },
+    {
+     "file": "test-algs.cc",
+     "how": "skip",
+     "why": "a test program, not in libharfbuzz.a"
+    },
+    {
+     "file": "test-array.cc",
+     "how": "skip",
+     "why": "a test program, not in libharfbuzz.a"
+    },
+    {
+     "file": "test-bimap.cc",
+     "how": "skip",
+     "why": "a test program, not in libharfbuzz.a"
+    },
+    {
+     "file": "test-buffer-serialize.cc",
+     "how": "skip",
+     "why": "a test program, not in libharfbuzz.a"
+    },
+    {
+     "file": "test-cff.cc",
+     "how": "skip",
+     "why": "a test program, not in libharfbuzz.a"
+    },
+    {
+     "file": "test-decycler.cc",
+     "how": "skip",
+     "why": "a test program, not in libharfbuzz.a"
+    },
+    {
+     "file": "test-gpos-size-params.cc",
+     "how": "skip",
+     "why": "a test program, not in libharfbuzz.a"
+    },
+    {
+     "file": "test-gsub-get-alternates.cc",
+     "how": "skip",
+     "why": "a test program, not in libharfbuzz.a"
+    },
+    {
+     "file": "test-gsub-would-substitute.cc",
+     "how": "skip",
+     "why": "a test program, not in libharfbuzz.a"
+    },
+    {
+     "file": "test-item-varstore.cc",
+     "how": "skip",
+     "why": "a test program, not in libharfbuzz.a"
+    },
+    {
+     "file": "test-iter.cc",
+     "how": "skip",
+     "why": "a test program, not in libharfbuzz.a"
+    },
+    {
+     "file": "test-machinery.cc",
+     "how": "skip",
+     "why": "a test program, not in libharfbuzz.a"
+    },
+    {
+     "file": "test-map.cc",
+     "how": "skip",
+     "why": "a test program, not in libharfbuzz.a"
+    },
+    {
+     "file": "test-multimap.cc",
+     "how": "skip",
+     "why": "a test program, not in libharfbuzz.a"
+    },
+    {
+     "file": "test-number.cc",
+     "how": "skip",
+     "why": "a test program, not in libharfbuzz.a"
+    },
+    {
+     "file": "test-ot-glyphname.cc",
+     "how": "skip",
+     "why": "a test program, not in libharfbuzz.a"
+    },
+    {
+     "file": "test-ot-meta.cc",
+     "how": "skip",
+     "why": "a test program, not in libharfbuzz.a"
+    },
+    {
+     "file": "test-ot-name.cc",
+     "how": "skip",
+     "why": "a test program, not in libharfbuzz.a"
+    },
+    {
+     "file": "test-priority-queue.cc",
+     "how": "skip",
+     "why": "a test program, not in libharfbuzz.a"
+    },
+    {
+     "file": "test-repacker.cc",
+     "how": "skip",
+     "why": "a test program, not in libharfbuzz.a"
+    },
+    {
+     "file": "test-serialize.cc",
+     "how": "skip",
+     "why": "a test program, not in libharfbuzz.a"
+    },
+    {
+     "file": "test-set.cc",
+     "how": "skip",
+     "why": "a test program, not in libharfbuzz.a"
+    },
+    {
+     "file": "test-subset-instancer-solver.cc",
+     "how": "skip",
+     "why": "a test program, not in libharfbuzz.a"
+    },
+    {
+     "file": "test-tuple-varstore.cc",
+     "how": "skip",
+     "why": "a test program, not in libharfbuzz.a"
+    },
+    {
+     "file": "test-unicode-ranges.cc",
+     "how": "skip",
+     "why": "a test program, not in libharfbuzz.a"
+    },
+    {
+     "file": "test-vector.cc",
+     "how": "skip",
+     "why": "a test program, not in libharfbuzz.a"
+    }
+   ],
+   "hits": {
+    "OT/Color/CBDT/CBDT.hh": [
+     "granted"
+    ],
+    "OT/Color/COLR/COLR.hh": [
+     "granted"
+    ],
+    "OT/Color/COLR/colrv1-closure.hh": [
+     "granted"
+    ],
+    "OT/Color/CPAL/CPAL.hh": [
+     "granted"
+    ],
+    "OT/Color/sbix/sbix.hh": [
+     "granted"
+    ],
+    "OT/Color/svg/svg.hh": [
+     "granted"
+    ],
+    "OT/Layout/Common/Coverage.hh": [
+     "granted"
+    ],
+    "OT/Layout/Common/CoverageFormat1.hh": [
+     "granted"
+    ],
+    "OT/Layout/Common/CoverageFormat2.hh": [
+     "granted"
+    ],
+    "OT/Layout/Common/RangeRecord.hh": [
+     "granted"
+    ],
+    "OT/Layout/GDEF/GDEF.hh": [
+     "granted"
+    ],
+    "OT/Layout/types.hh": [
+     "granted"
+    ],
+    "OT/name/name.hh": [
+     "granted"
+    ],
+    "failing-alloc.c": [
+     "granted"
+    ],
+    "graph/classdef-graph.hh": [
+     "granted"
+    ],
+    "graph/coverage-graph.hh": [
+     "granted"
+    ],
+    "graph/graph.hh": [
+     "granted"
+    ],
+    "graph/gsubgpos-context.cc": [
+     "granted"
+    ],
+    "graph/gsubgpos-context.hh": [
+     "granted"
+    ],
+    "graph/gsubgpos-graph.hh": [
+     "granted"
+    ],
+    "graph/ligature-graph.hh": [
+     "granted"
+    ],
+    "graph/markbasepos-graph.hh": [
+     "granted"
+    ],
+    "graph/pairpos-graph.hh": [
+     "granted"
+    ],
+    "graph/serialize.hh": [
+     "granted"
+    ],
+    "graph/split-helpers.hh": [
+     "granted"
+    ],
+    "graph/test-classdef-graph.cc": [
+     "granted"
+    ],
+    "hb-aat-layout-ankr-table.hh": [
+     "granted"
+    ],
+    "hb-aat-layout-bsln-table.hh": [
+     "granted"
+    ],
+    "hb-aat-layout-common.hh": [
+     "granted"
+    ],
+    "hb-aat-layout-feat-table.hh": [
+     "granted"
+    ],
+    "hb-aat-layout-just-table.hh": [
+     "granted"
+    ],
+    "hb-aat-layout-kerx-table.hh": [
+     "granted"
+    ],
+    "hb-aat-layout-morx-table.hh": [
+     "granted"
+    ],
+    "hb-aat-layout-opbd-table.hh": [
+     "granted"
+    ],
+    "hb-aat-layout-trak-table.hh": [
+     "granted"
+    ],
+    "hb-aat-layout.cc": [
+     "granted"
+    ],
+    "hb-aat-layout.h": [
+     "granted"
+    ],
+    "hb-aat-layout.hh": [
+     "granted"
+    ],
+    "hb-aat-ltag-table.hh": [
+     "granted"
+    ],
+    "hb-aat-map.cc": [
+     "granted"
+    ],
+    "hb-aat-map.hh": [
+     "granted"
+    ],
+    "hb-aat.h": [
+     "granted"
+    ],
+    "hb-algs.hh": [
+     "granted",
+     "public-domain"
+    ],
+    "hb-alloc-pool.hh": [
+     "granted"
+    ],
+    "hb-array.hh": [
+     "granted"
+    ],
+    "hb-atomic.hh": [
+     "granted"
+    ],
+    "hb-bimap.hh": [
+     "granted"
+    ],
+    "hb-bit-page.hh": [
+     "granted"
+    ],
+    "hb-bit-set-invertible.hh": [
+     "granted"
+    ],
+    "hb-bit-set.hh": [
+     "granted"
+    ],
+    "hb-bit-vector.hh": [
+     "granted"
+    ],
+    "hb-blob.cc": [
+     "granted"
+    ],
+    "hb-blob.h": [
+     "granted"
+    ],
+    "hb-blob.hh": [
+     "granted"
+    ],
+    "hb-buffer-deserialize-json.hh": [
+     "granted"
+    ],
+    "hb-buffer-deserialize-text-glyphs.hh": [
+     "granted"
+    ],
+    "hb-buffer-deserialize-text-unicode.hh": [
+     "granted"
+    ],
+    "hb-buffer-serialize.cc": [
+     "granted"
+    ],
+    "hb-buffer-verify.cc": [
+     "granted"
+    ],
+    "hb-buffer.cc": [
+     "granted"
+    ],
+    "hb-buffer.h": [
+     "granted"
+    ],
+    "hb-buffer.hh": [
+     "granted"
+    ],
+    "hb-cache.hh": [
+     "granted"
+    ],
+    "hb-cairo-utils.cc": [
+     "granted"
+    ],
+    "hb-cairo-utils.hh": [
+     "granted"
+    ],
+    "hb-cairo.cc": [
+     "granted"
+    ],
+    "hb-cairo.h": [
+     "granted"
+    ],
+    "hb-cff-interp-common.hh": [
+     "granted"
+    ],
+    "hb-cff-interp-cs-common.hh": [
+     "granted"
+    ],
+    "hb-cff-interp-dict-common.hh": [
+     "granted"
+    ],
+    "hb-cff1-interp-cs.hh": [
+     "granted"
+    ],
+    "hb-cff2-interp-cs.hh": [
+     "granted"
+    ],
+    "hb-common.cc": [
+     "granted"
+    ],
+    "hb-common.h": [
+     "granted"
+    ],
+    "hb-config.hh": [
+     "granted"
+    ],
+    "hb-coretext-font.cc": [
+     "granted"
+    ],
+    "hb-coretext-shape.cc": [
+     "granted"
+    ],
+    "hb-coretext.cc": [
+     "granted"
+    ],
+    "hb-coretext.h": [
+     "granted"
+    ],
+    "hb-coretext.hh": [
+     "granted"
+    ],
+    "hb-cplusplus.hh": [
+     "granted"
+    ],
+    "hb-debug.hh": [
+     "granted"
+    ],
+    "hb-decycler.hh": [
+     "granted"
+    ],
+    "hb-deprecated.h": [
+     "granted"
+    ],
+    "hb-directwrite-font.cc": [
+     "granted"
+    ],
+    "hb-directwrite-shape.cc": [
+     "granted"
+    ],
+    "hb-directwrite.cc": [
+     "granted"
+    ],
+    "hb-directwrite.h": [
+     "granted"
+    ],
+    "hb-directwrite.hh": [
+     "granted"
+    ],
+    "hb-dispatch.hh": [
+     "granted"
+    ],
+    "hb-draw.cc": [
+     "granted"
+    ],
+    "hb-draw.h": [
+     "granted"
+    ],
+    "hb-draw.hh": [
+     "granted"
+    ],
+    "hb-face-builder.cc": [
+     "granted"
+    ],
+    "hb-face.cc": [
+     "granted"
+    ],
+    "hb-face.h": [
+     "granted"
+    ],
+    "hb-face.hh": [
+     "granted"
+    ],
+    "hb-fallback-shape.cc": [
+     "granted"
+    ],
+    "hb-font.cc": [
+     "granted"
+    ],
+    "hb-font.h": [
+     "granted"
+    ],
+    "hb-font.hh": [
+     "granted"
+    ],
+    "hb-fontations.h": [
+     "granted"
+    ],
+    "hb-free-pool.hh": [
+     "granted"
+    ],
+    "hb-ft-colr.hh": [
+     "granted"
+    ],
+    "hb-ft.cc": [
+     "granted"
+    ],
+    "hb-ft.h": [
+     "granted"
+    ],
+    "hb-gdi.cc": [
+     "granted"
+    ],
+    "hb-gdi.h": [
+     "granted"
+    ],
+    "hb-geometry.hh": [
+     "granted"
+    ],
+    "hb-glib.cc": [
+     "granted"
+    ],
+    "hb-glib.h": [
+     "granted"
+    ],
+    "hb-gobject-structs.cc": [
+     "granted"
+    ],
+    "hb-gobject-structs.h": [
+     "granted"
+    ],
+    "hb-gobject.h": [
+     "granted"
+    ],
+    "hb-graphite2.cc": [
+     "granted"
+    ],
+    "hb-graphite2.h": [
+     "granted"
+    ],
+    "hb-harfrust.cc": [
+     "granted"
+    ],
+    "hb-icu.cc": [
+     "granted"
+    ],
+    "hb-icu.h": [
+     "granted"
+    ],
+    "hb-iter.hh": [
+     "granted"
+    ],
+    "hb-kbts.cc": [
+     "granted"
+    ],
+    "hb-kern.hh": [
+     "granted"
+    ],
+    "hb-limits.hh": [
+     "granted"
+    ],
+    "hb-machinery.hh": [
+     "granted"
+    ],
+    "hb-map.cc": [
+     "granted"
+    ],
+    "hb-map.h": [
+     "granted"
+    ],
+    "hb-map.hh": [
+     "granted"
+    ],
+    "hb-meta.hh": [
+     "granted"
+    ],
+    "hb-ms-feature-ranges.hh": [
+     "granted"
+    ],
+    "hb-multimap.hh": [
+     "granted"
+    ],
+    "hb-mutex.hh": [
+     "granted"
+    ],
+    "hb-null.hh": [
+     "granted"
+    ],
+    "hb-number-parser.hh": [
+     "granted"
+    ],
+    "hb-number.cc": [
+     "granted"
+    ],
+    "hb-number.hh": [
+     "granted"
+    ],
+    "hb-object.hh": [
+     "granted"
+    ],
+    "hb-open-file.hh": [
+     "granted"
+    ],
+    "hb-open-type.hh": [
+     "granted"
+    ],
+    "hb-ot-cff-common.hh": [
+     "granted"
+    ],
+    "hb-ot-cff1-std-str.hh": [
+     "granted"
+    ],
+    "hb-ot-cff1-table.cc": [
+     "granted"
+    ],
+    "hb-ot-cff1-table.hh": [
+     "granted"
+    ],
+    "hb-ot-cff2-table.cc": [
+     "granted"
+    ],
+    "hb-ot-cff2-table.hh": [
+     "granted"
+    ],
+    "hb-ot-cmap-table.hh": [
+     "granted"
+    ],
+    "hb-ot-color.cc": [
+     "granted"
+    ],
+    "hb-ot-color.h": [
+     "granted"
+    ],
+    "hb-ot-deprecated.h": [
+     "granted"
+    ],
+    "hb-ot-face-table-list.hh": [
+     "granted"
+    ],
+    "hb-ot-face.cc": [
+     "granted"
+    ],
+    "hb-ot-face.hh": [
+     "granted"
+    ],
+    "hb-ot-font.cc": [
+     "granted"
+    ],
+    "hb-ot-font.h": [
+     "granted"
+    ],
+    "hb-ot-gasp-table.hh": [
+     "granted"
+    ],
+    "hb-ot-glyf-table.hh": [
+     "granted"
+    ],
+    "hb-ot-hdmx-table.hh": [
+     "granted"
+    ],
+    "hb-ot-head-table.hh": [
+     "granted"
+    ],
+    "hb-ot-hhea-table.hh": [
+     "granted"
+    ],
+    "hb-ot-hmtx-table.hh": [
+     "granted"
+    ],
+    "hb-ot-kern-table.hh": [
+     "granted"
+    ],
+    "hb-ot-layout-base-table.hh": [
+     "granted"
+    ],
+    "hb-ot-layout-common.hh": [
+     "granted"
+    ],
+    "hb-ot-layout-gdef-table.hh": [
+     "granted"
+    ],
+    "hb-ot-layout-gpos-table.hh": [
+     "granted"
+    ],
+    "hb-ot-layout-gsub-table.hh": [
+     "granted"
+    ],
+    "hb-ot-layout-gsubgpos.hh": [
+     "granted"
+    ],
+    "hb-ot-layout-jstf-table.hh": [
+     "granted"
+    ],
+    "hb-ot-layout.cc": [
+     "granted"
+    ],
+    "hb-ot-layout.h": [
+     "granted"
+    ],
+    "hb-ot-layout.hh": [
+     "granted"
+    ],
+    "hb-ot-map.cc": [
+     "granted"
+    ],
+    "hb-ot-map.hh": [
+     "granted"
+    ],
+    "hb-ot-math-table.hh": [
+     "granted"
+    ],
+    "hb-ot-math.cc": [
+     "granted"
+    ],
+    "hb-ot-math.h": [
+     "granted"
+    ],
+    "hb-ot-maxp-table.hh": [
+     "granted"
+    ],
+    "hb-ot-meta-table.hh": [
+     "granted"
+    ],
+    "hb-ot-meta.cc": [
+     "granted"
+    ],
+    "hb-ot-meta.h": [
+     "granted"
+    ],
+    "hb-ot-metrics.cc": [
+     "granted"
+    ],
+    "hb-ot-metrics.h": [
+     "granted"
+    ],
+    "hb-ot-metrics.hh": [
+     "granted"
+    ],
+    "hb-ot-name-language-static.hh": [
+     "granted"
+    ],
+    "hb-ot-name-language.hh": [
+     "granted"
+    ],
+    "hb-ot-name-table.hh": [
+     "granted"
+    ],
+    "hb-ot-name.cc": [
+     "granted"
+    ],
+    "hb-ot-name.h": [
+     "granted"
+    ],
+    "hb-ot-os2-table.hh": [
+     "granted"
+    ],
+    "hb-ot-os2-unicode-ranges.hh": [
+     "granted"
+    ],
+    "hb-ot-post-macroman.hh": [
+     "granted"
+    ],
+    "hb-ot-post-table-v2subset.hh": [
+     "granted"
+    ],
+    "hb-ot-post-table.hh": [
+     "granted"
+    ],
+    "hb-ot-shape-fallback.cc": [
+     "granted"
+    ],
+    "hb-ot-shape-fallback.hh": [
+     "granted"
+    ],
+    "hb-ot-shape-normalize.cc": [
+     "granted"
+    ],
+    "hb-ot-shape-normalize.hh": [
+     "granted"
+    ],
+    "hb-ot-shape.cc": [
+     "granted"
+    ],
+    "hb-ot-shape.h": [
+     "granted"
+    ],
+    "hb-ot-shape.hh": [
+     "granted"
+    ],
+    "hb-ot-shaper-arabic-fallback.hh": [
+     "granted"
+    ],
+    "hb-ot-shaper-arabic-win1256.hh": [
+     "granted"
+    ],
+    "hb-ot-shaper-arabic.cc": [
+     "granted"
+    ],
+    "hb-ot-shaper-arabic.hh": [
+     "granted"
+    ],
+    "hb-ot-shaper-default.cc": [
+     "granted"
+    ],
+    "hb-ot-shaper-hangul.cc": [
+     "granted"
+    ],
+    "hb-ot-shaper-hebrew.cc": [
+     "granted"
+    ],
+    "hb-ot-shaper-indic-machine.hh": [
+     "granted"
+    ],
+    "hb-ot-shaper-indic.cc": [
+     "granted"
+    ],
+    "hb-ot-shaper-indic.hh": [
+     "granted"
+    ],
+    "hb-ot-shaper-khmer-machine.hh": [
+     "granted"
+    ],
+    "hb-ot-shaper-khmer.cc": [
+     "granted"
+    ],
+    "hb-ot-shaper-myanmar-machine.hh": [
+     "granted"
+    ],
+    "hb-ot-shaper-myanmar.cc": [
+     "granted"
+    ],
+    "hb-ot-shaper-syllabic.cc": [
+     "granted"
+    ],
+    "hb-ot-shaper-syllabic.hh": [
+     "granted"
+    ],
+    "hb-ot-shaper-thai.cc": [
+     "granted"
+    ],
+    "hb-ot-shaper-use-machine.hh": [
+     "granted"
+    ],
+    "hb-ot-shaper-use.cc": [
+     "granted"
+    ],
+    "hb-ot-shaper-vowel-constraints.hh": [
+     "granted"
+    ],
+    "hb-ot-shaper.hh": [
+     "granted"
+    ],
+    "hb-ot-stat-table.hh": [
+     "granted"
+    ],
+    "hb-ot-tag.cc": [
+     "granted"
+    ],
+    "hb-ot-var-avar-table.hh": [
+     "granted"
+    ],
+    "hb-ot-var-common.hh": [
+     "granted"
+    ],
+    "hb-ot-var-cvar-table.hh": [
+     "granted"
+    ],
+    "hb-ot-var-fvar-table.hh": [
+     "granted"
+    ],
+    "hb-ot-var-gvar-table.hh": [
+     "granted"
+    ],
+    "hb-ot-var-hvar-table.hh": [
+     "granted"
+    ],
+    "hb-ot-var-mvar-table.hh": [
+     "granted"
+    ],
+    "hb-ot-var-varc-table.hh": [
+     "granted"
+    ],
+    "hb-ot-var.cc": [
+     "granted"
+    ],
+    "hb-ot-var.h": [
+     "granted"
+    ],
+    "hb-ot-vorg-table.hh": [
+     "granted"
+    ],
+    "hb-ot.h": [
+     "granted"
+    ],
+    "hb-outline.cc": [
+     "granted"
+    ],
+    "hb-outline.hh": [
+     "granted"
+    ],
+    "hb-paint-bounded.cc": [
+     "granted"
+    ],
+    "hb-paint-bounded.hh": [
+     "granted"
+    ],
+    "hb-paint-extents.cc": [
+     "granted"
+    ],
+    "hb-paint-extents.hh": [
+     "granted"
+    ],
+    "hb-paint.cc": [
+     "granted"
+    ],
+    "hb-paint.h": [
+     "granted"
+    ],
+    "hb-paint.hh": [
+     "granted"
+    ],
+    "hb-priority-queue.hh": [
+     "granted"
+    ],
+    "hb-repacker.hh": [
+     "granted"
+    ],
+    "hb-sanitize.hh": [
+     "granted"
+    ],
+    "hb-script-list.h": [
+     "granted"
+    ],
+    "hb-serialize.hh": [
+     "granted"
+    ],
+    "hb-set-digest.hh": [
+     "granted"
+    ],
+    "hb-set.cc": [
+     "granted"
+    ],
+    "hb-set.h": [
+     "granted"
+    ],
+    "hb-set.hh": [
+     "granted"
+    ],
+    "hb-shape-plan.cc": [
+     "granted"
+    ],
+    "hb-shape-plan.h": [
+     "granted"
+    ],
+    "hb-shape-plan.hh": [
+     "granted"
+    ],
+    "hb-shape.cc": [
+     "granted"
+    ],
+    "hb-shape.h": [
+     "granted"
+    ],
+    "hb-shaper-impl.hh": [
+     "granted"
+    ],
+    "hb-shaper-list.hh": [
+     "granted"
+    ],
+    "hb-shaper.cc": [
+     "granted"
+    ],
+    "hb-shaper.hh": [
+     "granted"
+    ],
+    "hb-static.cc": [
+     "granted"
+    ],
+    "hb-string-array.hh": [
+     "granted"
+    ],
+    "hb-style.cc": [
+     "granted"
+    ],
+    "hb-style.h": [
+     "granted"
+    ],
+    "hb-subset-accelerator.hh": [
+     "granted"
+    ],
+    "hb-subset-cff-common.cc": [
+     "granted"
+    ],
+    "hb-subset-cff-common.hh": [
+     "granted"
+    ],
+    "hb-subset-cff1.cc": [
+     "granted"
+    ],
+    "hb-subset-cff2.cc": [
+     "granted"
+    ],
+    "hb-subset-input.cc": [
+     "granted"
+    ],
+    "hb-subset-input.hh": [
+     "granted"
+    ],
+    "hb-subset-instancer-iup.cc": [
+     "granted"
+    ],
+    "hb-subset-instancer-iup.hh": [
+     "granted"
+    ],
+    "hb-subset-instancer-solver.cc": [
+     "granted"
+    ],
+    "hb-subset-instancer-solver.hh": [
+     "granted"
+    ],
+    "hb-subset-plan-layout.cc": [
+     "granted"
+    ],
+    "hb-subset-plan-member-list.hh": [
+     "granted"
+    ],
+    "hb-subset-plan-var.cc": [
+     "granted"
+    ],
+    "hb-subset-plan.cc": [
+     "granted"
+    ],
+    "hb-subset-plan.hh": [
+     "granted"
+    ],
+    "hb-subset-serialize.cc": [
+     "granted"
+    ],
+    "hb-subset-serialize.h": [
+     "granted"
+    ],
+    "hb-subset-table.hh": [
+     "granted"
+    ],
+    "hb-subset.cc": [
+     "granted"
+    ],
+    "hb-subset.h": [
+     "granted"
+    ],
+    "hb-subset.hh": [
+     "granted"
+    ],
+    "hb-ucd.cc": [
+     "notice-appear",
+     "permission-to-use"
+    ],
+    "hb-unicode-emoji-table.hh": [
+     "terms-of-use"
+    ],
+    "hb-unicode.cc": [
+     "granted"
+    ],
+    "hb-unicode.h": [
+     "granted"
+    ],
+    "hb-unicode.hh": [
+     "granted"
+    ],
+    "hb-uniscribe.cc": [
+     "granted"
+    ],
+    "hb-uniscribe.h": [
+     "granted"
+    ],
+    "hb-utf.hh": [
+     "granted"
+    ],
+    "hb-vector.hh": [
+     "granted"
+    ],
+    "hb-wasm-api-blob.hh": [
+     "granted"
+    ],
+    "hb-wasm-api-buffer.hh": [
+     "granted"
+    ],
+    "hb-wasm-api-common.hh": [
+     "granted"
+    ],
+    "hb-wasm-api-face.hh": [
+     "granted"
+    ],
+    "hb-wasm-api-font.hh": [
+     "granted"
+    ],
+    "hb-wasm-api-list.hh": [
+     "granted"
+    ],
+    "hb-wasm-api-shape.hh": [
+     "granted"
+    ],
+    "hb-wasm-api.cc": [
+     "granted"
+    ],
+    "hb-wasm-api.h": [
+     "granted"
+    ],
+    "hb-wasm-api.hh": [
+     "granted"
+    ],
+    "hb-wasm-shape.cc": [
+     "granted"
+    ],
+    "hb.h": [
+     "granted"
+    ],
+    "hb.hh": [
+     "granted"
+    ],
+    "main.cc": [
+     "granted"
+    ],
+    "test-algs.cc": [
+     "granted"
+    ],
+    "test-array.cc": [
+     "granted"
+    ],
+    "test-bimap.cc": [
+     "granted"
+    ],
+    "test-buffer-serialize.cc": [
+     "granted"
+    ],
+    "test-cff.cc": [
+     "granted"
+    ],
+    "test-decycler.cc": [
+     "granted"
+    ],
+    "test-gpos-size-params.cc": [
+     "granted"
+    ],
+    "test-gsub-get-alternates.cc": [
+     "granted"
+    ],
+    "test-gsub-would-substitute.cc": [
+     "granted"
+    ],
+    "test-item-varstore.cc": [
+     "granted"
+    ],
+    "test-iter.cc": [
+     "granted"
+    ],
+    "test-machinery.cc": [
+     "granted"
+    ],
+    "test-map.cc": [
+     "granted"
+    ],
+    "test-multimap.cc": [
+     "granted"
+    ],
+    "test-number.cc": [
+     "granted"
+    ],
+    "test-ot-glyphname.cc": [
+     "granted"
+    ],
+    "test-ot-meta.cc": [
+     "granted"
+    ],
+    "test-ot-name.cc": [
+     "granted"
+    ],
+    "test-priority-queue.cc": [
+     "granted"
+    ],
+    "test-repacker.cc": [
+     "granted"
+    ],
+    "test-serialize.cc": [
+     "granted"
+    ],
+    "test-set.cc": [
+     "granted"
+    ],
+    "test-subset-instancer-solver.cc": [
+     "granted"
+    ],
+    "test-tuple-varstore.cc": [
+     "granted"
+    ],
+    "test-unicode-ranges.cc": [
+     "granted"
+    ],
+    "test-vector.cc": [
+     "granted"
+    ],
+    "test.cc": [
+     "granted"
+    ]
+   }
+  },
+  {
+   "archive": "texlive-source-f26cc5e.tar.gz",
+   "path": "libs/freetype2/freetype-src/src",
+   "files": 386,
+   "covered": 352,
+   "ruled": [
+    {
+     "file": "autofit/ft-hb-decls.h",
+     "how": "covered",
+     "why": "HarfBuzz's own code under its Old MIT licence, with holders that HarfBuzz-COPYING.txt names (Red Hat, Google)"
+    },
+    {
+     "file": "autofit/ft-hb-ft.c",
+     "how": "covered",
+     "why": "HarfBuzz's own code under its Old MIT licence, with holders that HarfBuzz-COPYING.txt names (Red Hat, Google)"
+    },
+    {
+     "file": "autofit/ft-hb-ft.h",
+     "how": "covered",
+     "why": "HarfBuzz's own code under its Old MIT licence, with holders that HarfBuzz-COPYING.txt names (Red Hat, Google)"
+    },
+    {
+     "file": "autofit/ft-hb-types.h",
+     "how": "covered",
+     "why": "HarfBuzz's own code under its Old MIT licence, with holders that HarfBuzz-COPYING.txt names (Red Hat, Google)"
+    },
+    {
+     "file": "autofit/hb-script-list.h",
+     "how": "covered",
+     "why": "HarfBuzz's own code under its Old MIT licence, with holders that HarfBuzz-COPYING.txt names (Red Hat, Google)"
+    },
+    {
+     "file": "base/fthash.c",
+     "how": "notice",
+     "why": "LICENSES/engine/FreeType-fthash-notice.txt"
+    },
+    {
+     "file": "base/md5.c",
+     "how": "covered",
+     "why": "Alexander Peslyak's MD5 code: dedicated to the public domain, and otherwise 'Redistribution and use in source and binary forms, with or without modification, are permitted', with no notice condition"
+    },
+    {
+     "file": "base/md5.h",
+     "how": "covered",
+     "why": "Alexander Peslyak's MD5 code: dedicated to the public domain, and otherwise 'Redistribution and use in source and binary forms, with or without modification, are permitted', with no notice condition"
+    },
+    {
+     "file": "bdf/bdf.c",
+     "how": "notice",
+     "why": "LICENSES/engine/FreeType-bdf-notice.txt"
+    },
+    {
+     "file": "bdf/bdf.h",
+     "how": "notice",
+     "why": "LICENSES/engine/FreeType-bdf-notice.txt"
+    },
+    {
+     "file": "bdf/bdfdrivr.c",
+     "how": "notice",
+     "why": "LICENSES/engine/FreeType-bdf-notice.txt"
+    },
+    {
+     "file": "bdf/bdfdrivr.h",
+     "how": "notice",
+     "why": "LICENSES/engine/FreeType-bdf-notice.txt"
+    },
+    {
+     "file": "bdf/bdferror.h",
+     "how": "notice",
+     "why": "LICENSES/engine/FreeType-bdf-notice.txt"
+    },
+    {
+     "file": "bdf/bdflib.c",
+     "how": "notice",
+     "why": "LICENSES/engine/FreeType-bdf-notice.txt"
+    },
+    {
+     "file": "dlg/dlg.c",
+     "how": "skip",
+     "why": "dlg, FreeType's debug logging (Boost Software License), compiled only with FT_DEBUG_LOGGING, which a release build leaves out"
+    },
+    {
+     "file": "dlg/dlgwrap.c",
+     "how": "skip",
+     "why": "dlg, FreeType's debug logging (Boost Software License), compiled only with FT_DEBUG_LOGGING, which a release build leaves out"
+    },
+    {
+     "file": "gzip/zlib.h",
+     "how": "covered",
+     "why": "zlib's header, the same notice as zlib-LICENSE.txt"
+    },
+    {
+     "file": "pcf/pcf.c",
+     "how": "notice",
+     "why": "LICENSES/engine/FreeType-pcf-notice.txt"
+    },
+    {
+     "file": "pcf/pcf.h",
+     "how": "notice",
+     "why": "LICENSES/engine/FreeType-pcf-notice.txt"
+    },
+    {
+     "file": "pcf/pcfdrivr.c",
+     "how": "notice",
+     "why": "LICENSES/engine/FreeType-pcf-notice.txt"
+    },
+    {
+     "file": "pcf/pcfdrivr.h",
+     "how": "notice",
+     "why": "LICENSES/engine/FreeType-pcf-notice.txt"
+    },
+    {
+     "file": "pcf/pcferror.h",
+     "how": "notice",
+     "why": "LICENSES/engine/FreeType-pcf-notice.txt"
+    },
+    {
+     "file": "pcf/pcfread.c",
+     "how": "notice",
+     "why": "LICENSES/engine/FreeType-pcf-notice.txt"
+    },
+    {
+     "file": "pcf/pcfread.h",
+     "how": "notice",
+     "why": "LICENSES/engine/FreeType-pcf-notice.txt"
+    },
+    {
+     "file": "pcf/pcfutil.c",
+     "how": "notice",
+     "why": "LICENSES/engine/FreeType-pcfutil-notice.txt"
+    },
+    {
+     "file": "pcf/pcfutil.h",
+     "how": "notice",
+     "why": "LICENSES/engine/FreeType-pcf-notice.txt"
+    },
+    {
+     "file": "tools/apinames.c",
+     "how": "skip",
+     "why": "FreeType's tools, not in libfreetype.a"
+    },
+    {
+     "file": "tools/ftrandom/ftrandom.c",
+     "how": "skip",
+     "why": "FreeType's tools, not in libfreetype.a"
+    },
+    {
+     "file": "tools/vms_shorten_symbol.c",
+     "how": "skip",
+     "why": "FreeType's tools, not in libfreetype.a"
+    }
+   ],
+   "hits": {
+    "autofit/afadjust.c": [
+     "distributed-under"
+    ],
+    "autofit/afadjust.h": [
+     "distributed-under"
+    ],
+    "autofit/afblue.c": [
+     "distributed-under"
+    ],
+    "autofit/afblue.h": [
+     "distributed-under"
+    ],
+    "autofit/afcjk.c": [
+     "distributed-under"
+    ],
+    "autofit/afcjk.h": [
+     "distributed-under"
+    ],
+    "autofit/afcover.h": [
+     "distributed-under"
+    ],
+    "autofit/afdummy.c": [
+     "distributed-under"
+    ],
+    "autofit/afdummy.h": [
+     "distributed-under"
+    ],
+    "autofit/aferrors.h": [
+     "distributed-under"
+    ],
+    "autofit/afglobal.c": [
+     "distributed-under"
+    ],
+    "autofit/afglobal.h": [
+     "distributed-under"
+    ],
+    "autofit/afgsub.c": [
+     "distributed-under"
+    ],
+    "autofit/afgsub.h": [
+     "distributed-under"
+    ],
+    "autofit/afhints.c": [
+     "distributed-under"
+    ],
+    "autofit/afhints.h": [
+     "distributed-under"
+    ],
+    "autofit/afindic.c": [
+     "distributed-under"
+    ],
+    "autofit/afindic.h": [
+     "distributed-under"
+    ],
+    "autofit/aflatin.c": [
+     "distributed-under"
+    ],
+    "autofit/aflatin.h": [
+     "distributed-under"
+    ],
+    "autofit/afloader.c": [
+     "distributed-under"
+    ],
+    "autofit/afloader.h": [
+     "distributed-under"
+    ],
+    "autofit/afmodule.c": [
+     "distributed-under"
+    ],
+    "autofit/afmodule.h": [
+     "distributed-under"
+    ],
+    "autofit/afranges.c": [
+     "distributed-under"
+    ],
+    "autofit/afranges.h": [
+     "distributed-under"
+    ],
+    "autofit/afscript.h": [
+     "distributed-under"
+    ],
+    "autofit/afshaper.c": [
+     "distributed-under"
+    ],
+    "autofit/afshaper.h": [
+     "distributed-under"
+    ],
+    "autofit/afstyles.h": [
+     "distributed-under"
+    ],
+    "autofit/aftypes.h": [
+     "distributed-under"
+    ],
+    "autofit/afws-decl.h": [
+     "distributed-under"
+    ],
+    "autofit/afws-iter.h": [
+     "distributed-under"
+    ],
+    "autofit/autofit.c": [
+     "distributed-under"
+    ],
+    "autofit/ft-hb-decls.h": [
+     "granted"
+    ],
+    "autofit/ft-hb-ft.c": [
+     "granted"
+    ],
+    "autofit/ft-hb-ft.h": [
+     "granted"
+    ],
+    "autofit/ft-hb-types.h": [
+     "granted"
+    ],
+    "autofit/ft-hb.c": [
+     "distributed-under"
+    ],
+    "autofit/ft-hb.h": [
+     "distributed-under"
+    ],
+    "autofit/hb-script-list.h": [
+     "granted"
+    ],
+    "base/ftadvanc.c": [
+     "distributed-under"
+    ],
+    "base/ftbase.c": [
+     "distributed-under"
+    ],
+    "base/ftbase.h": [
+     "distributed-under"
+    ],
+    "base/ftbbox.c": [
+     "distributed-under"
+    ],
+    "base/ftbdf.c": [
+     "distributed-under"
+    ],
+    "base/ftbitmap.c": [
+     "distributed-under"
+    ],
+    "base/ftcalc.c": [
+     "distributed-under"
+    ],
+    "base/ftcid.c": [
+     "distributed-under"
+    ],
+    "base/ftcolor.c": [
+     "distributed-under"
+    ],
+    "base/ftdbgmem.c": [
+     "distributed-under"
+    ],
+    "base/ftdebug.c": [
+     "distributed-under"
+    ],
+    "base/fterrors.c": [
+     "distributed-under"
+    ],
+    "base/ftfntfmt.c": [
+     "distributed-under"
+    ],
+    "base/ftfstype.c": [
+     "distributed-under"
+    ],
+    "base/ftgasp.c": [
+     "distributed-under"
+    ],
+    "base/ftgloadr.c": [
+     "distributed-under"
+    ],
+    "base/ftglyph.c": [
+     "distributed-under"
+    ],
+    "base/ftgxval.c": [
+     "distributed-under"
+    ],
+    "base/fthash.c": [
+     "granted"
+    ],
+    "base/ftinit.c": [
+     "distributed-under"
+    ],
+    "base/ftlcdfil.c": [
+     "distributed-under"
+    ],
+    "base/ftmac.c": [
+     "distributed-under"
+    ],
+    "base/ftmm.c": [
+     "distributed-under"
+    ],
+    "base/ftobjs.c": [
+     "distributed-under"
+    ],
+    "base/ftotval.c": [
+     "distributed-under"
+    ],
+    "base/ftoutln.c": [
+     "distributed-under"
+    ],
+    "base/ftpatent.c": [
+     "distributed-under"
+    ],
+    "base/ftpfr.c": [
+     "distributed-under"
+    ],
+    "base/ftpsprop.c": [
+     "distributed-under"
+    ],
+    "base/ftrfork.c": [
+     "distributed-under"
+    ],
+    "base/ftsnames.c": [
+     "distributed-under"
+    ],
+    "base/ftstream.c": [
+     "distributed-under"
+    ],
+    "base/ftstroke.c": [
+     "distributed-under"
+    ],
+    "base/ftsynth.c": [
+     "distributed-under"
+    ],
+    "base/ftsystem.c": [
+     "distributed-under"
+    ],
+    "base/fttrigon.c": [
+     "distributed-under"
+    ],
+    "base/fttype1.c": [
+     "distributed-under"
+    ],
+    "base/ftutil.c": [
+     "distributed-under"
+    ],
+    "base/ftwinfnt.c": [
+     "distributed-under"
+    ],
+    "base/md5.c": [
+     "public-domain",
+     "redistribution"
+    ],
+    "base/md5.h": [
+     "public-domain",
+     "redistribution"
+    ],
+    "bdf/bdf.c": [
+     "granted"
+    ],
+    "bdf/bdf.h": [
+     "granted"
+    ],
+    "bdf/bdfdrivr.c": [
+     "granted"
+    ],
+    "bdf/bdfdrivr.h": [
+     "granted"
+    ],
+    "bdf/bdferror.h": [
+     "granted"
+    ],
+    "bdf/bdflib.c": [
+     "granted"
+    ],
+    "bzip2/ftbzip2.c": [
+     "distributed-under"
+    ],
+    "cache/ftcache.c": [
+     "distributed-under"
+    ],
+    "cache/ftcbasic.c": [
+     "distributed-under"
+    ],
+    "cache/ftccache.c": [
+     "distributed-under"
+    ],
+    "cache/ftccache.h": [
+     "distributed-under"
+    ],
+    "cache/ftccback.h": [
+     "distributed-under"
+    ],
+    "cache/ftccmap.c": [
+     "distributed-under"
+    ],
+    "cache/ftcerror.h": [
+     "distributed-under"
+    ],
+    "cache/ftcglyph.c": [
+     "distributed-under"
+    ],
+    "cache/ftcglyph.h": [
+     "distributed-under"
+    ],
+    "cache/ftcimage.c": [
+     "distributed-under"
+    ],
+    "cache/ftcimage.h": [
+     "distributed-under"
+    ],
+    "cache/ftcmanag.c": [
+     "distributed-under"
+    ],
+    "cache/ftcmanag.h": [
+     "distributed-under"
+    ],
+    "cache/ftcmru.c": [
+     "distributed-under"
+    ],
+    "cache/ftcmru.h": [
+     "distributed-under"
+    ],
+    "cache/ftcsbits.c": [
+     "distributed-under"
+    ],
+    "cache/ftcsbits.h": [
+     "distributed-under"
+    ],
+    "cff/cff.c": [
+     "distributed-under"
+    ],
+    "cff/cffcmap.c": [
+     "distributed-under"
+    ],
+    "cff/cffcmap.h": [
+     "distributed-under"
+    ],
+    "cff/cffdrivr.c": [
+     "distributed-under"
+    ],
+    "cff/cffdrivr.h": [
+     "distributed-under"
+    ],
+    "cff/cfferrs.h": [
+     "distributed-under"
+    ],
+    "cff/cffgload.c": [
+     "distributed-under"
+    ],
+    "cff/cffgload.h": [
+     "distributed-under"
+    ],
+    "cff/cffload.c": [
+     "distributed-under"
+    ],
+    "cff/cffload.h": [
+     "distributed-under"
+    ],
+    "cff/cffobjs.c": [
+     "distributed-under"
+    ],
+    "cff/cffobjs.h": [
+     "distributed-under"
+    ],
+    "cff/cffparse.c": [
+     "distributed-under"
+    ],
+    "cff/cffparse.h": [
+     "distributed-under"
+    ],
+    "cff/cfftoken.h": [
+     "distributed-under"
+    ],
+    "cid/ciderrs.h": [
+     "distributed-under"
+    ],
+    "cid/cidgload.c": [
+     "distributed-under"
+    ],
+    "cid/cidgload.h": [
+     "distributed-under"
+    ],
+    "cid/cidload.c": [
+     "distributed-under"
+    ],
+    "cid/cidload.h": [
+     "distributed-under"
+    ],
+    "cid/cidobjs.c": [
+     "distributed-under"
+    ],
+    "cid/cidobjs.h": [
+     "distributed-under"
+    ],
+    "cid/cidparse.c": [
+     "distributed-under"
+    ],
+    "cid/cidparse.h": [
+     "distributed-under"
+    ],
+    "cid/cidriver.c": [
+     "distributed-under"
+    ],
+    "cid/cidriver.h": [
+     "distributed-under"
+    ],
+    "cid/cidtoken.h": [
+     "distributed-under"
+    ],
+    "cid/type1cid.c": [
+     "distributed-under"
+    ],
+    "dlg/dlg.c": [
+     "boost",
+     "distributed-under"
+    ],
+    "dlg/dlgwrap.c": [
+     "distributed-under"
+    ],
+    "gxvalid/gxvalid.c": [
+     "distributed-under"
+    ],
+    "gxvalid/gxvalid.h": [
+     "distributed-under"
+    ],
+    "gxvalid/gxvbsln.c": [
+     "distributed-under"
+    ],
+    "gxvalid/gxvcommn.c": [
+     "distributed-under"
+    ],
+    "gxvalid/gxvcommn.h": [
+     "distributed-under"
+    ],
+    "gxvalid/gxverror.h": [
+     "distributed-under"
+    ],
+    "gxvalid/gxvfeat.c": [
+     "distributed-under"
+    ],
+    "gxvalid/gxvfeat.h": [
+     "distributed-under"
+    ],
+    "gxvalid/gxvfgen.c": [
+     "distributed-under"
+    ],
+    "gxvalid/gxvjust.c": [
+     "distributed-under"
+    ],
+    "gxvalid/gxvkern.c": [
+     "distributed-under"
+    ],
+    "gxvalid/gxvlcar.c": [
+     "distributed-under"
+    ],
+    "gxvalid/gxvmod.c": [
+     "distributed-under"
+    ],
+    "gxvalid/gxvmod.h": [
+     "distributed-under"
+    ],
+    "gxvalid/gxvmort.c": [
+     "distributed-under"
+    ],
+    "gxvalid/gxvmort.h": [
+     "distributed-under"
+    ],
+    "gxvalid/gxvmort0.c": [
+     "distributed-under"
+    ],
+    "gxvalid/gxvmort1.c": [
+     "distributed-under"
+    ],
+    "gxvalid/gxvmort2.c": [
+     "distributed-under"
+    ],
+    "gxvalid/gxvmort4.c": [
+     "distributed-under"
+    ],
+    "gxvalid/gxvmort5.c": [
+     "distributed-under"
+    ],
+    "gxvalid/gxvmorx.c": [
+     "distributed-under"
+    ],
+    "gxvalid/gxvmorx.h": [
+     "distributed-under"
+    ],
+    "gxvalid/gxvmorx0.c": [
+     "distributed-under"
+    ],
+    "gxvalid/gxvmorx1.c": [
+     "distributed-under"
+    ],
+    "gxvalid/gxvmorx2.c": [
+     "distributed-under"
+    ],
+    "gxvalid/gxvmorx4.c": [
+     "distributed-under"
+    ],
+    "gxvalid/gxvmorx5.c": [
+     "distributed-under"
+    ],
+    "gxvalid/gxvopbd.c": [
+     "distributed-under"
+    ],
+    "gxvalid/gxvprop.c": [
+     "distributed-under"
+    ],
+    "gxvalid/gxvtrak.c": [
+     "distributed-under"
+    ],
+    "gzip/adler32.c": [
+     "see-notice"
+    ],
+    "gzip/crc32.c": [
+     "see-notice"
+    ],
+    "gzip/ftgzip.c": [
+     "distributed-under"
+    ],
+    "gzip/ftzconf.h": [
+     "see-notice"
+    ],
+    "gzip/gzguts.h": [
+     "see-notice"
+    ],
+    "gzip/inffast.c": [
+     "see-notice"
+    ],
+    "gzip/inffast.h": [
+     "see-notice"
+    ],
+    "gzip/inflate.c": [
+     "see-notice"
+    ],
+    "gzip/inflate.h": [
+     "see-notice"
+    ],
+    "gzip/inftrees.c": [
+     "see-notice"
+    ],
+    "gzip/inftrees.h": [
+     "see-notice"
+    ],
+    "gzip/zlib.h": [
+     "as-is"
+    ],
+    "gzip/zutil.c": [
+     "see-notice"
+    ],
+    "gzip/zutil.h": [
+     "see-notice"
+    ],
+    "lzw/ftlzw.c": [
+     "distributed-under"
+    ],
+    "lzw/ftzopen.c": [
+     "distributed-under"
+    ],
+    "lzw/ftzopen.h": [
+     "distributed-under"
+    ],
+    "otvalid/otvalid.c": [
+     "distributed-under"
+    ],
+    "otvalid/otvalid.h": [
+     "distributed-under"
+    ],
+    "otvalid/otvbase.c": [
+     "distributed-under"
+    ],
+    "otvalid/otvcommn.c": [
+     "distributed-under"
+    ],
+    "otvalid/otvcommn.h": [
+     "distributed-under"
+    ],
+    "otvalid/otverror.h": [
+     "distributed-under"
+    ],
+    "otvalid/otvgdef.c": [
+     "distributed-under"
+    ],
+    "otvalid/otvgpos.c": [
+     "distributed-under"
+    ],
+    "otvalid/otvgpos.h": [
+     "distributed-under"
+    ],
+    "otvalid/otvgsub.c": [
+     "distributed-under"
+    ],
+    "otvalid/otvjstf.c": [
+     "distributed-under"
+    ],
+    "otvalid/otvmath.c": [
+     "distributed-under"
+    ],
+    "otvalid/otvmod.c": [
+     "distributed-under"
+    ],
+    "otvalid/otvmod.h": [
+     "distributed-under"
+    ],
+    "pcf/pcf.c": [
+     "granted"
+    ],
+    "pcf/pcf.h": [
+     "granted"
+    ],
+    "pcf/pcfdrivr.c": [
+     "granted"
+    ],
+    "pcf/pcfdrivr.h": [
+     "granted"
+    ],
+    "pcf/pcferror.h": [
+     "distributed-under"
+    ],
+    "pcf/pcfread.c": [
+     "granted"
+    ],
+    "pcf/pcfread.h": [
+     "granted"
+    ],
+    "pcf/pcfutil.c": [
+     "notice-appear",
+     "permission-to-use"
+    ],
+    "pcf/pcfutil.h": [
+     "granted"
+    ],
+    "pfr/pfr.c": [
+     "distributed-under"
+    ],
+    "pfr/pfrcmap.c": [
+     "distributed-under"
+    ],
+    "pfr/pfrcmap.h": [
+     "distributed-under"
+    ],
+    "pfr/pfrdrivr.c": [
+     "distributed-under"
+    ],
+    "pfr/pfrdrivr.h": [
+     "distributed-under"
+    ],
+    "pfr/pfrerror.h": [
+     "distributed-under"
+    ],
+    "pfr/pfrgload.c": [
+     "distributed-under"
+    ],
+    "pfr/pfrgload.h": [
+     "distributed-under"
+    ],
+    "pfr/pfrload.c": [
+     "distributed-under"
+    ],
+    "pfr/pfrload.h": [
+     "distributed-under"
+    ],
+    "pfr/pfrobjs.c": [
+     "distributed-under"
+    ],
+    "pfr/pfrobjs.h": [
+     "distributed-under"
+    ],
+    "pfr/pfrsbit.c": [
+     "distributed-under"
+    ],
+    "pfr/pfrsbit.h": [
+     "distributed-under"
+    ],
+    "pfr/pfrtypes.h": [
+     "distributed-under"
+    ],
+    "psaux/afmparse.c": [
+     "distributed-under"
+    ],
+    "psaux/afmparse.h": [
+     "distributed-under"
+    ],
+    "psaux/cffdecode.c": [
+     "distributed-under"
+    ],
+    "psaux/cffdecode.h": [
+     "distributed-under"
+    ],
+    "psaux/psarrst.c": [
+     "distributed-under"
+    ],
+    "psaux/psarrst.h": [
+     "distributed-under"
+    ],
+    "psaux/psaux.c": [
+     "distributed-under"
+    ],
+    "psaux/psauxerr.h": [
+     "distributed-under"
+    ],
+    "psaux/psauxmod.c": [
+     "distributed-under"
+    ],
+    "psaux/psauxmod.h": [
+     "distributed-under"
+    ],
+    "psaux/psblues.c": [
+     "distributed-under"
+    ],
+    "psaux/psblues.h": [
+     "distributed-under"
+    ],
+    "psaux/psconv.c": [
+     "distributed-under"
+    ],
+    "psaux/psconv.h": [
+     "distributed-under"
+    ],
+    "psaux/pserror.c": [
+     "distributed-under"
+    ],
+    "psaux/pserror.h": [
+     "distributed-under"
+    ],
+    "psaux/psfixed.h": [
+     "distributed-under"
+    ],
+    "psaux/psfont.c": [
+     "distributed-under"
+    ],
+    "psaux/psfont.h": [
+     "distributed-under"
+    ],
+    "psaux/psft.c": [
+     "distributed-under"
+    ],
+    "psaux/psft.h": [
+     "distributed-under"
+    ],
+    "psaux/psglue.h": [
+     "distributed-under"
+    ],
+    "psaux/pshints.c": [
+     "distributed-under"
+    ],
+    "psaux/pshints.h": [
+     "distributed-under"
+    ],
+    "psaux/psintrp.c": [
+     "distributed-under"
+    ],
+    "psaux/psintrp.h": [
+     "distributed-under"
+    ],
+    "psaux/psobjs.c": [
+     "distributed-under"
+    ],
+    "psaux/psobjs.h": [
+     "distributed-under"
+    ],
+    "psaux/psread.c": [
+     "distributed-under"
+    ],
+    "psaux/psread.h": [
+     "distributed-under"
+    ],
+    "psaux/psstack.c": [
+     "distributed-under"
+    ],
+    "psaux/psstack.h": [
+     "distributed-under"
+    ],
+    "psaux/pstypes.h": [
+     "distributed-under"
+    ],
+    "psaux/t1cmap.c": [
+     "distributed-under"
+    ],
+    "psaux/t1cmap.h": [
+     "distributed-under"
+    ],
+    "psaux/t1decode.c": [
+     "distributed-under"
+    ],
+    "psaux/t1decode.h": [
+     "distributed-under"
+    ],
+    "pshinter/pshalgo.c": [
+     "distributed-under"
+    ],
+    "pshinter/pshalgo.h": [
+     "distributed-under"
+    ],
+    "pshinter/pshglob.c": [
+     "distributed-under"
+    ],
+    "pshinter/pshglob.h": [
+     "distributed-under"
+    ],
+    "pshinter/pshinter.c": [
+     "distributed-under"
+    ],
+    "pshinter/pshmod.c": [
+     "distributed-under"
+    ],
+    "pshinter/pshmod.h": [
+     "distributed-under"
+    ],
+    "pshinter/pshnterr.h": [
+     "distributed-under"
+    ],
+    "pshinter/pshrec.c": [
+     "distributed-under"
+    ],
+    "pshinter/pshrec.h": [
+     "distributed-under"
+    ],
+    "psnames/psmodule.c": [
+     "distributed-under"
+    ],
+    "psnames/psmodule.h": [
+     "distributed-under"
+    ],
+    "psnames/psnamerr.h": [
+     "distributed-under"
+    ],
+    "psnames/psnames.c": [
+     "distributed-under"
+    ],
+    "psnames/pstables.h": [
+     "distributed-under"
+    ],
+    "raster/ftmisc.h": [
+     "distributed-under"
+    ],
+    "raster/ftraster.c": [
+     "distributed-under"
+    ],
+    "raster/ftraster.h": [
+     "distributed-under"
+    ],
+    "raster/ftrend1.c": [
+     "distributed-under"
+    ],
+    "raster/ftrend1.h": [
+     "distributed-under"
+    ],
+    "raster/raster.c": [
+     "distributed-under"
+    ],
+    "raster/rasterrs.h": [
+     "distributed-under"
+    ],
+    "sdf/ftbsdf.c": [
+     "distributed-under"
+    ],
+    "sdf/ftsdf.c": [
+     "distributed-under"
+    ],
+    "sdf/ftsdf.h": [
+     "distributed-under"
+    ],
+    "sdf/ftsdfcommon.c": [
+     "distributed-under"
+    ],
+    "sdf/ftsdfcommon.h": [
+     "distributed-under"
+    ],
+    "sdf/ftsdferrs.h": [
+     "distributed-under"
+    ],
+    "sdf/ftsdfrend.c": [
+     "distributed-under"
+    ],
+    "sdf/ftsdfrend.h": [
+     "distributed-under"
+    ],
+    "sdf/sdf.c": [
+     "distributed-under"
+    ],
+    "sfnt/pngshim.c": [
+     "distributed-under"
+    ],
+    "sfnt/pngshim.h": [
+     "distributed-under"
+    ],
+    "sfnt/sfdriver.c": [
+     "distributed-under"
+    ],
+    "sfnt/sfdriver.h": [
+     "distributed-under"
+    ],
+    "sfnt/sferrors.h": [
+     "distributed-under"
+    ],
+    "sfnt/sfnt.c": [
+     "distributed-under"
+    ],
+    "sfnt/sfobjs.c": [
+     "distributed-under"
+    ],
+    "sfnt/sfobjs.h": [
+     "distributed-under"
+    ],
+    "sfnt/sfwoff.c": [
+     "distributed-under"
+    ],
+    "sfnt/sfwoff.h": [
+     "distributed-under"
+    ],
+    "sfnt/sfwoff2.c": [
+     "distributed-under"
+    ],
+    "sfnt/sfwoff2.h": [
+     "distributed-under"
+    ],
+    "sfnt/ttbdf.c": [
+     "distributed-under"
+    ],
+    "sfnt/ttbdf.h": [
+     "distributed-under"
+    ],
+    "sfnt/ttcmap.c": [
+     "distributed-under"
+    ],
+    "sfnt/ttcmap.h": [
+     "distributed-under"
+    ],
+    "sfnt/ttcmapc.h": [
+     "distributed-under"
+    ],
+    "sfnt/ttcolr.c": [
+     "distributed-under"
+    ],
+    "sfnt/ttcolr.h": [
+     "distributed-under"
+    ],
+    "sfnt/ttcpal.c": [
+     "distributed-under"
+    ],
+    "sfnt/ttcpal.h": [
+     "distributed-under"
+    ],
+    "sfnt/ttgpos.c": [
+     "distributed-under"
+    ],
+    "sfnt/ttgpos.h": [
+     "distributed-under"
+    ],
+    "sfnt/ttkern.c": [
+     "distributed-under"
+    ],
+    "sfnt/ttkern.h": [
+     "distributed-under"
+    ],
+    "sfnt/ttload.c": [
+     "distributed-under"
+    ],
+    "sfnt/ttload.h": [
+     "distributed-under"
+    ],
+    "sfnt/ttmtx.c": [
+     "distributed-under"
+    ],
+    "sfnt/ttmtx.h": [
+     "distributed-under"
+    ],
+    "sfnt/ttpost.c": [
+     "distributed-under"
+    ],
+    "sfnt/ttpost.h": [
+     "distributed-under"
+    ],
+    "sfnt/ttsbit.c": [
+     "distributed-under"
+    ],
+    "sfnt/ttsbit.h": [
+     "distributed-under"
+    ],
+    "sfnt/ttsvg.c": [
+     "distributed-under"
+    ],
+    "sfnt/ttsvg.h": [
+     "distributed-under"
+    ],
+    "sfnt/woff2tags.c": [
+     "distributed-under"
+    ],
+    "sfnt/woff2tags.h": [
+     "distributed-under"
+    ],
+    "smooth/ftgrays.c": [
+     "distributed-under"
+    ],
+    "smooth/ftgrays.h": [
+     "distributed-under"
+    ],
+    "smooth/ftsmerrs.h": [
+     "distributed-under"
+    ],
+    "smooth/ftsmooth.c": [
+     "distributed-under"
+    ],
+    "smooth/ftsmooth.h": [
+     "distributed-under"
+    ],
+    "smooth/smooth.c": [
+     "distributed-under"
+    ],
+    "svg/ftsvg.c": [
+     "distributed-under"
+    ],
+    "svg/ftsvg.h": [
+     "distributed-under"
+    ],
+    "svg/svg.c": [
+     "distributed-under"
+    ],
+    "svg/svgtypes.h": [
+     "distributed-under"
+    ],
+    "tools/apinames.c": [
+     "public-domain"
+    ],
+    "tools/ftrandom/ftrandom.c": [
+     "redistribution"
+    ],
+    "tools/vms_shorten_symbol.c": [
+     "granted",
+     "public-domain"
+    ],
+    "truetype/truetype.c": [
+     "distributed-under"
+    ],
+    "truetype/ttdriver.c": [
+     "distributed-under"
+    ],
+    "truetype/ttdriver.h": [
+     "distributed-under"
+    ],
+    "truetype/tterrors.h": [
+     "distributed-under"
+    ],
+    "truetype/ttgload.c": [
+     "distributed-under"
+    ],
+    "truetype/ttgload.h": [
+     "distributed-under"
+    ],
+    "truetype/ttgxvar.c": [
+     "distributed-under"
+    ],
+    "truetype/ttgxvar.h": [
+     "distributed-under"
+    ],
+    "truetype/ttinterp.c": [
+     "distributed-under"
+    ],
+    "truetype/ttinterp.h": [
+     "distributed-under"
+    ],
+    "truetype/ttobjs.c": [
+     "distributed-under"
+    ],
+    "truetype/ttobjs.h": [
+     "distributed-under"
+    ],
+    "truetype/ttpload.c": [
+     "distributed-under"
+    ],
+    "truetype/ttpload.h": [
+     "distributed-under"
+    ],
+    "type1/t1afm.c": [
+     "distributed-under"
+    ],
+    "type1/t1afm.h": [
+     "distributed-under"
+    ],
+    "type1/t1driver.c": [
+     "distributed-under"
+    ],
+    "type1/t1driver.h": [
+     "distributed-under"
+    ],
+    "type1/t1errors.h": [
+     "distributed-under"
+    ],
+    "type1/t1gload.c": [
+     "distributed-under"
+    ],
+    "type1/t1gload.h": [
+     "distributed-under"
+    ],
+    "type1/t1load.c": [
+     "distributed-under"
+    ],
+    "type1/t1load.h": [
+     "distributed-under"
+    ],
+    "type1/t1objs.c": [
+     "distributed-under"
+    ],
+    "type1/t1objs.h": [
+     "distributed-under"
+    ],
+    "type1/t1parse.c": [
+     "distributed-under"
+    ],
+    "type1/t1parse.h": [
+     "distributed-under"
+    ],
+    "type1/t1tokens.h": [
+     "distributed-under"
+    ],
+    "type1/type1.c": [
+     "distributed-under"
+    ],
+    "type42/t42drivr.c": [
+     "distributed-under"
+    ],
+    "type42/t42drivr.h": [
+     "distributed-under"
+    ],
+    "type42/t42error.h": [
+     "distributed-under"
+    ],
+    "type42/t42objs.c": [
+     "distributed-under"
+    ],
+    "type42/t42objs.h": [
+     "distributed-under"
+    ],
+    "type42/t42parse.c": [
+     "distributed-under"
+    ],
+    "type42/t42parse.h": [
+     "distributed-under"
+    ],
+    "type42/t42types.h": [
+     "distributed-under"
+    ],
+    "type42/type42.c": [
+     "distributed-under"
+    ],
+    "winfonts/fnterrs.h": [
+     "distributed-under"
+    ],
+    "winfonts/winfnt.c": [
+     "distributed-under"
+    ],
+    "winfonts/winfnt.h": [
+     "distributed-under"
+    ]
+   }
+  },
+  {
+   "archive": "texlive-source-f26cc5e.tar.gz",
+   "path": "libs/freetype2/freetype-src/include",
+   "files": 102,
+   "covered": 96,
+   "ruled": [
+    {
+     "file": "dlg/dlg.h",
+     "how": "skip",
+     "why": "dlg, FreeType's debug logging (Boost Software License), compiled only with FT_DEBUG_LOGGING, which a release build leaves out"
+    },
+    {
+     "file": "dlg/output.h",
+     "how": "skip",
+     "why": "dlg, FreeType's debug logging (Boost Software License), compiled only with FT_DEBUG_LOGGING, which a release build leaves out"
+    },
+    {
+     "file": "freetype/ftmodapi.h",
+     "how": "covered",
+     "why": "no licence: a note that the TrueType bytecode interpreter 'was governed by patents until May 2010'"
+    },
+    {
+     "file": "freetype/internal/fthash.h",
+     "how": "notice",
+     "why": "LICENSES/engine/FreeType-fthash-notice.txt"
+    }
+   ],
+   "hits": {
+    "dlg/dlg.h": [
+     "boost",
+     "distributed-under"
+    ],
+    "dlg/output.h": [
+     "boost",
+     "distributed-under"
+    ],
+    "freetype/config/ftconfig.h": [
+     "distributed-under"
+    ],
+    "freetype/config/ftheader.h": [
+     "distributed-under"
+    ],
+    "freetype/config/ftoption.h": [
+     "distributed-under"
+    ],
+    "freetype/config/ftstdlib.h": [
+     "distributed-under"
+    ],
+    "freetype/config/integer-types.h": [
+     "distributed-under"
+    ],
+    "freetype/config/mac-support.h": [
+     "distributed-under"
+    ],
+    "freetype/config/public-macros.h": [
+     "distributed-under"
+    ],
+    "freetype/freetype.h": [
+     "distributed-under"
+    ],
+    "freetype/ftadvanc.h": [
+     "distributed-under"
+    ],
+    "freetype/ftbbox.h": [
+     "distributed-under"
+    ],
+    "freetype/ftbdf.h": [
+     "distributed-under"
+    ],
+    "freetype/ftbitmap.h": [
+     "distributed-under"
+    ],
+    "freetype/ftbzip2.h": [
+     "distributed-under"
+    ],
+    "freetype/ftcache.h": [
+     "distributed-under"
+    ],
+    "freetype/ftcid.h": [
+     "distributed-under"
+    ],
+    "freetype/ftcolor.h": [
+     "distributed-under"
+    ],
+    "freetype/ftdriver.h": [
+     "distributed-under"
+    ],
+    "freetype/fterrdef.h": [
+     "distributed-under"
+    ],
+    "freetype/fterrors.h": [
+     "distributed-under"
+    ],
+    "freetype/ftfntfmt.h": [
+     "distributed-under"
+    ],
+    "freetype/ftgasp.h": [
+     "distributed-under"
+    ],
+    "freetype/ftglyph.h": [
+     "distributed-under"
+    ],
+    "freetype/ftgxval.h": [
+     "distributed-under"
+    ],
+    "freetype/ftgzip.h": [
+     "distributed-under"
+    ],
+    "freetype/ftimage.h": [
+     "distributed-under"
+    ],
+    "freetype/ftincrem.h": [
+     "distributed-under"
+    ],
+    "freetype/ftlcdfil.h": [
+     "distributed-under"
+    ],
+    "freetype/ftlist.h": [
+     "distributed-under"
+    ],
+    "freetype/ftlogging.h": [
+     "distributed-under"
+    ],
+    "freetype/ftlzw.h": [
+     "distributed-under"
+    ],
+    "freetype/ftmac.h": [
+     "distributed-under"
+    ],
+    "freetype/ftmm.h": [
+     "distributed-under"
+    ],
+    "freetype/ftmodapi.h": [
+     "distributed-under",
+     "governed-by"
+    ],
+    "freetype/ftmoderr.h": [
+     "distributed-under"
+    ],
+    "freetype/ftotval.h": [
+     "distributed-under"
+    ],
+    "freetype/ftoutln.h": [
+     "distributed-under"
+    ],
+    "freetype/ftparams.h": [
+     "distributed-under"
+    ],
+    "freetype/ftpfr.h": [
+     "distributed-under"
+    ],
+    "freetype/ftrender.h": [
+     "distributed-under"
+    ],
+    "freetype/ftsizes.h": [
+     "distributed-under"
+    ],
+    "freetype/ftsnames.h": [
+     "distributed-under"
+    ],
+    "freetype/ftstroke.h": [
+     "distributed-under"
+    ],
+    "freetype/ftsynth.h": [
+     "distributed-under"
+    ],
+    "freetype/ftsystem.h": [
+     "distributed-under"
+    ],
+    "freetype/fttrigon.h": [
+     "distributed-under"
+    ],
+    "freetype/fttypes.h": [
+     "distributed-under"
+    ],
+    "freetype/ftwinfnt.h": [
+     "distributed-under"
+    ],
+    "freetype/internal/autohint.h": [
+     "distributed-under"
+    ],
+    "freetype/internal/cffotypes.h": [
+     "distributed-under"
+    ],
+    "freetype/internal/cfftypes.h": [
+     "distributed-under"
+    ],
+    "freetype/internal/compiler-macros.h": [
+     "distributed-under"
+    ],
+    "freetype/internal/ftcalc.h": [
+     "distributed-under"
+    ],
+    "freetype/internal/ftdebug.h": [
+     "distributed-under"
+    ],
+    "freetype/internal/ftdrv.h": [
+     "distributed-under"
+    ],
+    "freetype/internal/ftgloadr.h": [
+     "distributed-under"
+    ],
+    "freetype/internal/fthash.h": [
+     "granted"
+    ],
+    "freetype/internal/ftmemory.h": [
+     "distributed-under"
+    ],
+    "freetype/internal/ftmmtypes.h": [
+     "distributed-under"
+    ],
+    "freetype/internal/ftobjs.h": [
+     "distributed-under"
+    ],
+    "freetype/internal/ftpsprop.h": [
+     "distributed-under"
+    ],
+    "freetype/internal/ftrfork.h": [
+     "distributed-under"
+    ],
+    "freetype/internal/ftserv.h": [
+     "distributed-under"
+    ],
+    "freetype/internal/ftstream.h": [
+     "distributed-under"
+    ],
+    "freetype/internal/fttrace.h": [
+     "distributed-under"
+    ],
+    "freetype/internal/ftvalid.h": [
+     "distributed-under"
+    ],
+    "freetype/internal/psaux.h": [
+     "distributed-under"
+    ],
+    "freetype/internal/pshints.h": [
+     "distributed-under"
+    ],
+    "freetype/internal/services/svbdf.h": [
+     "distributed-under"
+    ],
+    "freetype/internal/services/svcfftl.h": [
+     "distributed-under"
+    ],
+    "freetype/internal/services/svcid.h": [
+     "distributed-under"
+    ],
+    "freetype/internal/services/svfntfmt.h": [
+     "distributed-under"
+    ],
+    "freetype/internal/services/svgldict.h": [
+     "distributed-under"
+    ],
+    "freetype/internal/services/svgxval.h": [
+     "distributed-under"
+    ],
+    "freetype/internal/services/svkern.h": [
+     "distributed-under"
+    ],
+    "freetype/internal/services/svmetric.h": [
+     "distributed-under"
+    ],
+    "freetype/internal/services/svmm.h": [
+     "distributed-under"
+    ],
+    "freetype/internal/services/svotval.h": [
+     "distributed-under"
+    ],
+    "freetype/internal/services/svpfr.h": [
+     "distributed-under"
+    ],
+    "freetype/internal/services/svpostnm.h": [
+     "distributed-under"
+    ],
+    "freetype/internal/services/svprop.h": [
+     "distributed-under"
+    ],
+    "freetype/internal/services/svpscmap.h": [
+     "distributed-under"
+    ],
+    "freetype/internal/services/svpsinfo.h": [
+     "distributed-under"
+    ],
+    "freetype/internal/services/svsfnt.h": [
+     "distributed-under"
+    ],
+    "freetype/internal/services/svttcmap.h": [
+     "distributed-under"
+    ],
+    "freetype/internal/services/svtteng.h": [
+     "distributed-under"
+    ],
+    "freetype/internal/services/svttglyf.h": [
+     "distributed-under"
+    ],
+    "freetype/internal/services/svwinfnt.h": [
+     "distributed-under"
+    ],
+    "freetype/internal/sfnt.h": [
+     "distributed-under"
+    ],
+    "freetype/internal/svginterface.h": [
+     "distributed-under"
+    ],
+    "freetype/internal/t1types.h": [
+     "distributed-under"
+    ],
+    "freetype/internal/tttypes.h": [
+     "distributed-under"
+    ],
+    "freetype/internal/wofftypes.h": [
+     "distributed-under"
+    ],
+    "freetype/otsvg.h": [
+     "distributed-under"
+    ],
+    "freetype/t1tables.h": [
+     "distributed-under"
+    ],
+    "freetype/ttnameid.h": [
+     "distributed-under"
+    ],
+    "freetype/tttables.h": [
+     "distributed-under"
+    ],
+    "freetype/tttags.h": [
+     "distributed-under"
+    ],
+    "ft2build.h": [
+     "distributed-under"
+    ]
+   }
+  },
+  {
+   "archive": "texlive-source-f26cc5e.tar.gz",
+   "path": "libs/pplib/pplib-src/src",
+   "files": 54,
+   "covered": 0,
+   "ruled": [
+    {
+     "file": "util/utilmd5.c",
+     "how": "notice",
+     "why": "LICENSES/engine/pplib-utilmd5-notice.txt"
+    },
+    {
+     "file": "util/utilsha.c",
+     "how": "notice",
+     "why": "LICENSES/engine/pplib-utilsha-notice.txt"
+    }
+   ],
+   "hits": {
+    "util/utilmd5.c": [
+     "as-is"
+    ],
+    "util/utilsha.c": [
+     "redistribution"
+    ]
+   }
+  },
+  {
+   "archive": "texlive-source-f26cc5e.tar.gz",
+   "path": "libs/zlib/zlib-src",
+   "files": 78,
+   "covered": 22,
+   "ruled": [
+    {
+     "file": "contrib/blast/blast.c",
+     "how": "skip",
+     "why": "zlib's contributed code and examples, not in libz.a"
+    },
+    {
+     "file": "contrib/blast/blast.h",
+     "how": "skip",
+     "why": "zlib's contributed code and examples, not in libz.a"
+    },
+    {
+     "file": "contrib/crc32vx/crc32_vx.c",
+     "how": "skip",
+     "why": "zlib's contributed code and examples, not in libz.a"
+    },
+    {
+     "file": "contrib/infback9/infback9.c",
+     "how": "skip",
+     "why": "zlib's contributed code and examples, not in libz.a"
+    },
+    {
+     "file": "contrib/infback9/infback9.h",
+     "how": "skip",
+     "why": "zlib's contributed code and examples, not in libz.a"
+    },
+    {
+     "file": "contrib/infback9/inflate9.h",
+     "how": "skip",
+     "why": "zlib's contributed code and examples, not in libz.a"
+    },
+    {
+     "file": "contrib/infback9/inftree9.c",
+     "how": "skip",
+     "why": "zlib's contributed code and examples, not in libz.a"
+    },
+    {
+     "file": "contrib/infback9/inftree9.h",
+     "how": "skip",
+     "why": "zlib's contributed code and examples, not in libz.a"
+    },
+    {
+     "file": "contrib/iostream2/zstream.h",
+     "how": "skip",
+     "why": "zlib's contributed code and examples, not in libz.a"
+    },
+    {
+     "file": "contrib/minizip/skipset.h",
+     "how": "skip",
+     "why": "zlib's contributed code and examples, not in libz.a"
+    },
+    {
+     "file": "contrib/minizip/unzip.c",
+     "how": "skip",
+     "why": "zlib's contributed code and examples, not in libz.a"
+    },
+    {
+     "file": "contrib/minizip/unzip.h",
+     "how": "skip",
+     "why": "zlib's contributed code and examples, not in libz.a"
+    },
+    {
+     "file": "contrib/minizip/zip.h",
+     "how": "skip",
+     "why": "zlib's contributed code and examples, not in libz.a"
+    },
+    {
+     "file": "contrib/puff/puff.c",
+     "how": "skip",
+     "why": "zlib's contributed code and examples, not in libz.a"
+    },
+    {
+     "file": "contrib/puff/puff.h",
+     "how": "skip",
+     "why": "zlib's contributed code and examples, not in libz.a"
+    },
+    {
+     "file": "contrib/puff/pufftest.c",
+     "how": "skip",
+     "why": "zlib's contributed code and examples, not in libz.a"
+    },
+    {
+     "file": "examples/fitblk.c",
+     "how": "skip",
+     "why": "zlib's contributed code and examples, not in libz.a"
+    },
+    {
+     "file": "examples/gun.c",
+     "how": "skip",
+     "why": "zlib's contributed code and examples, not in libz.a"
+    },
+    {
+     "file": "examples/gzappend.c",
+     "how": "skip",
+     "why": "zlib's contributed code and examples, not in libz.a"
+    },
+    {
+     "file": "examples/gzjoin.c",
+     "how": "skip",
+     "why": "zlib's contributed code and examples, not in libz.a"
+    },
+    {
+     "file": "examples/gzlog.c",
+     "how": "skip",
+     "why": "zlib's contributed code and examples, not in libz.a"
+    },
+    {
+     "file": "examples/gzlog.h",
+     "how": "skip",
+     "why": "zlib's contributed code and examples, not in libz.a"
+    },
+    {
+     "file": "examples/gznorm.c",
+     "how": "skip",
+     "why": "zlib's contributed code and examples, not in libz.a"
+    },
+    {
+     "file": "examples/zpipe.c",
+     "how": "skip",
+     "why": "zlib's contributed code and examples, not in libz.a"
+    },
+    {
+     "file": "examples/zran.c",
+     "how": "skip",
+     "why": "zlib's contributed code and examples, not in libz.a"
+    },
+    {
+     "file": "examples/zran.h",
+     "how": "skip",
+     "why": "zlib's contributed code and examples, not in libz.a"
+    },
+    {
+     "file": "test/example.c",
+     "how": "skip",
+     "why": "zlib's contributed code and examples, not in libz.a"
+    },
+    {
+     "file": "test/infcover.c",
+     "how": "skip",
+     "why": "zlib's contributed code and examples, not in libz.a"
+    },
+    {
+     "file": "test/minigzip.c",
+     "how": "skip",
+     "why": "zlib's contributed code and examples, not in libz.a"
+    }
+   ],
+   "hits": {
+    "adler32.c": [
+     "see-notice"
+    ],
+    "compress.c": [
+     "see-notice"
+    ],
+    "contrib/blast/blast.c": [
+     "see-notice"
+    ],
+    "contrib/blast/blast.h": [
+     "as-is"
+    ],
+    "contrib/crc32vx/crc32_vx.c": [
+     "licensed-under"
+    ],
+    "contrib/infback9/infback9.c": [
+     "see-notice"
+    ],
+    "contrib/infback9/infback9.h": [
+     "see-notice"
+    ],
+    "contrib/infback9/inflate9.h": [
+     "see-notice"
+    ],
+    "contrib/infback9/inftree9.c": [
+     "see-notice"
+    ],
+    "contrib/infback9/inftree9.h": [
+     "see-notice"
+    ],
+    "contrib/iostream2/zstream.h": [
+     "notice-appear",
+     "permission-to-use"
+    ],
+    "contrib/minizip/skipset.h": [
+     "licensed-under"
+    ],
+    "contrib/minizip/unzip.c": [
+     "terms-of-use"
+    ],
+    "contrib/minizip/unzip.h": [
+     "as-is"
+    ],
+    "contrib/minizip/zip.h": [
+     "as-is"
+    ],
+    "contrib/puff/puff.c": [
+     "see-notice"
+    ],
+    "contrib/puff/puff.h": [
+     "as-is"
+    ],
+    "contrib/puff/pufftest.c": [
+     "see-notice"
+    ],
+    "crc32.c": [
+     "see-notice"
+    ],
+    "deflate.c": [
+     "see-notice"
+    ],
+    "deflate.h": [
+     "see-notice"
+    ],
+    "examples/fitblk.c": [
+     "public-domain"
+    ],
+    "examples/gun.c": [
+     "see-notice"
+    ],
+    "examples/gzappend.c": [
+     "as-is"
+    ],
+    "examples/gzjoin.c": [
+     "as-is"
+    ],
+    "examples/gzlog.c": [
+     "see-notice"
+    ],
+    "examples/gzlog.h": [
+     "as-is"
+    ],
+    "examples/gznorm.c": [
+     "see-notice"
+    ],
+    "examples/zpipe.c": [
+     "public-domain"
+    ],
+    "examples/zran.c": [
+     "see-notice"
+    ],
+    "examples/zran.h": [
+     "see-notice"
+    ],
+    "gzclose.c": [
+     "see-notice"
+    ],
+    "gzguts.h": [
+     "see-notice"
+    ],
+    "gzlib.c": [
+     "see-notice"
+    ],
+    "gzread.c": [
+     "see-notice"
+    ],
+    "gzwrite.c": [
+     "see-notice"
+    ],
+    "infback.c": [
+     "see-notice"
+    ],
+    "inffast.c": [
+     "see-notice"
+    ],
+    "inffast.h": [
+     "see-notice"
+    ],
+    "inflate.c": [
+     "see-notice"
+    ],
+    "inflate.h": [
+     "see-notice"
+    ],
+    "inftrees.c": [
+     "see-notice"
+    ],
+    "inftrees.h": [
+     "see-notice"
+    ],
+    "test/example.c": [
+     "see-notice"
+    ],
+    "test/infcover.c": [
+     "see-notice"
+    ],
+    "test/minigzip.c": [
+     "see-notice"
+    ],
+    "trees.c": [
+     "see-notice"
+    ],
+    "uncompr.c": [
+     "see-notice"
+    ],
+    "zlib.h": [
+     "as-is"
+    ],
+    "zutil.c": [
+     "see-notice"
+    ],
+    "zutil.h": [
+     "see-notice"
+    ]
+   }
+  },
+  {
+   "archive": "texlive-source-f26cc5e.tar.gz",
+   "path": "libs/lua53/lua53-src/src",
+   "files": 61,
+   "covered": 60,
+   "ruled": [],
+   "hits": {
+    "lapi.c": [
+     "see-notice"
+    ],
+    "lapi.h": [
+     "see-notice"
+    ],
+    "lauxlib.c": [
+     "see-notice"
+    ],
+    "lauxlib.h": [
+     "see-notice"
+    ],
+    "lbaselib.c": [
+     "see-notice"
+    ],
+    "lbitlib.c": [
+     "see-notice"
+    ],
+    "lcode.c": [
+     "see-notice"
+    ],
+    "lcode.h": [
+     "see-notice"
+    ],
+    "lcorolib.c": [
+     "see-notice"
+    ],
+    "lctype.c": [
+     "see-notice"
+    ],
+    "lctype.h": [
+     "see-notice"
+    ],
+    "ldblib.c": [
+     "see-notice"
+    ],
+    "ldebug.c": [
+     "see-notice"
+    ],
+    "ldebug.h": [
+     "see-notice"
+    ],
+    "ldo.c": [
+     "see-notice"
+    ],
+    "ldo.h": [
+     "see-notice"
+    ],
+    "ldump.c": [
+     "see-notice"
+    ],
+    "lfunc.c": [
+     "see-notice"
+    ],
+    "lfunc.h": [
+     "see-notice"
+    ],
+    "lgc.c": [
+     "see-notice"
+    ],
+    "lgc.h": [
+     "see-notice"
+    ],
+    "linit.c": [
+     "see-notice"
+    ],
+    "liolib.c": [
+     "see-notice"
+    ],
+    "llex.c": [
+     "see-notice"
+    ],
+    "llex.h": [
+     "see-notice"
+    ],
+    "llimits.h": [
+     "see-notice"
+    ],
+    "lmathlib.c": [
+     "see-notice"
+    ],
+    "lmem.c": [
+     "see-notice"
+    ],
+    "lmem.h": [
+     "see-notice"
+    ],
+    "loadlib.c": [
+     "see-notice"
+    ],
+    "lobject.c": [
+     "see-notice"
+    ],
+    "lobject.h": [
+     "see-notice"
+    ],
+    "lopcodes.c": [
+     "see-notice"
+    ],
+    "lopcodes.h": [
+     "see-notice"
+    ],
+    "loslib.c": [
+     "see-notice"
+    ],
+    "lparser.c": [
+     "see-notice"
+    ],
+    "lparser.h": [
+     "see-notice"
+    ],
+    "lprefix.h": [
+     "see-notice"
+    ],
+    "lstate.c": [
+     "see-notice"
+    ],
+    "lstate.h": [
+     "see-notice"
+    ],
+    "lstring.c": [
+     "see-notice"
+    ],
+    "lstring.h": [
+     "see-notice"
+    ],
+    "lstrlib.c": [
+     "see-notice"
+    ],
+    "ltable.c": [
+     "see-notice"
+    ],
+    "ltable.h": [
+     "see-notice"
+    ],
+    "ltablib.c": [
+     "see-notice"
+    ],
+    "ltm.c": [
+     "see-notice"
+    ],
+    "ltm.h": [
+     "see-notice"
+    ],
+    "lua.c": [
+     "see-notice"
+    ],
+    "lua.h": [
+     "granted"
+    ],
+    "luac.c": [
+     "see-notice"
+    ],
+    "luaconf.h": [
+     "see-notice"
+    ],
+    "lualib.h": [
+     "see-notice"
+    ],
+    "lundump.c": [
+     "see-notice"
+    ],
+    "lundump.h": [
+     "see-notice"
+    ],
+    "lutf8lib.c": [
+     "see-notice"
+    ],
+    "lvm.c": [
+     "see-notice"
+    ],
+    "lvm.h": [
+     "see-notice"
+    ],
+    "lzio.c": [
+     "see-notice"
+    ],
+    "lzio.h": [
+     "see-notice"
+    ]
+   }
+  },
+  {
+   "archive": "texlive-source-f26cc5e.tar.gz",
+   "path": "libs/libpng/libpng-src",
+   "files": 99,
+   "covered": 41,
+   "ruled": [
+    {
+     "file": "contrib/arm-neon/android-ndk.c",
+     "how": "skip",
+     "why": "libpng's contributed programs, not in libpng.a"
+    },
+    {
+     "file": "contrib/arm-neon/linux-auxv.c",
+     "how": "skip",
+     "why": "libpng's contributed programs, not in libpng.a"
+    },
+    {
+     "file": "contrib/arm-neon/linux.c",
+     "how": "skip",
+     "why": "libpng's contributed programs, not in libpng.a"
+    },
+    {
+     "file": "contrib/libtests/makepng.c",
+     "how": "skip",
+     "why": "libpng's contributed programs, not in libpng.a"
+    },
+    {
+     "file": "contrib/libtests/pngimage.c",
+     "how": "skip",
+     "why": "libpng's contributed programs, not in libpng.a"
+    },
+    {
+     "file": "contrib/libtests/pngstest-errors.h",
+     "how": "skip",
+     "why": "libpng's contributed programs, not in libpng.a"
+    },
+    {
+     "file": "contrib/libtests/pngstest.c",
+     "how": "skip",
+     "why": "libpng's contributed programs, not in libpng.a"
+    },
+    {
+     "file": "contrib/libtests/pngunknown.c",
+     "how": "skip",
+     "why": "libpng's contributed programs, not in libpng.a"
+    },
+    {
+     "file": "contrib/libtests/pngvalid.c",
+     "how": "skip",
+     "why": "libpng's contributed programs, not in libpng.a"
+    },
+    {
+     "file": "contrib/libtests/readpng.c",
+     "how": "skip",
+     "why": "libpng's contributed programs, not in libpng.a"
+    },
+    {
+     "file": "contrib/libtests/tarith.c",
+     "how": "skip",
+     "why": "libpng's contributed programs, not in libpng.a"
+    },
+    {
+     "file": "contrib/libtests/timepng.c",
+     "how": "skip",
+     "why": "libpng's contributed programs, not in libpng.a"
+    },
+    {
+     "file": "contrib/mips-mmi/linux.c",
+     "how": "skip",
+     "why": "libpng's contributed programs, not in libpng.a"
+    },
+    {
+     "file": "contrib/mips-msa/linux.c",
+     "how": "skip",
+     "why": "libpng's contributed programs, not in libpng.a"
+    },
+    {
+     "file": "contrib/oss-fuzz/libpng_read_fuzzer.cc",
+     "how": "skip",
+     "why": "libpng's contributed programs, not in libpng.a"
+    },
+    {
+     "file": "contrib/oss-fuzz/nalloc.h",
+     "how": "skip",
+     "why": "libpng's contributed programs, not in libpng.a"
+    },
+    {
+     "file": "contrib/pngminim/decoder/pngusr.h",
+     "how": "skip",
+     "why": "libpng's contributed programs, not in libpng.a"
+    },
+    {
+     "file": "contrib/pngminim/encoder/pngusr.h",
+     "how": "skip",
+     "why": "libpng's contributed programs, not in libpng.a"
+    },
+    {
+     "file": "contrib/pngminim/preader/pngusr.h",
+     "how": "skip",
+     "why": "libpng's contributed programs, not in libpng.a"
+    },
+    {
+     "file": "contrib/pngminus/png2pnm.c",
+     "how": "skip",
+     "why": "libpng's contributed programs, not in libpng.a"
+    },
+    {
+     "file": "contrib/pngminus/pnm2png.c",
+     "how": "skip",
+     "why": "libpng's contributed programs, not in libpng.a"
+    },
+    {
+     "file": "contrib/powerpc-vsx/linux.c",
+     "how": "skip",
+     "why": "libpng's contributed programs, not in libpng.a"
+    },
+    {
+     "file": "contrib/powerpc-vsx/linux_aux.c",
+     "how": "skip",
+     "why": "libpng's contributed programs, not in libpng.a"
+    },
+    {
+     "file": "contrib/tools/checksum-icc.c",
+     "how": "skip",
+     "why": "libpng's contributed programs, not in libpng.a"
+    },
+    {
+     "file": "contrib/tools/png-fix-itxt.c",
+     "how": "skip",
+     "why": "libpng's contributed programs, not in libpng.a"
+    },
+    {
+     "file": "contrib/tools/pngcp.c",
+     "how": "skip",
+     "why": "libpng's contributed programs, not in libpng.a"
+    },
+    {
+     "file": "contrib/tools/pngfix.c",
+     "how": "skip",
+     "why": "libpng's contributed programs, not in libpng.a"
+    },
+    {
+     "file": "contrib/visupng/PngFile.c",
+     "how": "skip",
+     "why": "libpng's contributed programs, not in libpng.a"
+    },
+    {
+     "file": "contrib/visupng/PngFile.h",
+     "how": "skip",
+     "why": "libpng's contributed programs, not in libpng.a"
+    },
+    {
+     "file": "contrib/visupng/VisualPng.c",
+     "how": "skip",
+     "why": "libpng's contributed programs, not in libpng.a"
+    },
+    {
+     "file": "example.c",
+     "how": "skip",
+     "why": "libpng's example program, not in libpng.a"
+    },
+    {
+     "file": "png.h",
+     "how": "covered",
+     "why": "libpng's own notice (libpng-LICENSE.txt holds it), which says that some files in contrib/ and some configure-generated files are under other licences; none of those is in libpng.a"
+    }
+   ],
+   "hits": {
+    "arm/arm_init.c": [
+     "released-under"
+    ],
+    "arm/filter_neon_intrinsics.c": [
+     "released-under"
+    ],
+    "arm/palette_neon_intrinsics.c": [
+     "released-under"
+    ],
+    "contrib/arm-neon/android-ndk.c": [
+     "released-under"
+    ],
+    "contrib/arm-neon/linux-auxv.c": [
+     "released-under"
+    ],
+    "contrib/arm-neon/linux.c": [
+     "released-under"
+    ],
+    "contrib/libtests/makepng.c": [
+     "public-domain",
+     "released-under"
+    ],
+    "contrib/libtests/pngimage.c": [
+     "released-under"
+    ],
+    "contrib/libtests/pngstest-errors.h": [
+     "released-under"
+    ],
+    "contrib/libtests/pngstest.c": [
+     "released-under"
+    ],
+    "contrib/libtests/pngunknown.c": [
+     "released-under"
+    ],
+    "contrib/libtests/pngvalid.c": [
+     "released-under"
+    ],
+    "contrib/libtests/readpng.c": [
+     "released-under"
+    ],
+    "contrib/libtests/tarith.c": [
+     "released-under"
+    ],
+    "contrib/libtests/timepng.c": [
+     "released-under"
+    ],
+    "contrib/mips-mmi/linux.c": [
+     "released-under"
+    ],
+    "contrib/mips-msa/linux.c": [
+     "released-under"
+    ],
+    "contrib/oss-fuzz/libpng_read_fuzzer.cc": [
+     "governed-by"
+    ],
+    "contrib/oss-fuzz/nalloc.h": [
+     "granted"
+    ],
+    "contrib/pngminim/decoder/pngusr.h": [
+     "released-under"
+    ],
+    "contrib/pngminim/encoder/pngusr.h": [
+     "released-under"
+    ],
+    "contrib/pngminim/preader/pngusr.h": [
+     "released-under"
+    ],
+    "contrib/pngminus/png2pnm.c": [
+     "released-under"
+    ],
+    "contrib/pngminus/pnm2png.c": [
+     "released-under"
+    ],
+    "contrib/powerpc-vsx/linux.c": [
+     "released-under"
+    ],
+    "contrib/powerpc-vsx/linux_aux.c": [
+     "released-under"
+    ],
+    "contrib/tools/checksum-icc.c": [
+     "released-under"
+    ],
+    "contrib/tools/png-fix-itxt.c": [
+     "released-under"
+    ],
+    "contrib/tools/pngcp.c": [
+     "released-under"
+    ],
+    "contrib/tools/pngfix.c": [
+     "released-under"
+    ],
+    "contrib/visupng/PngFile.c": [
+     "released-under"
+    ],
+    "contrib/visupng/PngFile.h": [
+     "released-under"
+    ],
+    "contrib/visupng/VisualPng.c": [
+     "released-under"
+    ],
+    "example.c": [
+     "public-domain"
+    ],
+    "intel/filter_sse2_intrinsics.c": [
+     "released-under"
+    ],
+    "intel/intel_init.c": [
+     "released-under"
+    ],
+    "loongarch/filter_lsx_intrinsics.c": [
+     "released-under"
+    ],
+    "loongarch/loongarch_lsx_init.c": [
+     "released-under"
+    ],
+    "mips/filter_mmi_inline_assembly.c": [
+     "released-under"
+    ],
+    "mips/filter_msa_intrinsics.c": [
+     "released-under"
+    ],
+    "mips/mips_init.c": [
+     "released-under"
+    ],
+    "png.c": [
+     "released-under"
+    ],
+    "png.h": [
+     "granted",
+     "released-under"
+    ],
+    "pngconf.h": [
+     "released-under"
+    ],
+    "pngdebug.h": [
+     "released-under"
+    ],
+    "pngerror.c": [
+     "released-under"
+    ],
+    "pngget.c": [
+     "released-under"
+    ],
+    "pnginfo.h": [
+     "released-under"
+    ],
+    "pnglibconf.h": [
+     "released-under"
+    ],
+    "pngmem.c": [
+     "released-under"
+    ],
+    "pngpread.c": [
+     "released-under"
+    ],
+    "pngpriv.h": [
+     "released-under"
+    ],
+    "pngread.c": [
+     "released-under"
+    ],
+    "pngrio.c": [
+     "released-under"
+    ],
+    "pngrtran.c": [
+     "released-under"
+    ],
+    "pngrutil.c": [
+     "released-under"
+    ],
+    "pngset.c": [
+     "released-under"
+    ],
+    "pngstruct.h": [
+     "released-under"
+    ],
+    "pngtest.c": [
+     "released-under"
+    ],
+    "pngtrans.c": [
+     "released-under"
+    ],
+    "pngwio.c": [
+     "released-under"
+    ],
+    "pngwrite.c": [
+     "released-under"
+    ],
+    "pngwtran.c": [
+     "released-under"
+    ],
+    "pngwutil.c": [
+     "released-under"
+    ],
+    "powerpc/filter_vsx_intrinsics.c": [
+     "released-under"
+    ],
+    "powerpc/powerpc_init.c": [
+     "released-under"
+    ],
+    "riscv/filter_rvv_intrinsics.c": [
+     "released-under"
+    ],
+    "riscv/riscv_init.c": [
+     "released-under"
+    ],
+    "scripts/intprefix.c": [
+     "released-under"
+    ],
+    "scripts/prefix.c": [
+     "released-under"
+    ],
+    "scripts/sym.c": [
+     "released-under"
+    ],
+    "scripts/symbols.c": [
+     "released-under"
+    ],
+    "scripts/vers.c": [
+     "released-under"
+    ]
+   }
+  },
+  {
+   "archive": "texlive-source-f26cc5e.tar.gz",
+   "path": "libs/zziplib/zziplib-src/zzip",
+   "files": 36,
+   "covered": 1,
+   "ruled": [],
+   "hits": {
+    "__dirent.h": [
+     "public-domain"
+    ]
+   }
+  },
+  {
+   "archive": "texlive-source-f26cc5e.tar.gz",
+   "path": "libs/teckit/TECkit-src/source",
+   "files": 17,
+   "covered": 0,
+   "ruled": [],
+   "hits": {}
+  },
+  {
+   "archive": "texlive-source-f26cc5e.tar.gz",
+   "path": "libs/graphite2/graphite2-src/src",
+   "files": 67,
+   "covered": 0,
+   "ruled": [],
+   "hits": {}
+  },
+  {
+   "archive": "texlive-source-f26cc5e.tar.gz",
+   "path": "libs/icu/icu-src/source/common",
+   "files": 424,
+   "covered": 423,
+   "ruled": [
+    {
+     "file": "punycode.cpp",
+     "how": "covered",
+     "why": "Adam M. Costello's Punycode code from RFC 3492, with ICU's own notice: anyone may use, modify and distribute it, provided derivative works carry no misleading author or version information; it asks for no notice"
+    }
+   ],
+   "hits": {
+    "appendable.cpp": [
+     "terms-of-use"
+    ],
+    "bmpset.cpp": [
+     "terms-of-use"
+    ],
+    "bmpset.h": [
+     "terms-of-use"
+    ],
+    "brkeng.cpp": [
+     "terms-of-use"
+    ],
+    "brkeng.h": [
+     "terms-of-use"
+    ],
+    "brkiter.cpp": [
+     "terms-of-use"
+    ],
+    "bytesinkutil.cpp": [
+     "terms-of-use"
+    ],
+    "bytesinkutil.h": [
+     "terms-of-use"
+    ],
+    "bytestream.cpp": [
+     "terms-of-use"
+    ],
+    "bytestrie.cpp": [
+     "terms-of-use"
+    ],
+    "bytestriebuilder.cpp": [
+     "terms-of-use"
+    ],
+    "bytestrieiterator.cpp": [
+     "terms-of-use"
+    ],
+    "caniter.cpp": [
+     "terms-of-use"
+    ],
+    "capi_helper.h": [
+     "terms-of-use"
+    ],
+    "characterproperties.cpp": [
+     "terms-of-use"
+    ],
+    "chariter.cpp": [
+     "terms-of-use"
+    ],
+    "charstr.cpp": [
+     "terms-of-use"
+    ],
+    "charstr.h": [
+     "terms-of-use"
+    ],
+    "charstrmap.h": [
+     "terms-of-use"
+    ],
+    "cmemory.cpp": [
+     "terms-of-use"
+    ],
+    "cmemory.h": [
+     "terms-of-use"
+    ],
+    "cpputils.h": [
+     "terms-of-use"
+    ],
+    "cstr.cpp": [
+     "terms-of-use"
+    ],
+    "cstr.h": [
+     "terms-of-use"
+    ],
+    "cstring.cpp": [
+     "terms-of-use"
+    ],
+    "cstring.h": [
+     "terms-of-use"
+    ],
+    "cwchar.cpp": [
+     "terms-of-use"
+    ],
+    "cwchar.h": [
+     "terms-of-use"
+    ],
+    "dictbe.cpp": [
+     "terms-of-use"
+    ],
+    "dictbe.h": [
+     "terms-of-use"
+    ],
+    "dictionarydata.cpp": [
+     "terms-of-use"
+    ],
+    "dictionarydata.h": [
+     "terms-of-use"
+    ],
+    "dtintrv.cpp": [
+     "terms-of-use"
+    ],
+    "edits.cpp": [
+     "terms-of-use"
+    ],
+    "emojiprops.cpp": [
+     "terms-of-use"
+    ],
+    "emojiprops.h": [
+     "terms-of-use"
+    ],
+    "errorcode.cpp": [
+     "terms-of-use"
+    ],
+    "filteredbrk.cpp": [
+     "terms-of-use"
+    ],
+    "filterednormalizer2.cpp": [
+     "terms-of-use"
+    ],
+    "fixedstring.cpp": [
+     "terms-of-use"
+    ],
+    "fixedstring.h": [
+     "terms-of-use"
+    ],
+    "hash.h": [
+     "terms-of-use"
+    ],
+    "icudataver.cpp": [
+     "terms-of-use"
+    ],
+    "icuplug.cpp": [
+     "terms-of-use"
+    ],
+    "icuplugimp.h": [
+     "terms-of-use"
+    ],
+    "loadednormalizer2impl.cpp": [
+     "terms-of-use"
+    ],
+    "localebuilder.cpp": [
+     "terms-of-use"
+    ],
+    "localefallback_data.h": [
+     "terms-of-use"
+    ],
+    "localematcher.cpp": [
+     "terms-of-use"
+    ],
+    "localeprioritylist.cpp": [
+     "terms-of-use"
+    ],
+    "localeprioritylist.h": [
+     "terms-of-use"
+    ],
+    "localsvc.h": [
+     "terms-of-use"
+    ],
+    "locavailable.cpp": [
+     "terms-of-use"
+    ],
+    "locbased.cpp": [
+     "terms-of-use"
+    ],
+    "locbased.h": [
+     "terms-of-use"
+    ],
+    "locdispnames.cpp": [
+     "terms-of-use"
+    ],
+    "locdistance.cpp": [
+     "terms-of-use"
+    ],
+    "locdistance.h": [
+     "terms-of-use"
+    ],
+    "locdspnm.cpp": [
+     "terms-of-use"
+    ],
+    "locid.cpp": [
+     "terms-of-use"
+    ],
+    "loclikely.cpp": [
+     "terms-of-use"
+    ],
+    "loclikelysubtags.cpp": [
+     "terms-of-use"
+    ],
+    "loclikelysubtags.h": [
+     "terms-of-use"
+    ],
+    "locmap.cpp": [
+     "terms-of-use"
+    ],
+    "locmap.h": [
+     "terms-of-use"
+    ],
+    "locresdata.cpp": [
+     "terms-of-use"
+    ],
+    "locutil.cpp": [
+     "terms-of-use"
+    ],
+    "locutil.h": [
+     "terms-of-use"
+    ],
+    "lsr.cpp": [
+     "terms-of-use"
+    ],
+    "lsr.h": [
+     "terms-of-use"
+    ],
+    "lstmbe.cpp": [
+     "terms-of-use"
+    ],
+    "lstmbe.h": [
+     "terms-of-use"
+    ],
+    "messageimpl.h": [
+     "terms-of-use"
+    ],
+    "messagepattern.cpp": [
+     "terms-of-use"
+    ],
+    "mlbe.cpp": [
+     "terms-of-use"
+    ],
+    "mlbe.h": [
+     "terms-of-use"
+    ],
+    "msvcres.h": [
+     "terms-of-use"
+    ],
+    "mutex.h": [
+     "terms-of-use"
+    ],
+    "norm2_nfc_data.h": [
+     "terms-of-use"
+    ],
+    "norm2allmodes.h": [
+     "terms-of-use"
+    ],
+    "normalizer2.cpp": [
+     "terms-of-use"
+    ],
+    "normalizer2impl.cpp": [
+     "terms-of-use"
+    ],
+    "normalizer2impl.h": [
+     "terms-of-use"
+    ],
+    "normlzr.cpp": [
+     "terms-of-use"
+    ],
+    "parsepos.cpp": [
+     "terms-of-use"
+    ],
+    "patternprops.cpp": [
+     "terms-of-use"
+    ],
+    "patternprops.h": [
+     "terms-of-use"
+    ],
+    "pluralmap.cpp": [
+     "terms-of-use"
+    ],
+    "pluralmap.h": [
+     "terms-of-use"
+    ],
+    "propname.cpp": [
+     "terms-of-use"
+    ],
+    "propname.h": [
+     "terms-of-use"
+    ],
+    "propname_data.h": [
+     "terms-of-use"
+    ],
+    "propsvec.cpp": [
+     "terms-of-use"
+    ],
+    "propsvec.h": [
+     "terms-of-use"
+    ],
+    "punycode.cpp": [
+     "licensed-under",
+     "terms-of-use"
+    ],
+    "punycode.h": [
+     "terms-of-use"
+    ],
+    "putil.cpp": [
+     "terms-of-use"
+    ],
+    "putilimp.h": [
+     "terms-of-use"
+    ],
+    "rbbi.cpp": [
+     "terms-of-use"
+    ],
+    "rbbi_cache.cpp": [
+     "terms-of-use"
+    ],
+    "rbbi_cache.h": [
+     "terms-of-use"
+    ],
+    "rbbidata.cpp": [
+     "terms-of-use"
+    ],
+    "rbbidata.h": [
+     "terms-of-use"
+    ],
+    "rbbinode.cpp": [
+     "terms-of-use"
+    ],
+    "rbbinode.h": [
+     "terms-of-use"
+    ],
+    "rbbirb.cpp": [
+     "terms-of-use"
+    ],
+    "rbbirb.h": [
+     "terms-of-use"
+    ],
+    "rbbirpt.h": [
+     "terms-of-use"
+    ],
+    "rbbiscan.cpp": [
+     "terms-of-use"
+    ],
+    "rbbiscan.h": [
+     "terms-of-use"
+    ],
+    "rbbisetb.cpp": [
+     "terms-of-use"
+    ],
+    "rbbisetb.h": [
+     "terms-of-use"
+    ],
+    "rbbistbl.cpp": [
+     "terms-of-use"
+    ],
+    "rbbitblb.cpp": [
+     "terms-of-use"
+    ],
+    "rbbitblb.h": [
+     "terms-of-use"
+    ],
+    "resbund.cpp": [
+     "terms-of-use"
+    ],
+    "resbund_cnv.cpp": [
+     "terms-of-use"
+    ],
+    "resource.cpp": [
+     "terms-of-use"
+    ],
+    "resource.h": [
+     "terms-of-use"
+    ],
+    "restrace.cpp": [
+     "terms-of-use"
+    ],
+    "restrace.h": [
+     "terms-of-use"
+    ],
+    "ruleiter.cpp": [
+     "terms-of-use"
+    ],
+    "ruleiter.h": [
+     "terms-of-use"
+    ],
+    "schriter.cpp": [
+     "terms-of-use"
+    ],
+    "serv.cpp": [
+     "terms-of-use"
+    ],
+    "serv.h": [
+     "terms-of-use"
+    ],
+    "servlk.cpp": [
+     "terms-of-use"
+    ],
+    "servlkf.cpp": [
+     "terms-of-use"
+    ],
+    "servloc.h": [
+     "terms-of-use"
+    ],
+    "servls.cpp": [
+     "terms-of-use"
+    ],
+    "servnotf.cpp": [
+     "terms-of-use"
+    ],
+    "servnotf.h": [
+     "terms-of-use"
+    ],
+    "servrbf.cpp": [
+     "terms-of-use"
+    ],
+    "servslkf.cpp": [
+     "terms-of-use"
+    ],
+    "sharedobject.cpp": [
+     "terms-of-use"
+    ],
+    "sharedobject.h": [
+     "terms-of-use"
+    ],
+    "simpleformatter.cpp": [
+     "terms-of-use"
+    ],
+    "sprpimpl.h": [
+     "terms-of-use"
+    ],
+    "static_unicode_sets.cpp": [
+     "terms-of-use"
+    ],
+    "static_unicode_sets.h": [
+     "terms-of-use"
+    ],
+    "stringpiece.cpp": [
+     "terms-of-use"
+    ],
+    "stringtriebuilder.cpp": [
+     "terms-of-use"
+    ],
+    "uarrsort.cpp": [
+     "terms-of-use"
+    ],
+    "uarrsort.h": [
+     "terms-of-use"
+    ],
+    "uassert.h": [
+     "terms-of-use"
+    ],
+    "ubidi.cpp": [
+     "terms-of-use"
+    ],
+    "ubidi_props.cpp": [
+     "terms-of-use"
+    ],
+    "ubidi_props.h": [
+     "terms-of-use"
+    ],
+    "ubidi_props_data.h": [
+     "terms-of-use"
+    ],
+    "ubidiimp.h": [
+     "terms-of-use"
+    ],
+    "ubidiln.cpp": [
+     "terms-of-use"
+    ],
+    "ubiditransform.cpp": [
+     "terms-of-use"
+    ],
+    "ubidiwrt.cpp": [
+     "terms-of-use"
+    ],
+    "ubrk.cpp": [
+     "terms-of-use"
+    ],
+    "ubrkimpl.h": [
+     "terms-of-use"
+    ],
+    "ucase.cpp": [
+     "terms-of-use"
+    ],
+    "ucase.h": [
+     "terms-of-use"
+    ],
+    "ucase_props_data.h": [
+     "terms-of-use"
+    ],
+    "ucasemap.cpp": [
+     "terms-of-use"
+    ],
+    "ucasemap_imp.h": [
+     "terms-of-use"
+    ],
+    "ucasemap_titlecase_brkiter.cpp": [
+     "terms-of-use"
+    ],
+    "ucat.cpp": [
+     "terms-of-use"
+    ],
+    "uchar.cpp": [
+     "terms-of-use"
+    ],
+    "uchar_props_data.h": [
+     "terms-of-use"
+    ],
+    "ucharstrie.cpp": [
+     "terms-of-use"
+    ],
+    "ucharstriebuilder.cpp": [
+     "terms-of-use"
+    ],
+    "ucharstrieiterator.cpp": [
+     "terms-of-use"
+    ],
+    "uchriter.cpp": [
+     "terms-of-use"
+    ],
+    "ucln.h": [
+     "terms-of-use"
+    ],
+    "ucln_cmn.cpp": [
+     "terms-of-use"
+    ],
+    "ucln_cmn.h": [
+     "terms-of-use"
+    ],
+    "ucln_imp.h": [
+     "terms-of-use"
+    ],
+    "ucmndata.cpp": [
+     "terms-of-use"
+    ],
+    "ucmndata.h": [
+     "terms-of-use"
+    ],
+    "ucnv.cpp": [
+     "terms-of-use"
+    ],
+    "ucnv2022.cpp": [
+     "terms-of-use"
+    ],
+    "ucnv_bld.cpp": [
+     "terms-of-use"
+    ],
+    "ucnv_bld.h": [
+     "terms-of-use"
+    ],
+    "ucnv_cb.cpp": [
+     "terms-of-use"
+    ],
+    "ucnv_cnv.cpp": [
+     "terms-of-use"
+    ],
+    "ucnv_cnv.h": [
+     "terms-of-use"
+    ],
+    "ucnv_ct.cpp": [
+     "terms-of-use"
+    ],
+    "ucnv_err.cpp": [
+     "terms-of-use"
+    ],
+    "ucnv_ext.cpp": [
+     "terms-of-use"
+    ],
+    "ucnv_ext.h": [
+     "terms-of-use"
+    ],
+    "ucnv_imp.h": [
+     "terms-of-use"
+    ],
+    "ucnv_io.cpp": [
+     "terms-of-use"
+    ],
+    "ucnv_io.h": [
+     "terms-of-use"
+    ],
+    "ucnv_lmb.cpp": [
+     "terms-of-use"
+    ],
+    "ucnv_set.cpp": [
+     "terms-of-use"
+    ],
+    "ucnv_u16.cpp": [
+     "terms-of-use"
+    ],
+    "ucnv_u32.cpp": [
+     "terms-of-use"
+    ],
+    "ucnv_u7.cpp": [
+     "terms-of-use"
+    ],
+    "ucnv_u8.cpp": [
+     "terms-of-use"
+    ],
+    "ucnvbocu.cpp": [
+     "terms-of-use"
+    ],
+    "ucnvdisp.cpp": [
+     "terms-of-use"
+    ],
+    "ucnvhz.cpp": [
+     "terms-of-use"
+    ],
+    "ucnvisci.cpp": [
+     "terms-of-use"
+    ],
+    "ucnvlat1.cpp": [
+     "terms-of-use"
+    ],
+    "ucnvmbcs.cpp": [
+     "terms-of-use"
+    ],
+    "ucnvmbcs.h": [
+     "terms-of-use"
+    ],
+    "ucnvscsu.cpp": [
+     "terms-of-use"
+    ],
+    "ucnvsel.cpp": [
+     "terms-of-use"
+    ],
+    "ucol_data.h": [
+     "terms-of-use"
+    ],
+    "ucol_swp.cpp": [
+     "terms-of-use"
+    ],
+    "ucol_swp.h": [
+     "terms-of-use"
+    ],
+    "ucptrie.cpp": [
+     "terms-of-use"
+    ],
+    "ucptrie_impl.h": [
+     "terms-of-use"
+    ],
+    "ucurr.cpp": [
+     "terms-of-use"
+    ],
+    "ucurrimp.h": [
+     "terms-of-use"
+    ],
+    "udata.cpp": [
+     "terms-of-use"
+    ],
+    "udatamem.cpp": [
+     "terms-of-use"
+    ],
+    "udatamem.h": [
+     "terms-of-use"
+    ],
+    "udataswp.cpp": [
+     "terms-of-use"
+    ],
+    "udataswp.h": [
+     "terms-of-use"
+    ],
+    "uelement.h": [
+     "terms-of-use"
+    ],
+    "uenum.cpp": [
+     "terms-of-use"
+    ],
+    "uenumimp.h": [
+     "terms-of-use"
+    ],
+    "uhash.cpp": [
+     "terms-of-use"
+    ],
+    "uhash.h": [
+     "terms-of-use"
+    ],
+    "uhash_us.cpp": [
+     "terms-of-use"
+    ],
+    "uidna.cpp": [
+     "terms-of-use"
+    ],
+    "uinit.cpp": [
+     "terms-of-use"
+    ],
+    "uinvchar.cpp": [
+     "terms-of-use"
+    ],
+    "uinvchar.h": [
+     "terms-of-use"
+    ],
+    "uiter.cpp": [
+     "terms-of-use"
+    ],
+    "ulayout_props.h": [
+     "terms-of-use"
+    ],
+    "ulist.cpp": [
+     "terms-of-use"
+    ],
+    "ulist.h": [
+     "terms-of-use"
+    ],
+    "uloc.cpp": [
+     "terms-of-use"
+    ],
+    "uloc_keytype.cpp": [
+     "terms-of-use"
+    ],
+    "uloc_tag.cpp": [
+     "terms-of-use"
+    ],
+    "ulocale.cpp": [
+     "terms-of-use"
+    ],
+    "ulocbuilder.cpp": [
+     "terms-of-use"
+    ],
+    "ulocimp.h": [
+     "terms-of-use"
+    ],
+    "umapfile.cpp": [
+     "terms-of-use"
+    ],
+    "umapfile.h": [
+     "terms-of-use"
+    ],
+    "umath.cpp": [
+     "terms-of-use"
+    ],
+    "umutablecptrie.cpp": [
+     "terms-of-use"
+    ],
+    "umutex.cpp": [
+     "terms-of-use"
+    ],
+    "umutex.h": [
+     "terms-of-use"
+    ],
+    "unames.cpp": [
+     "terms-of-use"
+    ],
+    "unicode/appendable.h": [
+     "terms-of-use"
+    ],
+    "unicode/brkiter.h": [
+     "terms-of-use"
+    ],
+    "unicode/bytestream.h": [
+     "terms-of-use"
+    ],
+    "unicode/bytestrie.h": [
+     "terms-of-use"
+    ],
+    "unicode/bytestriebuilder.h": [
+     "terms-of-use"
+    ],
+    "unicode/caniter.h": [
+     "terms-of-use"
+    ],
+    "unicode/casemap.h": [
+     "terms-of-use"
+    ],
+    "unicode/char16ptr.h": [
+     "terms-of-use"
+    ],
+    "unicode/chariter.h": [
+     "terms-of-use"
+    ],
+    "unicode/dbbi.h": [
+     "terms-of-use"
+    ],
+    "unicode/docmain.h": [
+     "terms-of-use"
+    ],
+    "unicode/dtintrv.h": [
+     "terms-of-use"
+    ],
+    "unicode/edits.h": [
+     "terms-of-use"
+    ],
+    "unicode/enumset.h": [
+     "terms-of-use"
+    ],
+    "unicode/errorcode.h": [
+     "terms-of-use"
+    ],
+    "unicode/filteredbrk.h": [
+     "terms-of-use"
+    ],
+    "unicode/icudataver.h": [
+     "terms-of-use"
+    ],
+    "unicode/icuplug.h": [
+     "terms-of-use"
+    ],
+    "unicode/idna.h": [
+     "terms-of-use"
+    ],
+    "unicode/localebuilder.h": [
+     "terms-of-use"
+    ],
+    "unicode/localematcher.h": [
+     "terms-of-use"
+    ],
+    "unicode/localpointer.h": [
+     "terms-of-use"
+    ],
+    "unicode/locdspnm.h": [
+     "terms-of-use"
+    ],
+    "unicode/locid.h": [
+     "terms-of-use"
+    ],
+    "unicode/messagepattern.h": [
+     "terms-of-use"
+    ],
+    "unicode/normalizer2.h": [
+     "terms-of-use"
+    ],
+    "unicode/normlzr.h": [
+     "terms-of-use"
+    ],
+    "unicode/parseerr.h": [
+     "terms-of-use"
+    ],
+    "unicode/parsepos.h": [
+     "terms-of-use"
+    ],
+    "unicode/platform.h": [
+     "terms-of-use"
+    ],
+    "unicode/ptypes.h": [
+     "terms-of-use"
+    ],
+    "unicode/putil.h": [
+     "terms-of-use"
+    ],
+    "unicode/rbbi.h": [
+     "terms-of-use"
+    ],
+    "unicode/rep.h": [
+     "terms-of-use"
+    ],
+    "unicode/resbund.h": [
+     "terms-of-use"
+    ],
+    "unicode/schriter.h": [
+     "terms-of-use"
+    ],
+    "unicode/simpleformatter.h": [
+     "terms-of-use"
+    ],
+    "unicode/std_string.h": [
+     "terms-of-use"
+    ],
+    "unicode/strenum.h": [
+     "terms-of-use"
+    ],
+    "unicode/stringoptions.h": [
+     "terms-of-use"
+    ],
+    "unicode/stringpiece.h": [
+     "terms-of-use"
+    ],
+    "unicode/stringtriebuilder.h": [
+     "terms-of-use"
+    ],
+    "unicode/symtable.h": [
+     "terms-of-use"
+    ],
+    "unicode/ubidi.h": [
+     "terms-of-use"
+    ],
+    "unicode/ubiditransform.h": [
+     "terms-of-use"
+    ],
+    "unicode/ubrk.h": [
+     "terms-of-use"
+    ],
+    "unicode/ucasemap.h": [
+     "terms-of-use"
+    ],
+    "unicode/ucat.h": [
+     "terms-of-use"
+    ],
+    "unicode/uchar.h": [
+     "terms-of-use"
+    ],
+    "unicode/ucharstrie.h": [
+     "terms-of-use"
+    ],
+    "unicode/ucharstriebuilder.h": [
+     "terms-of-use"
+    ],
+    "unicode/uchriter.h": [
+     "terms-of-use"
+    ],
+    "unicode/uclean.h": [
+     "terms-of-use"
+    ],
+    "unicode/ucnv.h": [
+     "terms-of-use"
+    ],
+    "unicode/ucnv_cb.h": [
+     "terms-of-use"
+    ],
+    "unicode/ucnv_err.h": [
+     "terms-of-use"
+    ],
+    "unicode/ucnvsel.h": [
+     "terms-of-use"
+    ],
+    "unicode/uconfig.h": [
+     "terms-of-use"
+    ],
+    "unicode/ucpmap.h": [
+     "terms-of-use"
+    ],
+    "unicode/ucptrie.h": [
+     "terms-of-use"
+    ],
+    "unicode/ucurr.h": [
+     "terms-of-use"
+    ],
+    "unicode/udata.h": [
+     "terms-of-use"
+    ],
+    "unicode/udisplaycontext.h": [
+     "terms-of-use"
+    ],
+    "unicode/uenum.h": [
+     "terms-of-use"
+    ],
+    "unicode/uidna.h": [
+     "terms-of-use"
+    ],
+    "unicode/uiter.h": [
+     "terms-of-use"
+    ],
+    "unicode/uldnames.h": [
+     "terms-of-use"
+    ],
+    "unicode/uloc.h": [
+     "terms-of-use"
+    ],
+    "unicode/ulocale.h": [
+     "terms-of-use"
+    ],
+    "unicode/ulocbuilder.h": [
+     "terms-of-use"
+    ],
+    "unicode/umachine.h": [
+     "terms-of-use"
+    ],
+    "unicode/umisc.h": [
+     "terms-of-use"
+    ],
+    "unicode/umutablecptrie.h": [
+     "terms-of-use"
+    ],
+    "unicode/unifilt.h": [
+     "terms-of-use"
+    ],
+    "unicode/unifunct.h": [
+     "terms-of-use"
+    ],
+    "unicode/unimatch.h": [
+     "terms-of-use"
+    ],
+    "unicode/uniset.h": [
+     "terms-of-use"
+    ],
+    "unicode/unistr.h": [
+     "terms-of-use"
+    ],
+    "unicode/unorm.h": [
+     "terms-of-use"
+    ],
+    "unicode/unorm2.h": [
+     "terms-of-use"
+    ],
+    "unicode/uobject.h": [
+     "terms-of-use"
+    ],
+    "unicode/urename.h": [
+     "terms-of-use"
+    ],
+    "unicode/urep.h": [
+     "terms-of-use"
+    ],
+    "unicode/ures.h": [
+     "terms-of-use"
+    ],
+    "unicode/uscript.h": [
+     "terms-of-use"
+    ],
+    "unicode/uset.h": [
+     "terms-of-use"
+    ],
+    "unicode/usetiter.h": [
+     "terms-of-use"
+    ],
+    "unicode/ushape.h": [
+     "terms-of-use"
+    ],
+    "unicode/usprep.h": [
+     "terms-of-use"
+    ],
+    "unicode/ustring.h": [
+     "terms-of-use"
+    ],
+    "unicode/ustringtrie.h": [
+     "terms-of-use"
+    ],
+    "unicode/utext.h": [
+     "terms-of-use"
+    ],
+    "unicode/utf.h": [
+     "terms-of-use"
+    ],
+    "unicode/utf16.h": [
+     "terms-of-use"
+    ],
+    "unicode/utf32.h": [
+     "terms-of-use"
+    ],
+    "unicode/utf8.h": [
+     "terms-of-use"
+    ],
+    "unicode/utf_old.h": [
+     "terms-of-use"
+    ],
+    "unicode/utfiterator.h": [
+     "terms-of-use"
+    ],
+    "unicode/utfstring.h": [
+     "terms-of-use"
+    ],
+    "unicode/utrace.h": [
+     "terms-of-use"
+    ],
+    "unicode/utypes.h": [
+     "terms-of-use"
+    ],
+    "unicode/uvernum.h": [
+     "terms-of-use"
+    ],
+    "unicode/uversion.h": [
+     "terms-of-use"
+    ],
+    "unifiedcache.cpp": [
+     "terms-of-use"
+    ],
+    "unifiedcache.h": [
+     "terms-of-use"
+    ],
+    "unifilt.cpp": [
+     "terms-of-use"
+    ],
+    "unifunct.cpp": [
+     "terms-of-use"
+    ],
+    "uniquecharstr.h": [
+     "terms-of-use"
+    ],
+    "uniset.cpp": [
+     "terms-of-use"
+    ],
+    "uniset_closure.cpp": [
+     "terms-of-use"
+    ],
+    "uniset_props.cpp": [
+     "terms-of-use"
+    ],
+    "unisetspan.cpp": [
+     "terms-of-use"
+    ],
+    "unisetspan.h": [
+     "terms-of-use"
+    ],
+    "unistr.cpp": [
+     "terms-of-use"
+    ],
+    "unistr_case.cpp": [
+     "terms-of-use"
+    ],
+    "unistr_case_locale.cpp": [
+     "terms-of-use"
+    ],
+    "unistr_cnv.cpp": [
+     "terms-of-use"
+    ],
+    "unistr_props.cpp": [
+     "terms-of-use"
+    ],
+    "unistr_titlecase_brkiter.cpp": [
+     "terms-of-use"
+    ],
+    "unistrappender.h": [
+     "terms-of-use"
+    ],
+    "unorm.cpp": [
+     "terms-of-use"
+    ],
+    "unormcmp.cpp": [
+     "terms-of-use"
+    ],
+    "unormimp.h": [
+     "terms-of-use"
+    ],
+    "uobject.cpp": [
+     "terms-of-use"
+    ],
+    "uposixdefs.h": [
+     "terms-of-use"
+    ],
+    "uprops.cpp": [
+     "terms-of-use"
+    ],
+    "uprops.h": [
+     "terms-of-use"
+    ],
+    "ures_cnv.cpp": [
+     "terms-of-use"
+    ],
+    "uresbund.cpp": [
+     "terms-of-use"
+    ],
+    "uresdata.cpp": [
+     "terms-of-use"
+    ],
+    "uresdata.h": [
+     "terms-of-use"
+    ],
+    "uresimp.h": [
+     "terms-of-use"
+    ],
+    "ureslocs.h": [
+     "terms-of-use"
+    ],
+    "usc_impl.cpp": [
+     "terms-of-use"
+    ],
+    "usc_impl.h": [
+     "terms-of-use"
+    ],
+    "uscript.cpp": [
+     "terms-of-use"
+    ],
+    "uscript_props.cpp": [
+     "terms-of-use"
+    ],
+    "uset.cpp": [
+     "terms-of-use"
+    ],
+    "uset_imp.h": [
+     "terms-of-use"
+    ],
+    "uset_props.cpp": [
+     "terms-of-use"
+    ],
+    "usetiter.cpp": [
+     "terms-of-use"
+    ],
+    "ushape.cpp": [
+     "terms-of-use"
+    ],
+    "usprep.cpp": [
+     "terms-of-use"
+    ],
+    "ustack.cpp": [
+     "terms-of-use"
+    ],
+    "ustr_cnv.cpp": [
+     "terms-of-use"
+    ],
+    "ustr_cnv.h": [
+     "terms-of-use"
+    ],
+    "ustr_imp.h": [
+     "terms-of-use"
+    ],
+    "ustr_titlecase_brkiter.cpp": [
+     "terms-of-use"
+    ],
+    "ustr_wcs.cpp": [
+     "terms-of-use"
+    ],
+    "ustrcase.cpp": [
+     "terms-of-use"
+    ],
+    "ustrcase_locale.cpp": [
+     "terms-of-use"
+    ],
+    "ustrenum.cpp": [
+     "terms-of-use"
+    ],
+    "ustrenum.h": [
+     "terms-of-use"
+    ],
+    "ustrfmt.cpp": [
+     "terms-of-use"
+    ],
+    "ustrfmt.h": [
+     "terms-of-use"
+    ],
+    "ustring.cpp": [
+     "terms-of-use"
+    ],
+    "ustrtrns.cpp": [
+     "terms-of-use"
+    ],
+    "utext.cpp": [
+     "terms-of-use"
+    ],
+    "utf_impl.cpp": [
+     "terms-of-use"
+    ],
+    "util.cpp": [
+     "terms-of-use"
+    ],
+    "util.h": [
+     "terms-of-use"
+    ],
+    "util_props.cpp": [
+     "terms-of-use"
+    ],
+    "utrace.cpp": [
+     "terms-of-use"
+    ],
+    "utracimp.h": [
+     "terms-of-use"
+    ],
+    "utrie.cpp": [
+     "terms-of-use"
+    ],
+    "utrie.h": [
+     "terms-of-use"
+    ],
+    "utrie2.cpp": [
+     "terms-of-use"
+    ],
+    "utrie2.h": [
+     "terms-of-use"
+    ],
+    "utrie2_builder.cpp": [
+     "terms-of-use"
+    ],
+    "utrie2_impl.h": [
+     "terms-of-use"
+    ],
+    "utrie_swap.cpp": [
+     "terms-of-use"
+    ],
+    "uts46.cpp": [
+     "terms-of-use"
+    ],
+    "utypeinfo.h": [
+     "terms-of-use"
+    ],
+    "utypes.cpp": [
+     "terms-of-use"
+    ],
+    "uvector.cpp": [
+     "terms-of-use"
+    ],
+    "uvector.h": [
+     "terms-of-use"
+    ],
+    "uvectr32.cpp": [
+     "terms-of-use"
+    ],
+    "uvectr32.h": [
+     "terms-of-use"
+    ],
+    "uvectr64.cpp": [
+     "terms-of-use"
+    ],
+    "uvectr64.h": [
+     "terms-of-use"
+    ],
+    "wintz.cpp": [
+     "terms-of-use"
+    ],
+    "wintz.h": [
+     "terms-of-use"
+    ]
+   }
+  },
+  {
+   "archive": "texlive-source-f26cc5e.tar.gz",
+   "path": "libs/icu/icu-src/source/stubdata",
+   "files": 2,
+   "covered": 2,
+   "ruled": [],
+   "hits": {
+    "stubdata.cpp": [
+     "terms-of-use"
+    ],
+    "stubdata.h": [
+     "terms-of-use"
+    ]
+   }
+  },
+  {
+   "archive": "texlive-source-f26cc5e.tar.gz",
+   "path": "libs/xpdf/xpdf-src",
+   "files": 198,
+   "covered": 0,
+   "ruled": [],
+   "hits": {}
+  },
+  {
+   "archive": "texlive-source-f26cc5e.tar.gz",
+   "path": "texk/kpathsea",
+   "files": 125,
+   "covered": 1,
+   "ruled": [],
+   "hits": {
+    "putenv.c": [
+     "public-domain"
+    ]
+   }
+  },
+  {
+   "archive": "texlive-source-f26cc5e.tar.gz",
+   "path": "texk/web2c/lib",
+   "files": 19,
+   "covered": 15,
+   "ruled": [
+    {
+     "file": "printversion.c",
+     "how": "covered",
+     "why": "Karl Berry's file, 'Public domain.' in its header; its other hit is no licence but a comment on the program's banner ('... isn't, it means the original program is public domain'), which the public-domain dedication's denial guard ('n't') rules out"
+    },
+    {
+     "file": "texmfmp.c",
+     "how": "skip",
+     "why": "AT&T's notice covers John Hobby's floating-point code, which texmfmp.c compiles only for Metafont (#ifndef TeX); every engine here defines TeX"
+    }
+   ],
+   "hits": {
+    "basechsuffix.c": [
+     "public-domain"
+    ],
+    "chartostring.c": [
+     "public-domain"
+    ],
+    "coredump.c": [
+     "public-domain"
+    ],
+    "eofeoln.c": [
+     "public-domain"
+    ],
+    "fprintreal.c": [
+     "public-domain"
+    ],
+    "input2int.c": [
+     "public-domain"
+    ],
+    "inputint.c": [
+     "public-domain"
+    ],
+    "lib.h": [
+     "public-domain"
+    ],
+    "main.c": [
+     "public-domain"
+    ],
+    "openclose.c": [
+     "public-domain"
+    ],
+    "printversion.c": [
+     "public-domain"
+    ],
+    "setupvar.c": [
+     "public-domain"
+    ],
+    "texmfmp.c": [
+     "permission-to-use",
+     "public-domain"
+    ],
+    "uexit.c": [
+     "public-domain"
+    ],
+    "usage.c": [
+     "public-domain"
+    ],
+    "version.c": [
+     "public-domain"
+    ],
+    "zround.c": [
+     "public-domain"
+    ]
+   }
+  },
+  {
+   "archive": "texlive-source-f26cc5e.tar.gz",
+   "path": "texk/web2c/libmd5",
+   "files": 3,
+   "covered": 3,
+   "ruled": [],
+   "hits": {
+    "md5.c": [
+     "as-is"
+    ],
+    "md5.h": [
+     "as-is"
+    ],
+    "md5main.c": [
+     "as-is"
+    ]
+   }
+  },
+  {
+   "archive": "texlive-source-f26cc5e.tar.gz",
+   "path": "texk/web2c/synctexdir",
+   "files": 18,
+   "covered": 17,
+   "ruled": [
+    {
+     "file": "synctex-common.h",
+     "how": "covered",
+     "why": "SyncTeX's MIT licence with no copyright line of the file's own; SyncTeX-notice.txt holds the licence"
+    }
+   ],
+   "hits": {
+    "synctex-common.h": [
+     "granted"
+    ],
+    "synctex-etex.h": [
+     "granted"
+    ],
+    "synctex-euptex.h": [
+     "granted"
+    ],
+    "synctex-luatex.h": [
+     "granted"
+    ],
+    "synctex-pdftex.h": [
+     "granted"
+    ],
+    "synctex-tex.h": [
+     "granted"
+    ],
+    "synctex-xetex.h": [
+     "granted"
+    ],
+    "synctex.c": [
+     "granted"
+    ],
+    "synctex.h": [
+     "granted"
+    ],
+    "synctex_main.c": [
+     "granted"
+    ],
+    "synctex_parser.c": [
+     "granted"
+    ],
+    "synctex_parser.h": [
+     "granted"
+    ],
+    "synctex_parser_advanced.h": [
+     "granted"
+    ],
+    "synctex_parser_c-auto.h": [
+     "granted"
+    ],
+    "synctex_parser_local.h": [
+     "granted"
+    ],
+    "synctex_parser_utils.c": [
+     "granted"
+    ],
+    "synctex_parser_utils.h": [
+     "granted"
+    ],
+    "synctex_version.h": [
+     "granted"
+    ]
+   }
+  },
+  {
+   "archive": "texlive-source-f26cc5e.tar.gz",
+   "path": "texk/web2c/mplibdir",
+   "files": 22,
+   "covered": 10,
+   "ruled": [
+    {
+     "file": "decContext.c",
+     "how": "notice",
+     "why": "LICENSES/engine/MetaPost-decNumber-notice.txt"
+    },
+    {
+     "file": "decContext.h",
+     "how": "notice",
+     "why": "LICENSES/engine/MetaPost-decNumber-notice.txt"
+    },
+    {
+     "file": "decNumber.c",
+     "how": "notice",
+     "why": "LICENSES/engine/MetaPost-decNumber-notice.txt"
+    },
+    {
+     "file": "decNumber.h",
+     "how": "notice",
+     "why": "LICENSES/engine/MetaPost-decNumber-notice.txt"
+    },
+    {
+     "file": "decNumberLocal.h",
+     "how": "notice",
+     "why": "LICENSES/engine/MetaPost-decNumber-notice.txt"
+    }
+   ],
+   "hits": {
+    "decContext.c": [
+     "icu-license"
+    ],
+    "decContext.h": [
+     "icu-license"
+    ],
+    "decNumber.c": [
+     "icu-license"
+    ],
+    "decNumber.h": [
+     "icu-license"
+    ],
+    "decNumberLocal.h": [
+     "icu-license"
+    ],
+    "mp.w": [
+     "public-domain"
+    ],
+    "mpmath.w": [
+     "public-domain"
+    ],
+    "mpmathbinary.w": [
+     "public-domain"
+    ],
+    "mpmathdecimal.w": [
+     "public-domain"
+    ],
+    "mpmathdouble.w": [
+     "public-domain"
+    ],
+    "mpmathinterval.w": [
+     "public-domain"
+    ],
+    "mpost.w": [
+     "public-domain"
+    ],
+    "mpstrings.w": [
+     "public-domain"
+    ],
+    "mpxout.w": [
+     "public-domain"
+    ],
+    "psout.w": [
+     "public-domain"
+    ]
+   }
+  },
+  {
+   "archive": "texlive-source-f26cc5e.tar.gz",
+   "path": "texk/web2c/luatexdir",
+   "files": 412,
+   "covered": 93,
+   "ruled": [
+    {
+     "file": "lang/hnjalloc.c",
+     "how": "covered",
+     "why": "LibHnj's code in LuaTeX's hyphenation, dual-licensed under the LGPL and the MPL, as these files say; it is part of LuaTeX (GPL-2.0-or-later), and the LGPL lets its code be used under the GPL (LGPL-2.1, section 3); the GPL's texts ship"
+    },
+    {
+     "file": "lang/hnjalloc.h",
+     "how": "covered",
+     "why": "LibHnj's code in LuaTeX's hyphenation, dual-licensed under the LGPL and the MPL, as these files say; it is part of LuaTeX (GPL-2.0-or-later), and the LGPL lets its code be used under the GPL (LGPL-2.1, section 3); the GPL's texts ship"
+    },
+    {
+     "file": "lang/hyphen.c",
+     "how": "covered",
+     "why": "LibHnj's code in LuaTeX's hyphenation, dual-licensed under the LGPL and the MPL, as these files say; it is part of LuaTeX (GPL-2.0-or-later), and the LGPL lets its code be used under the GPL (LGPL-2.1, section 3); the GPL's texts ship"
+    },
+    {
+     "file": "lang/hyphen.h",
+     "how": "covered",
+     "why": "LibHnj's code in LuaTeX's hyphenation, dual-licensed under the LGPL and the MPL, as these files say; it is part of LuaTeX (GPL-2.0-or-later), and the LGPL lets its code be used under the GPL (LGPL-2.1, section 3); the GPL's texts ship"
+    },
+    {
+     "file": "lua/texluajitc.c",
+     "how": "skip",
+     "why": "LuajitTeX's Lua compiler, not part of LuaHBTeX"
+    },
+    {
+     "file": "luaffi/msvc/stdbool.h",
+     "how": "skip",
+     "why": "luaffi's headers for Microsoft's compiler"
+    },
+    {
+     "file": "luaffi/msvc/stdint.h",
+     "how": "skip",
+     "why": "luaffi's headers for Microsoft's compiler"
+    },
+    {
+     "file": "luazlib/lgzip.c",
+     "how": "covered",
+     "why": "Tiago Dionizio's MIT notice, which states its author on an 'Author' line, not a copyright line; lzlib-README.txt holds it"
+    },
+    {
+     "file": "luazlib/lzlib.c",
+     "how": "covered",
+     "why": "Tiago Dionizio's MIT notice, which states its author on an 'Author' line, not a copyright line; lzlib-README.txt holds it"
+    },
+    {
+     "file": "slnunicode/slnudata.c",
+     "how": "notice",
+     "why": "LICENSES/engine/slnunicode-notice.txt"
+    },
+    {
+     "file": "slnunicode/slnunico.c",
+     "how": "notice",
+     "why": "LICENSES/engine/slnunicode-notice.txt"
+    }
+   ],
+   "hits": {
+    "lang/hnjalloc.c": [
+     "distributed-under",
+     "licensed-under"
+    ],
+    "lang/hnjalloc.h": [
+     "distributed-under",
+     "licensed-under"
+    ],
+    "lang/hyphen.c": [
+     "distributed-under",
+     "licensed-under"
+    ],
+    "lang/hyphen.h": [
+     "distributed-under",
+     "licensed-under"
+    ],
+    "lua/lauxlib_bridge.h": [
+     "see-notice"
+    ],
+    "lua/texluac.c": [
+     "granted",
+     "see-notice"
+    ],
+    "lua/texluajitc.c": [
+     "see-notice"
+    ],
+    "luaffi/call.c": [
+     "license-found-in",
+     "licensed-under"
+    ],
+    "luaffi/call_arm.h": [
+     "license-found-in",
+     "licensed-under"
+    ],
+    "luaffi/call_arm64.h": [
+     "license-found-in",
+     "licensed-under"
+    ],
+    "luaffi/call_x64.h": [
+     "license-found-in",
+     "licensed-under"
+    ],
+    "luaffi/call_x64win.h": [
+     "license-found-in",
+     "licensed-under"
+    ],
+    "luaffi/call_x86.h": [
+     "license-found-in",
+     "licensed-under"
+    ],
+    "luaffi/ctype.c": [
+     "license-found-in",
+     "licensed-under"
+    ],
+    "luaffi/dynasm/dasm_arm.h": [
+     "released-under"
+    ],
+    "luaffi/dynasm/dasm_arm64.h": [
+     "released-under"
+    ],
+    "luaffi/dynasm/dasm_mips.h": [
+     "released-under"
+    ],
+    "luaffi/dynasm/dasm_ppc.h": [
+     "released-under"
+    ],
+    "luaffi/dynasm/dasm_proto.h": [
+     "released-under"
+    ],
+    "luaffi/dynasm/dasm_x86.h": [
+     "released-under"
+    ],
+    "luaffi/ffi.c": [
+     "license-found-in",
+     "licensed-under"
+    ],
+    "luaffi/ffi.h": [
+     "license-found-in",
+     "licensed-under"
+    ],
+    "luaffi/msvc/stdbool.h": [
+     "granted",
+     "licensed-under"
+    ],
+    "luaffi/msvc/stdint.h": [
+     "boost",
+     "distributed-under"
+    ],
+    "luaffi/parser.c": [
+     "license-found-in",
+     "licensed-under"
+    ],
+    "luaffi/test.c": [
+     "license-found-in",
+     "licensed-under"
+    ],
+    "luafontloader/fontforge/fontforge/PfEd.h": [
+     "redistribution"
+    ],
+    "luafontloader/fontforge/fontforge/autohint.c": [
+     "redistribution"
+    ],
+    "luafontloader/fontforge/fontforge/baseviews.h": [
+     "redistribution"
+    ],
+    "luafontloader/fontforge/fontforge/clipnoui.c": [
+     "redistribution"
+    ],
+    "luafontloader/fontforge/fontforge/configure-pfaedit.h": [
+     "redistribution"
+    ],
+    "luafontloader/fontforge/fontforge/cvundoes.c": [
+     "redistribution"
+    ],
+    "luafontloader/fontforge/fontforge/dumppfa.c": [
+     "redistribution"
+    ],
+    "luafontloader/fontforge/fontforge/edgelist.h": [
+     "redistribution"
+    ],
+    "luafontloader/fontforge/fontforge/edgelist2.h": [
+     "redistribution"
+    ],
+    "luafontloader/fontforge/fontforge/encoding.c": [
+     "redistribution"
+    ],
+    "luafontloader/fontforge/fontforge/featurefile.c": [
+     "redistribution"
+    ],
+    "luafontloader/fontforge/fontforge/fontforgevw.h": [
+     "redistribution"
+    ],
+    "luafontloader/fontforge/fontforge/fontviewbase.c": [
+     "redistribution"
+    ],
+    "luafontloader/fontforge/fontforge/fvcomposit.c": [
+     "redistribution"
+    ],
+    "luafontloader/fontforge/fontforge/fvfonts.c": [
+     "redistribution"
+    ],
+    "luafontloader/fontforge/fontforge/lookups.c": [
+     "redistribution"
+    ],
+    "luafontloader/fontforge/fontforge/macbinary.c": [
+     "redistribution"
+    ],
+    "luafontloader/fontforge/fontforge/macenc.c": [
+     "redistribution"
+    ],
+    "luafontloader/fontforge/fontforge/mathconstants.c": [
+     "redistribution"
+    ],
+    "luafontloader/fontforge/fontforge/memory.c": [
+     "redistribution"
+    ],
+    "luafontloader/fontforge/fontforge/mm.c": [
+     "redistribution"
+    ],
+    "luafontloader/fontforge/fontforge/mm.h": [
+     "redistribution"
+    ],
+    "luafontloader/fontforge/fontforge/namelist.c": [
+     "redistribution"
+    ],
+    "luafontloader/fontforge/fontforge/noprefs.c": [
+     "redistribution"
+    ],
+    "luafontloader/fontforge/fontforge/nouiutil.c": [
+     "redistribution"
+    ],
+    "luafontloader/fontforge/fontforge/parsepfa.c": [
+     "redistribution"
+    ],
+    "luafontloader/fontforge/fontforge/parsettf.c": [
+     "redistribution"
+    ],
+    "luafontloader/fontforge/fontforge/parsettfatt.c": [
+     "redistribution"
+    ],
+    "luafontloader/fontforge/fontforge/pfaedit.h": [
+     "redistribution"
+    ],
+    "luafontloader/fontforge/fontforge/plugins.h": [
+     "redistribution"
+    ],
+    "luafontloader/fontforge/fontforge/psfont.h": [
+     "redistribution"
+    ],
+    "luafontloader/fontforge/fontforge/psread.c": [
+     "redistribution"
+    ],
+    "luafontloader/fontforge/fontforge/python.c": [
+     "redistribution"
+    ],
+    "luafontloader/fontforge/fontforge/scripting.h": [
+     "redistribution"
+    ],
+    "luafontloader/fontforge/fontforge/sd.h": [
+     "redistribution"
+    ],
+    "luafontloader/fontforge/fontforge/sfd1.c": [
+     "redistribution"
+    ],
+    "luafontloader/fontforge/fontforge/sfd1.h": [
+     "redistribution"
+    ],
+    "luafontloader/fontforge/fontforge/splinechar.c": [
+     "redistribution"
+    ],
+    "luafontloader/fontforge/fontforge/splinefill.c": [
+     "redistribution"
+    ],
+    "luafontloader/fontforge/fontforge/splinefont.c": [
+     "redistribution"
+    ],
+    "luafontloader/fontforge/fontforge/splinefont.h": [
+     "redistribution"
+    ],
+    "luafontloader/fontforge/fontforge/splineorder2.c": [
+     "redistribution"
+    ],
+    "luafontloader/fontforge/fontforge/splineoverlap.c": [
+     "redistribution"
+    ],
+    "luafontloader/fontforge/fontforge/splinerefigure.c": [
+     "redistribution"
+    ],
+    "luafontloader/fontforge/fontforge/splinesave.c": [
+     "redistribution"
+    ],
+    "luafontloader/fontforge/fontforge/splinesaveafm.c": [
+     "redistribution"
+    ],
+    "luafontloader/fontforge/fontforge/splinestroke.c": [
+     "redistribution"
+    ],
+    "luafontloader/fontforge/fontforge/splineutil.c": [
+     "redistribution"
+    ],
+    "luafontloader/fontforge/fontforge/splineutil2.c": [
+     "redistribution"
+    ],
+    "luafontloader/fontforge/fontforge/start.c": [
+     "redistribution"
+    ],
+    "luafontloader/fontforge/fontforge/stemdb.c": [
+     "redistribution"
+    ],
+    "luafontloader/fontforge/fontforge/stemdb.h": [
+     "redistribution"
+    ],
+    "luafontloader/fontforge/fontforge/tottf.c": [
+     "redistribution"
+    ],
+    "luafontloader/fontforge/fontforge/tottfgpos.c": [
+     "redistribution"
+    ],
+    "luafontloader/fontforge/fontforge/ttf.h": [
+     "redistribution"
+    ],
+    "luafontloader/fontforge/fontforge/ttfspecial.c": [
+     "redistribution"
+    ],
+    "luafontloader/fontforge/fontforge/uiinterface.h": [
+     "redistribution"
+    ],
+    "luafontloader/fontforge/fontforge/unicoderange.h": [
+     "redistribution"
+    ],
+    "luafontloader/fontforge/gutils/fsys.c": [
+     "redistribution"
+    ],
+    "luafontloader/fontforge/inc/basics.h": [
+     "redistribution"
+    ],
+    "luafontloader/fontforge/inc/gfile.h": [
+     "redistribution"
+    ],
+    "luafontloader/fontforge/inc/gimage.h": [
+     "redistribution"
+    ],
+    "luafontloader/fontforge/inc/intl.h": [
+     "redistribution"
+    ],
+    "luatex.c": [
+     "public-domain"
+    ],
+    "luazlib/lgzip.c": [
+     "granted"
+    ],
+    "luazlib/lzlib.c": [
+     "granted"
+    ],
+    "slnunicode/slnudata.c": [
+     "permission-to-use"
+    ],
+    "slnunicode/slnunico.c": [
+     "permission-to-use",
+     "see-notice"
+    ],
+    "unilib/char.c": [
+     "redistribution"
+    ],
+    "unilib/charset.h": [
+     "redistribution"
+    ],
+    "unilib/gwwiconv.c": [
+     "redistribution"
+    ],
+    "unilib/gwwiconv.h": [
+     "redistribution"
+    ],
+    "unilib/src/makeutype.c": [
+     "redistribution"
+    ],
+    "unilib/ucharmap.c": [
+     "redistribution"
+    ],
+    "unilib/unibasics.h": [
+     "redistribution"
+    ],
+    "unilib/usprintf.c": [
+     "redistribution"
+    ],
+    "unilib/ustring.c": [
+     "redistribution"
+    ],
+    "unilib/ustring.h": [
+     "redistribution"
+    ]
+   }
+  },
+  {
+   "archive": "texlive-source-f26cc5e.tar.gz",
+   "path": "texk/web2c/pdftexdir",
+   "files": 44,
+   "covered": 2,
+   "ruled": [],
+   "hits": {
+    "char-warning-pdftex.ch": [
+     "public-domain"
+    ],
+    "pdftexextra.c": [
+     "public-domain"
+    ]
+   }
+  },
+  {
+   "archive": "texlive-source-f26cc5e.tar.gz",
+   "path": "texk/web2c/xetexdir",
+   "files": 42,
+   "covered": 26,
+   "ruled": [
+    {
+     "file": "XeTeXFontInst_Mac.cpp",
+     "how": "skip",
+     "why": "XeTeX's macOS font code, not compiled for this target"
+    },
+    {
+     "file": "XeTeXFontInst_Mac.h",
+     "how": "skip",
+     "why": "XeTeX's macOS font code, not compiled for this target"
+    },
+    {
+     "file": "XeTeXFontMgr_Mac.h",
+     "how": "skip",
+     "why": "XeTeX's macOS font code, not compiled for this target"
+    },
+    {
+     "file": "XeTeX_mac.c",
+     "how": "skip",
+     "why": "XeTeX's macOS font code, not compiled for this target"
+    }
+   ],
+   "hits": {
+    "XeTeXFontInst.cpp": [
+     "granted"
+    ],
+    "XeTeXFontInst.h": [
+     "granted"
+    ],
+    "XeTeXFontInst_Mac.cpp": [
+     "granted"
+    ],
+    "XeTeXFontInst_Mac.h": [
+     "granted"
+    ],
+    "XeTeXFontMgr.cpp": [
+     "granted"
+    ],
+    "XeTeXFontMgr.h": [
+     "granted"
+    ],
+    "XeTeXFontMgr_FC.cpp": [
+     "granted"
+    ],
+    "XeTeXFontMgr_FC.h": [
+     "granted"
+    ],
+    "XeTeXFontMgr_Mac.h": [
+     "granted"
+    ],
+    "XeTeXLayoutInterface.cpp": [
+     "granted"
+    ],
+    "XeTeXLayoutInterface.h": [
+     "granted"
+    ],
+    "XeTeXOTMath.cpp": [
+     "granted"
+    ],
+    "XeTeXOTMath.h": [
+     "granted"
+    ],
+    "XeTeX_ext.c": [
+     "granted"
+    ],
+    "XeTeX_ext.h": [
+     "granted"
+    ],
+    "XeTeX_mac.c": [
+     "granted"
+    ],
+    "XeTeX_pic.c": [
+     "granted"
+    ],
+    "XeTeX_web.h": [
+     "granted"
+    ],
+    "XeTeXswap.h": [
+     "granted"
+    ],
+    "char-warning-xetex.ch": [
+     "public-domain"
+    ],
+    "hz.cpp": [
+     "granted"
+    ],
+    "pdfimage.cpp": [
+     "granted"
+    ],
+    "pdfimage.h": [
+     "granted"
+    ],
+    "trans.c": [
+     "granted"
+    ],
+    "trans.h": [
+     "granted"
+    ],
+    "xetex.ch": [
+     "granted"
+    ],
+    "xetex.h": [
+     "granted"
+    ],
+    "xetex.web": [
+     "granted"
+    ],
+    "xetexextra.c": [
+     "public-domain"
+    ],
+    "xetexextra.h": [
+     "granted"
+    ]
+   }
+  },
+  {
+   "archive": "texlive-source-f26cc5e.tar.gz",
+   "path": "texk/dvipdfm-x",
+   "files": 150,
+   "covered": 0,
+   "ruled": [
+    {
+     "file": "dpxcrypt.c",
+     "how": "covered",
+     "why": "dvipdfmx's own file (GPL-2.0-or-later, Jin-Hwan Cho and Shunsaku Hirata), whose MD5, SHA-256, SHA-384/512 and ARC4 code comes from libgcrypt (LGPL-2.1-or-later, Free Software Foundation) and whose AES code is based on Philip J. Erdelsky's public-domain code. The LGPL lets its code be used under the GPL (LGPL-2.1, section 3); the GPL and LGPL texts ship, and the xdvipdfmx row names the libgcrypt code"
+    },
+    {
+     "file": "mt19937ar.c",
+     "how": "notice",
+     "why": "LICENSES/engine/xdvipdfmx-mt19937ar-notice.txt"
+    }
+   ],
+   "hits": {
+    "dpxcrypt.c": [
+     "public-domain"
+    ],
+    "mt19937ar.c": [
+     "redistribution"
+    ]
+   }
+  },
+  {
+   "archive": "texlive-source-f26cc5e.tar.gz",
+   "path": "texk/makeindexk",
+   "files": 11,
+   "covered": 2,
+   "ruled": [],
+   "hits": {
+    "qsort.c": [
+     "public-domain"
+    ],
+    "qsort.h": [
+     "public-domain"
+    ]
+   }
+  },
+  {
+   "archive": "texlive-source-f26cc5e.tar.gz",
+   "path": "texk/bibtex-x",
+   "files": 13,
+   "covered": 0,
+   "ruled": [],
+   "hits": {}
+  },
+  {
+   "archive": "fontconfig-2.13.96.tar.gz",
+   "path": "src",
+   "files": 42,
+   "covered": 39,
+   "ruled": [
+    {
+     "file": "fcweight.c",
+     "how": "covered",
+     "why": "fontconfig's own HPND text with no copyright line; fontconfig-COPYING.txt holds it"
+    },
+    {
+     "file": "fcwindows.h",
+     "how": "skip",
+     "why": "fontconfig's Windows header"
+    }
+   ],
+   "hits": {
+    "fcarch.c": [
+     "notice-appear",
+     "permission-to-use"
+    ],
+    "fcarch.h": [
+     "notice-appear",
+     "permission-to-use"
+    ],
+    "fcatomic.c": [
+     "notice-appear",
+     "permission-to-use"
+    ],
+    "fcatomic.h": [
+     "granted"
+    ],
+    "fccache.c": [
+     "notice-appear",
+     "permission-to-use"
+    ],
+    "fccfg.c": [
+     "notice-appear",
+     "permission-to-use"
+    ],
+    "fccharset.c": [
+     "notice-appear",
+     "permission-to-use"
+    ],
+    "fccompat.c": [
+     "notice-appear",
+     "permission-to-use"
+    ],
+    "fcdbg.c": [
+     "notice-appear",
+     "permission-to-use"
+    ],
+    "fcdefault.c": [
+     "notice-appear",
+     "permission-to-use"
+    ],
+    "fcdeprecate.h": [
+     "notice-appear",
+     "permission-to-use"
+    ],
+    "fcdir.c": [
+     "notice-appear",
+     "permission-to-use"
+    ],
+    "fcformat.c": [
+     "notice-appear",
+     "permission-to-use"
+    ],
+    "fcfoundry.h": [
+     "granted"
+    ],
+    "fcfreetype.c": [
+     "notice-appear",
+     "permission-to-use"
+    ],
+    "fcfs.c": [
+     "notice-appear",
+     "permission-to-use"
+    ],
+    "fcftint.h": [
+     "notice-appear",
+     "permission-to-use"
+    ],
+    "fchash.c": [
+     "notice-appear",
+     "permission-to-use"
+    ],
+    "fcinit.c": [
+     "notice-appear",
+     "permission-to-use"
+    ],
+    "fcint.h": [
+     "notice-appear",
+     "permission-to-use"
+    ],
+    "fclang.c": [
+     "notice-appear",
+     "permission-to-use"
+    ],
+    "fclist.c": [
+     "notice-appear",
+     "permission-to-use"
+    ],
+    "fcmatch.c": [
+     "notice-appear",
+     "permission-to-use"
+    ],
+    "fcmatrix.c": [
+     "notice-appear",
+     "permission-to-use"
+    ],
+    "fcmd5.h": [
+     "public-domain"
+    ],
+    "fcmutex.h": [
+     "granted"
+    ],
+    "fcname.c": [
+     "notice-appear",
+     "permission-to-use"
+    ],
+    "fcobjs.c": [
+     "notice-appear",
+     "permission-to-use"
+    ],
+    "fcobjs.h": [
+     "notice-appear",
+     "permission-to-use"
+    ],
+    "fcobjshash.gperf.h": [
+     "notice-appear",
+     "permission-to-use"
+    ],
+    "fcpat.c": [
+     "notice-appear",
+     "permission-to-use"
+    ],
+    "fcptrlist.c": [
+     "notice-appear",
+     "permission-to-use"
+    ],
+    "fcrange.c": [
+     "notice-appear",
+     "permission-to-use"
+    ],
+    "fcserialize.c": [
+     "notice-appear",
+     "permission-to-use"
+    ],
+    "fcstat.c": [
+     "notice-appear",
+     "permission-to-use"
+    ],
+    "fcstr.c": [
+     "notice-appear",
+     "permission-to-use"
+    ],
+    "fcweight.c": [
+     "notice-appear",
+     "permission-to-use"
+    ],
+    "fcwindows.h": [
+     "notice-appear",
+     "permission-to-use"
+    ],
+    "fcxml.c": [
+     "notice-appear",
+     "permission-to-use"
+    ],
+    "ftglue.c": [
+     "public-domain"
+    ],
+    "ftglue.h": [
+     "public-domain"
+    ]
+   }
+  },
+  {
+   "archive": "fontconfig-2.13.96.tar.gz",
+   "path": "fontconfig",
+   "files": 3,
+   "covered": 3,
+   "ruled": [],
+   "hits": {
+    "fcfreetype.h": [
+     "notice-appear",
+     "permission-to-use"
+    ],
+    "fcprivate.h": [
+     "notice-appear",
+     "permission-to-use"
+    ],
+    "fontconfig.h": [
+     "notice-appear",
+     "permission-to-use"
+    ]
+   }
+  },
+  {
+   "archive": "expat-2.5.0.tar.gz",
+   "path": "lib",
+   "files": 19,
+   "covered": 17,
+   "ruled": [
+    {
+     "file": "siphash.h",
+     "how": "covered",
+     "why": "William Ahern's SipHash, 'Licensed under the CC0 Public Domain Dedication license', which asks nothing of a copy"
+    },
+    {
+     "file": "winconfig.h",
+     "how": "skip",
+     "why": "Expat's Windows configuration, not compiled for this target"
+    }
+   ],
+   "hits": {
+    "ascii.h": [
+     "granted",
+     "licensed-under"
+    ],
+    "asciitab.h": [
+     "granted",
+     "licensed-under"
+    ],
+    "expat.h": [
+     "granted",
+     "licensed-under"
+    ],
+    "expat_external.h": [
+     "granted",
+     "licensed-under"
+    ],
+    "iasciitab.h": [
+     "granted",
+     "licensed-under"
+    ],
+    "internal.h": [
+     "granted",
+     "licensed-under"
+    ],
+    "latin1tab.h": [
+     "granted",
+     "licensed-under"
+    ],
+    "nametab.h": [
+     "granted",
+     "licensed-under"
+    ],
+    "siphash.h": [
+     "licensed-under",
+     "public-domain"
+    ],
+    "utf8tab.h": [
+     "granted",
+     "licensed-under"
+    ],
+    "winconfig.h": [
+     "granted",
+     "licensed-under"
+    ],
+    "xmlparse.c": [
+     "granted",
+     "licensed-under"
+    ],
+    "xmlrole.c": [
+     "granted",
+     "licensed-under"
+    ],
+    "xmlrole.h": [
+     "granted",
+     "licensed-under"
+    ],
+    "xmltok.c": [
+     "granted",
+     "licensed-under"
+    ],
+    "xmltok.h": [
+     "granted",
+     "licensed-under"
+    ],
+    "xmltok_impl.c": [
+     "granted",
+     "licensed-under"
+    ],
+    "xmltok_impl.h": [
+     "granted",
+     "licensed-under"
+    ],
+    "xmltok_ns.c": [
+     "granted",
+     "licensed-under"
+    ]
+   }
+  },
+  {
+   "archive": "texlyre-busytex-build-46ebb62.tar.gz",
+   "path": "",
+   "files": 4,
+   "covered": 0,
+   "ruled": [],
+   "hits": {}
+  }
+ ],
+ "problems": []
+}

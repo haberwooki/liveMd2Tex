@@ -170,7 +170,8 @@ a document is not compiled twice; its core result stands for both.
 - **The shares.** For core, and for core with extra: the documents that compile, over those that are neither left
   out nor not measured. Overall and per stratum, and for the thesis and Beamer templates.
 - **The interval.** The 95 % Wilson score interval (z = 1.96), which stays inside 0 to 100 % and behaves at small
-  counts. Proportional allocation makes the overall share a self-weighted estimate for the frame; the pooled
+  counts (E. B. Wilson, "Probable inference, the law of succession, and statistical inference", J. Am. Stat.
+  Assoc. 22 (1927) 209–212). Proportional allocation makes the overall share a self-weighted estimate for the frame; the pooled
   interval treats the sample as a simple random one, which proportional allocation makes close to the stratified
   interval. The per-stratum intervals are wide where a stratum is small.
 - **A sensitivity figure, in the CI report only.** Each stratum's share weighted by its number of papers in the

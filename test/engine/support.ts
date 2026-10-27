@@ -18,7 +18,7 @@ const runsRoot = path.resolve(root, '..', 's1_runs');
 /** The pinned engine files, or null when they have not been fetched (the engine tests then skip). */
 export function engineAssetPaths(): EngineAssetPaths | null {
   const pins = JSON.parse(readFileSync(path.join(root, 'engine', 'pins.json'), 'utf8')) as {
-    sources: { id: string; folder: string }[];
+    sources: { id: string; folder: string; patchedGlue: { sha256: string } }[];
   };
   const tl = pins.sources.find((s) => s.id === 'texlyre-busytex');
   if (!tl) {
@@ -26,7 +26,8 @@ export function engineAssetPaths(): EngineAssetPaths | null {
   }
   const dir = path.join(assetsRoot, tl.folder);
   const paths: EngineAssetPaths = {
-    glue: path.join(assetsRoot, 'derived', 'busytex.patched.js'),
+    // The glue these pins name, in its own folder (scripts/lib/derived-glue.mjs), never another worktree's.
+    glue: path.join(assetsRoot, 'derived', tl.patchedGlue.sha256.slice(0, 16), 'busytex.patched.js'),
     wasm: path.join(dir, 'busytex.wasm'),
     data: path.join(dir, 'texlive-extra.data'),
     loader: path.join(dir, 'texlive-extra.js'),

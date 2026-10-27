@@ -1,9 +1,10 @@
 // Packages a data set built by B1 (scripts/build-bundle.mjs) as a data-only VS Code extension (docs/DESIGN.md#store-and-packaging):
 // package.json with no code, README.md, LICENSE.txt, LICENSES/ (the licence texts its packages require, with
 // LICENSES/INDEX; scripts/lib/licence-texts.mjs writes them), and data/ (manifest.json, the image and its index, and
-// licences.json, each package's Catalogue licence and CTAN path). The TeX files come from TeX Live, each under its
-// own licence (LPPL 1.3c clause 3: a Compiled Work from complete, unmodified packages, with a pointer to CTAN, as
-// TeX Live does). Every file TeX reads is the unmodified file. In a set whose image packs its Type 1 fonts (core-data:
+// licences.json, each package's Catalogue licence and CTAN path, and for a package under the GPL, LGPL or AGPL its
+// archives in the pinned snapshot). The TeX files come from TeX Live, each under its own licence (LPPL 1.3c clause 3:
+// a Compiled Work from complete, unmodified packages, with a pointer to the sources: the pinned snapshot, which keeps
+// the version shipped, and CTAN; the licence gate, M6). Every file TeX reads is the unmodified file. In a set whose image packs its Type 1 fonts (core-data:
 // t1c, docs/DESIGN.md#engine-and-data), those fonts are stored decrypted and restored to the original bytes, checked
 // against each original's SHA-256, before TeX reads them; README.md and LICENSE.txt say so, and LICENSE.txt quotes
 // the LPPL 1.3c's clause 9 on alternative formats and names the packages whose fonts are stored as they are.
@@ -65,13 +66,24 @@ const item = (text) => wrap(`- ${text}`, '  ').replace(/^ {2}/, '');
  * the GUST Font License, vera for DejaVu's Bitstream Vera and Arev terms, gpl); `kept`, the packages whose fonts are
  * all stored as they are, with the reason (engine/bundle-sets.json, core-data's "t1cSkip"); `unpacked`, by package,
  * the fonts stored as they are because of their own terms, with the reason; `gplChanges`: whether
- * LICENSES/CHANGES-GPL lists packed GPL fonts.
+ * LICENSES/CHANGES-GPL lists packed GPL fonts. `snapshot`: the pinned TeX Live snapshot the files come from, its date and
+ * its tlnet URL, and where the releases are (the data package's GitHub releases, which attach the archives).
  * @param {{ lppl: string[], vera?: string[], gpl: string[], kept: Record<string, string>, unpacked?: Record<string, { reason: string, files: string[] }[]>, gplChanges?: boolean } | undefined} fonts
+ * @param {{ date: string, url: string, releases: string }} snapshot
  */
-export function licenceFile(fonts) {
+export function licenceFile(fonts, snapshot) {
+  if (!snapshot?.date || !snapshot.url || !snapshot.releases) {
+    throw new Error('licenceFile: the snapshot (date, url, releases) is needed, so LICENSE.txt can say where the sources are');
+  }
   const parts = [
     wrap(
-      `The TeX packages and fonts in data/ ${fonts ? 'come' : 'are distributed unchanged'} from TeX Live, each under its own licence, which data/licences.json names (from the TeX Catalogue). Most are under the LaTeX Project Public License 1.3c (https://www.latex-project.org/lppl/), distributed under its clause 3 as a Compiled Work generated from complete, unmodified copies of each package; each package's sources are on CTAN (https://ctan.org/), at the path data/licences.json gives. LICENSES/ holds the licence texts these packages' licences require, and LICENSES/INDEX lists each package with its licence files: the texts of its licences, its own licence files (an OFL font's copyright notice and Reserved Font Names, an MIT or BSD notice), or the file that states its terms.`,
+      `The TeX packages and fonts in data/ ${fonts ? 'come' : 'are distributed unchanged'} from TeX Live, each under its own licence, which data/licences.json names (from the TeX Catalogue). Most are under the LaTeX Project Public License 1.3c (https://www.latex-project.org/lppl/), distributed under its clause 3 as a Compiled Work generated from complete, unmodified copies of each package.`,
+    ),
+    wrap(
+      `Where the sources are. The files are taken from TeX Live's snapshot of ${snapshot.date}, ${snapshot.url}, which keeps each package as this data package has it: its files in archive/<package>.tar.xz and, where it has them, its sources in archive/<package>.source.tar.xz and its documentation in archive/<package>.doc.tar.xz. For each package under the GNU GPL, LGPL or AGPL, and each package with a packed font under the GPL, data/licences.json lists these archives ("archives"), each with its URL and the SHA-512 that TeX Live's package database gives for it, and the GitHub release that publishes this data package (${snapshot.releases}) carries a copy of each. Each package's page on CTAN (https://ctan.org/, at the path data/licences.json gives) has its newest version.`,
+    ),
+    wrap(
+      `LICENSES/ holds the licence texts these packages' licences require, and LICENSES/INDEX lists each package with its licence files: the texts of its licences, its own licence files (an OFL font's copyright notice and Reserved Font Names, an MIT or BSD notice), or the file that states its terms.`,
     ),
   ];
   if (fonts) {
@@ -132,8 +144,9 @@ export function licenceFile(fonts) {
 /**
  * Writes the package's files into `dir` (which already holds data/) and makes the VSIX; returns its size.
  * `fonts`: for a set whose image packs its Type 1 fonts, which packages' fonts are packed and which are not (licenceFile).
+ * `snapshot`: the pinned snapshot's date and tlnet URL, for LICENSE.txt's pointer to the sources.
  */
-export async function packageDataSet(root, dir, set, version, vsixPath, fonts = undefined) {
+export async function packageDataSet(root, dir, set, version, vsixPath, fonts = undefined, snapshot = undefined) {
   const manifest = JSON.parse(readFileSync(path.join(dir, 'data', 'manifest.json'), 'utf8'));
   const packed = manifest.image?.packed !== undefined;
   if (!existsSync(path.join(dir, 'LICENSES', 'INDEX'))) {
@@ -163,7 +176,8 @@ export async function packageDataSet(root, dir, set, version, vsixPath, fonts = 
     path.join(dir, 'README.md'),
     `# ${pkg.displayName}\n\n${pkg.description}\n\nA data-only extension: it holds no code. liveMd2Tex reads its data/manifest.json and mounts its one data image. ${readmeFiles(version.slice(0, 4), packed, fonts?.gplChanges === true)}\n`,
   );
-  writeFileSync(path.join(dir, 'LICENSE.txt'), licenceFile(fonts));
+  const releases = `${String(identity.repository?.url ?? identity.repository).replace(/\.git$/, '')}/releases`;
+  writeFileSync(path.join(dir, 'LICENSE.txt'), licenceFile(fonts, { ...snapshot, releases }));
   const vsce = await import('@vscode/vsce');
   await vsce.createVSIX({ cwd: dir, packagePath: vsixPath, dependencies: false, allowMissingRepository: true });
   return { file: vsixPath, bytes: statSync(vsixPath).size };

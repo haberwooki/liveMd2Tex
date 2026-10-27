@@ -382,9 +382,9 @@ export const T1C_CHANGE = 'stored with its eexec and charstring encryption remov
 
 /**
  * LICENSES/CHANGES-GPL: the GPL's notice of changes (GPL-2 section 2(a), GPL-3 section 5(a)) for every packed file
- * under the GPL, one line each: its path in the image, its package, the SHA-256 of the original, what was done, and
- * the date of the build.
- * @param {{ path: string, package: string, sha256: string }[]} files
+ * under the GPL, one line each: its path in the image, its package, the SHA-256 of the original, the archive of the
+ * pinned snapshot that holds the original (its source, in the GPL's sense), what was done, and the date of the build.
+ * @param {{ path: string, package: string, sha256: string, original: string }[]} files
  */
 export function gplChanges(set, files, date) {
   const head = [
@@ -392,11 +392,12 @@ export function gplChanges(set, files, date) {
     '# bundle builder. The GPL asks that a changed file carry a notice of the change and its date (version 2,',
     '# section 2(a); version 3, section 5(a)). These are the Type 1 fonts that are stored packed; liveMd2Tex restores',
     "# each to its original bytes, checked against the original's SHA-256, before TeX reads it.",
-    "# One line per file, tab-separated: its path in the data image, its package, the original's SHA-256, what was done,",
-    '# and the date of the build.',
+    "# One line per file, tab-separated: its path in the data image, its package, the original's SHA-256, the archive of",
+    "# TeX Live's snapshot that holds the original unmodified (its URL; data/licences.json gives its SHA-512), what was",
+    '# done, and the date of the build.',
     '',
   ];
-  const rows = [...files].sort((a, b) => (a.path < b.path ? -1 : 1)).map((f) => `${f.path}\t${f.package}\t${f.sha256}\t${T1C_CHANGE}\t${date}`);
+  const rows = [...files].sort((a, b) => (a.path < b.path ? -1 : 1)).map((f) => `${f.path}\t${f.package}\t${f.sha256}\t${f.original}\t${T1C_CHANGE}\t${date}`);
   return `${[...head, ...rows].join('\n')}\n`;
 }
 

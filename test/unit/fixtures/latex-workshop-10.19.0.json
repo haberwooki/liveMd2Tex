@@ -1,5 +1,5 @@
 {
-  "about": "The keybindings, PDF custom editor and auto-build setting of LaTeX Workshop 10.19.0 (James-Yu.latex-workshop, MIT licence), read from its package.json, for the coexistence tests (docs/DESIGN.md#confinement-and-trust). Data only; no code of LaTeX Workshop is in this repository. Source: https://open-vsx.org/api/James-Yu/latex-workshop/10.19.0/file/James-Yu.latex-workshop-10.19.0.vsix (SHA-256 0357aac484c272966bfcb4db113c4c94560b6fb3724fb5dd9e0a0c6dc77f7a89), fetched 2026-10-16 for development only.",
+  "about": "The keybindings, PDF custom editor and auto-build setting of LaTeX Workshop 10.19.0 (James-Yu.latex-workshop; Copyright (c) 2016 James Yu, MIT licence, in full in latex-workshop-LICENSE.txt beside this file, from https://github.com/James-Yu/LaTeX-Workshop/blob/master/LICENSE.txt), read from its package.json, for the coexistence tests (docs/DESIGN.md#confinement-and-trust). Data only; no code of LaTeX Workshop is in this repository. Source: https://open-vsx.org/api/James-Yu/latex-workshop/10.19.0/file/James-Yu.latex-workshop-10.19.0.vsix (SHA-256 0357aac484c272966bfcb4db113c4c94560b6fb3724fb5dd9e0a0c6dc77f7a89), fetched 2026-10-16 for development only.",
   "extensionId": "James-Yu.latex-workshop",
   "version": "10.19.0",
   "keybindings": [

@@ -18,6 +18,22 @@ export const input = {
   sha256: '875b87795162cb26b15bd93cffa2e8739bcb900d623ab904029b39402508a1a4',
 };
 
+/**
+ * The notice of the change that heads the patched glue and the diff (AGPL-3.0 section 5(a) and (b): "prominent
+ * notices stating that you modified it, and giving a relevant date", and that it is released under the licence;
+ * sections 4 and 5 also keep TeXlyre's copyright notice). `date` is the day the patches below last changed, and
+ * `patchesSha256` the SHA-256 of their id, count, find and replace (as JSON): test/unit/engineNotices.test.ts fails
+ * when the patches change and these two do not.
+ */
+export const notice = {
+  patchesSha256: '34c8412ca9c4baddc6d81e070c681c1b20369a644d4ed08a551f439cbb3fba3c',
+  original: "busytex.js of TeXlyre-BusyTeX, release build_wasm_46ebb6216a5c1fe63dd1dc885831d1a8cef2dc86_31802832436_1 (https://github.com/TeXlyre/texlyre-busytex-build); TeXlyre-BusyTeX: Copyright (c) 2026 Fares Abawi (https://abawi.me), AGPL-3.0; based on BusyTeX (https://github.com/busytex/busytex) by Vadim Kantorov, MIT",
+  date: '2026-10-16',
+  by: 'the liveMd2Tex authors',
+  licence: 'This modified file is released under the GNU Affero General Public License version 3 (AGPL-3.0), as the original is',
+  patches: 'engine/patches/busytex-glue.mjs and engine/patches/busytex.js.diff at https://github.com/haberwooki/liveMd2Tex (the release tag of the version that ships it)',
+};
+
 export const patches = [
   {
     id: 'no-shell',

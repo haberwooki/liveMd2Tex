@@ -1,0 +1,90 @@
+# Attaches to a release, before it is published, the sources of what its packages ship (docs/DEVELOPING.md,
+# "Licences, notices and releases"; the licence gates, M1, M4, M6, F2-S1, F2-S2, L2-01, L2-03 and L2-06), so the
+# offer of the source does not depend on another project's server. Prepared on the development machine; not yet run.
+#
+# Run it by hand (Actions, release-sources, Run workflow) with the tag of a DRAFT release: the tag v<version> is
+# pushed first, on the commit the packages are built from, and the draft release holds the packages (.vsix). Only
+# when this run has passed is the release published, and only then do the packages go to the stores. On the first
+# real run, confirm that gh finds the draft release by its tag (GitHub's tag look-up does not return drafts). The job:
+# - checks out the tag and downloads the draft's .vsix files;
+# - lists the sources each one needs (scripts/release-sources.mjs): for a package with the engine, the engine's
+#   source archives (engine/engine-notices.json); for a data package, the archives of the pinned snapshot that its
+#   licences.json lists for packages under the GPL, LGPL or AGPL, which must be under the snapshot's mirrors. It also
+#   checks the tag against the extension's version and README, and refuses any name that is not a plain name;
+# - downloads them with curl (on the runner only), and for each archive GitHub makes from a commit, that commit's
+#   tree with git (fetched with --filter=blob:none, so only the trees come down; then git ls-tree), so the archive's
+#   files are checked against the commit as well as its bytes;
+# - checks every archive: its hash; a data archive's SHA-512 against the pinned package database; TeXlyre's Makefile
+#   against the manifest's hash and link lines;
+# - attaches one tar file per group (engine, core-data, extra-data) and the list, sources.json, to the draft.
+# The minutes, estimated: 10 (about 150 MB for the engine, up to a few hundred MB for a data package).
+
+name: release-sources
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: The draft release's tag (v<version> for the extension)
+        required: true
+        type: string
+
+# Write access to the repository's contents, to attach files to the draft release; the job pushes nothing.
+permissions:
+  contents: write
+
+# One run per tag at a time, so two runs never replace each other's files.
+concurrency:
+  group: release-sources-${{ inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  sources:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      TAG: ${{ inputs.tag }}
+    steps:
+      # actions/checkout v4.4.0 and actions/setup-node v4.4.0, pinned by commit.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ inputs.tag }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: The draft release's packages
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/vsix"
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern '*.vsix' --dir "$RUNNER_TEMP/vsix"
+      - name: List the sources each package needs
+        run: node scripts/release-sources.mjs list --out "$RUNNER_TEMP/sources" --tag "$TAG" "$RUNNER_TEMP"/vsix/*.vsix
+      - name: Download them with curl
+        run: |
+          if [ -s "$RUNNER_TEMP/sources/sources.curl" ]; then
+            curl --fail --location --retry 3 --create-dirs --parallel --parallel-max 4 -K "$RUNNER_TEMP/sources/sources.curl"
+          fi
+      - name: The trees of the commits GitHub's archives are made from
+        run: |
+          mkdir -p "$RUNNER_TEMP/sources/trees"
+          while IFS="$(printf '\t')" read -r name repository commit; do
+            git init -q "$RUNNER_TEMP/git/$name"
+            git -C "$RUNNER_TEMP/git/$name" fetch -q --depth 1 --filter=blob:none "$repository" "$commit"
+            git -C "$RUNNER_TEMP/git/$name" ls-tree -r --full-tree "$commit" > "$RUNNER_TEMP/sources/trees/$name.ls-tree"
+          done < "$RUNNER_TEMP/sources/git.tsv"
+      - name: Check every archive
+        run: node scripts/release-sources.mjs check --out "$RUNNER_TEMP/sources"
+      - name: Attach them to the draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd "$RUNNER_TEMP/sources"
+          shopt -s nullglob
+          for g in files/*/; do
+            g="$(basename "$g")"
+            tar -cf "$g-sources-$TAG.tar" -C "files/$g" .
+          done
+          tars=(./*-sources-*.tar)
+          gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" --clobber "${tars[@]}" sources.json

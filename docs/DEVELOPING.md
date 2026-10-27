@@ -102,7 +102,7 @@ CTAN set: corpus samples, the publisher classes, DejaVu).
 
 ```sh
 npm run engine:assets   # fetch and check every pinned file into ../engine_assets/ (about 380 MB; never inside the repo)
-npm run engine:patch    # apply engine/patches/busytex-glue.mjs to the glue, into ../engine_assets/derived/
+npm run engine:patch    # apply engine/patches/busytex-glue.mjs to the glue, into ../engine_assets/derived/<hash>/
 npm run test:engine     # the S1 gate: fixtures, public corpus P1-P8, the engine-host design, any private tests
 ```
 
@@ -278,6 +278,10 @@ CI runs on GitHub since G0: on the first commit of the fresh history, and on eac
 - `.github/workflows/floor.yml`: the integration tests under VS Code 1.105 and older versions, to find the oldest
   that passes. `.github/workflows/references.yml`: pandoc's references for the Markdown corpus, and the
   zeroperl check for v1.1. Both run on GitHub only; pandoc and old VS Code versions never reach a development machine.
+- `.github/workflows/release-sources.yml` runs by hand on a draft release, before it is published: it attaches the
+  sources of what the release's packages ship ("Licences, notices and releases", below). It is the one workflow
+  with write access to the repository's contents, for the release's files; it pushes nothing, and its actions are
+  pinned by commit.
 - `.github/workflows/bundle.yml` (B1, run by hand) builds the two data packages from the pinned TeX Live snapshot.
   Its jobs are pin, fetch, build, a sharded closure test, the corpus, and the reference; each keeps its report
   when it fails. The pin job checks TeX Live's signature with `gpg` on the runner, against the key whose
@@ -440,7 +444,9 @@ Tests:
 - `test/converter/preset.test.ts`: every mode on CC0 stand-ins.
 - `test/converter/safePattern.test.ts` and `test/converter/g1bPatterns.test.ts`: the pattern rules, including the
   worst case at every cap. The work is bounded by the matcher's own step count (deterministic); the clock is
-  checked only by generous sanity limits (2 s), so a busy machine cannot fail them.
+  checked only by sanity limits that a busy machine cannot fail. Such a check passes under its fixed limit (2 s),
+  or within a multiple of a reference: similar work measured in the same test, under the same load
+  (`test/support/clock.ts`, which the other timed tests use too). A pattern that backtracks fails both.
 - `test/unit/configPaths.test.ts`: the path rules, with a real junction or symbolic link.
 - `test/integration/configConfine.test.ts`: both rules again, in VS Code.
 
@@ -747,9 +753,11 @@ run by hand). Nothing of it runs on a development machine except its tests, on t
   found. The closure test takes `--closure core|extra|all` (core by default) and `--shard i/n`.
 - **What it writes.** For each set: `data/manifest.json` (the DataManifest contract; core-data's also gives its
   mount root, its formats with their SHA-256, and extra-data's files and requires; both name the snapshot), the
-  image, `licences.json` (each package's licence and CTAN page), `LICENSES/` (below), and a data-only VSIX under
-  the store's 262,144,000-byte limit. Also `closure-targets.json` and `selection.json` (each set's packages). The
-  report gives the sizes by package, the patterns' cost, the closure test and the engine host's peak memory.
+  image, `licences.json` (each package's licence and CTAN page; for a package under the GPL, LGPL or AGPL, or
+  with a packed font under the GPL, also its archives in the pinned snapshot with their SHA-512), `LICENSES/`
+  (below), and a data-only VSIX under our own cap of 262,144,000 bytes (250 MiB). The cap is ours, not a store's
+  published limit. Also `closure-targets.json` and `selection.json` (each set's packages). The report gives the
+  sizes by package, the patterns' cost, the closure test and the engine host's peak memory.
 - **Licence texts.** Each data package ships the licence texts its packages require, in `LICENSES/` beside
   `data/`, and `LICENSES/INDEX` lists each package with its files. `engine/bundle-licences.json` holds the rules
   (`scripts/lib/licence-texts.mjs` applies them):
@@ -760,8 +768,8 @@ run by hand). Nothing of it runs on a development machine except its tests, on t
     sources. TeX Live's own `LICENSE.TL` and `LICENSE.CTAN` come from texlive.infra's archive, for the packages
     with no Catalogue licence.
   - A package's own licence files go with it where its licence asks for them: an OFL font's copyright notice and
-    Reserved Font Names, an MIT or BSD notice, the GUST fonts' `MANIFEST` files, DejaVu's Bitstream Vera and Arev
-    terms. They come from the package's run archive and, when the tlpdb lists some in its doc files, from its doc
+    Reserved Font Names, an MIT or BSD notice, an Apache-2.0 package's `NOTICE` (Apache-2.0 section 4(d); ktbox
+    has one), the GUST fonts' `MANIFEST` files, DejaVu's Bitstream Vera and Arev terms. They come from the package's run archive and, when the tlpdb lists some in its doc files, from its doc
     archive. The fetch stage downloads those doc archives too, each checked against the tlpdb's SHA-512.
   - "other-free" and an unnamed BSD licence have no common text. Their terms must be found: in a licence file, a
     README, a shipped file whose own text states them, or another file of the doc or source archive (a `.ins`
@@ -774,8 +782,14 @@ run by hand). Nothing of it runs on a development machine except its tests, on t
     `icudt78l.dat`, ICU's data, and TeX Live's for its own files. A file no rule matches stops the build.
   - **GPL change notices: decided by the maintainer, 2026-10-26.** The GPL fonts stay packed, with a notice per
     file. `LICENSES/CHANGES-GPL` in core-data lists every packed font under the GPL, by its own terms (above): its
-    path, its package, its original's SHA-256, what was done to it, and the date of the build. README.md and
-    LICENSE.txt point to it, and a packed GPL font it does not list stops the build.
+    path, its package, its original's SHA-256, the snapshot archive that holds the original unmodified (its URL),
+    what was done to it, and the date of the build. README.md and LICENSE.txt point to it, and a packed GPL font it
+    does not list stops the build.
+  - **Where the sources are (the licence gate, M6).** CTAN keeps only a package's newest version, so a pointer to
+    CTAN alone stops finding the source of the shipped files at the next update. LICENSE.txt therefore names the
+    pinned snapshot (its date and URL), which keeps each package's run, source and doc archives as shipped. For each
+    package under the GPL, LGPL or AGPL, or with a packed font under the GPL, `licences.json` lists those archives
+    (`archives`: kind, URL, the tlpdb's SHA-512), and the release attaches a copy of each (Releases, below).
   - A licence with no rule, a text that is not the pinned one, and a package whose text or terms are not found
     stop the build. cv4tw is left out of extra-data for this: none of its files states its terms.
 - **Core size: fonts kept in core, one add-on; decided by the maintainer, 2026-10-22.** core-data keeps its fonts
@@ -829,9 +843,9 @@ run by hand). Nothing of it runs on a development machine except its tests, on t
 - **The workflow.** `pin`, then `fetch` (the archive cache is saved even when the fetch fails), `build` (the
   packages' SHA-256 go into the job summary), `closure` (sharded over 4 or 8 runners, on the packages as they
   ship), `corpus` (the public corpus on the built packages) and `reference`. The header gives the minutes.
-- **Downloads.** texlive.info's bot check lets only curl, wget and TeX Live's own programs through. So the
-  workflow downloads the files with the runner's curl, and the builder reads that copy (`--local DIR`) and opens
-  no connection itself. The builder lists for curl what the copy lacks (`--curl-config FILE`), then checks every
+- **Downloads.** texlive.info runs a bot check (Anubis). A browser gets a challenge page before the file, and so
+  does Node's fetch, which cannot answer it; curl gets the file (checked 2026-10-26). So the workflow downloads the
+  files with the runner's curl, and the builder reads that copy (`--local DIR`) and opens no connection itself. The builder lists for curl what the copy lacks (`--curl-config FILE`), then checks every
   file: the package database against the pin, each archive against the database's SHA-512.
 - **The reference.** A separate job installs TeX Live from the same snapshot into the runner's temp folder,
   without root: TeX Live's installer, verified with the same key, with the collections the bundle draws from,
@@ -869,9 +883,10 @@ time, across every machine).
 3. **Tag the method.** Tag the commit to be measured (say `coverage-method-1`), so the method is fixed before any
    result is seen. In the public repository, run from a branch of its own (say `coverage-run`) at that commit: pull
    requests into `main` cannot restore that branch's caches, so the sources stay out of their reach.
-   Before the run, tell arXiv's administrators what it will fetch and at what rate (arXiv's robots page asks for
-   word in advance; export.arxiv.org's robots.txt disallows every path to crawlers, although arXiv's bulk-data page
-   sets that site aside for programmatic access). The requests go only to `oaipmh.arxiv.org/oai` and
+   Before the run, tell arXiv's administrators what it will fetch and at what rate. arXiv's robots page asks for
+   contact in advance only when an application needs its guidelines relaxed; telling them is still good practice.
+   export.arxiv.org's robots.txt disallows every path to crawlers, although arXiv's bulk-data page sets that site
+   aside for programmatic access. The requests go only to `oaipmh.arxiv.org/oai` and
    `export.arxiv.org/src/<id>`, follow no redirect, and carry the User-Agent
    `liveMd2Tex-coverage/<version> (+https://github.com/haberwooki/liveMd2Tex)`.
 4. **Measure.** Run the workflow with job `measure` and that run's id as `bundle_run`. The jobs:
@@ -982,3 +997,120 @@ names the terms of the extension as a whole, and the CC0 files carry their own n
 Apache-2.0 parts do. The VSIX scan fails a package whose starting documents lack the notices, the legal text or an
 SPDX line, or name the GPL (`cc0Headers` and `missingNotices` in `scripts/vsix-scan.mjs`). The test fixtures
 marked CC0 (`test/fixtures/`, `test/corpus/`, `test/converter/`) are not shipped.
+
+## Licences, notices and releases
+
+The licence gates (2026-10-26) checked every part by others that a package ships. What they set up:
+
+- **The engine's notices.** `engine/engine-notices.json` lists the parts of the engine, each with its version,
+  licence, the files TeXlyre's Makefile links for it, and its notice files. It also holds a copy of the Makefile's
+  link line (line 376) and of the object lists it names (lines 77 to 86). The notice files are in
+  `LICENSES/engine/`, each copied from that part's own source and pinned by SHA-256 in the manifest. The build
+  copies them to `dist/licenses/engine/`. THIRD_PARTY_NOTICES.md's "Inside the engine" table is the output of
+  `node scripts/lib/engine-notices.mjs`.
+  - `test/unit/engineNotices.test.ts` checks that every file on the manifest's copy of the link lines belongs to a
+    part, and the reverse; that every notice file is present at its pinned bytes; that the table in
+    THIRD_PARTY_NOTICES.md is the manifest's; and that the VSIX scan requires every notice file wherever
+    `dist/engine/busytex.wasm` ships. It reads the manifest's copy of the Makefile lines, not the Makefile: it
+    also checks that the manifest names the TeXlyre commit and release that `engine/pins.json` pins, so a new pin
+    fails the test until the manifest is updated. The release check compares the copy with the Makefile inside
+    TeXlyre's archive at that commit (its SHA-256, and line by line).
+  - The VSIX scan fails a package whose engine notices or licence texts are missing, or are not the pinned bytes
+    (`missingNotices`, `wrongNotices`). It also fails an engine whose WebAssembly holds libpaper's strings
+    (`PAPERCONF`, `/etc/papersize`). libpaper is GPL-2.0-only and may not ship with the AGPL-3.0 parts; it is on the
+    link line, but none of its code is in the pinned build.
+- **Below the link line.** A linked library can hold code by other authors under terms of their own, which the
+  link-line test cannot see. `node scripts/engine-notice-search.mjs --archives DIR` helps a person find it; it is
+  an aid to reading, not a proof. It reads the four source archives (by their names in the manifest's `sources`)
+  and searches each linked library's compiled sources for licence clauses that match its patterns (`clauses`, each
+  with an id): written out, stated by reference ("Released under", "licensed under", "See Copyright Notice in",
+  SPDX lines) and public-domain dedications. The patterns are generous; the rules do the sorting.
+  - What it guarantees: every clause that matches a pattern, on one line or across two adjacent lines, is either
+    covered by one of the library's own licences (`own`) that may cover that kind of clause, or its file is named by
+    a rule a person wrote.
+  - What it does not see, which the person's reading is for: words that no pattern knows; a clause split over three
+    lines or more; a holder more than 25 lines above its clause (`window`); a denial of a dedication in other words
+    than the guard's; and a second author's grant of the same kind with no copyright line of its own, which is
+    checked against the first author's holder above it.
+  - Each own licence lists the clause kinds it may cover (`clauses`). A clause is covered when a licence of its kind
+    has its words on the clause's own line (or, for a named licence, in the clause's paragraph) and the notices name
+    every holder on the copyright lines up to 25 lines above the clause; a holder written only as "the authors" names
+    nobody. A line that holds two kinds
+    of clause needs both covered.
+  - An own licence marked `reference` (a pointer to a notice that ships) needs no holder of its own; one marked
+    `anyHolder` (a licence that asks for no list of holders in a copy, such as FreeType's under its GPL option, or a
+    public-domain dedication) covers any holder and says why. These two hold only when their words start on the
+    clause's own line. Words may be a phrase (`text`) or a pattern (`pattern`); `unless` rules a licence out when it
+    matches the clause's lines: the public-domain dedication's catches "not", "no longer", "isn't", "never" and "no"
+    up to 40 characters before "public domain". Own licences can be limited to some files (`files`), as luaffi's and
+    DynASM's are.
+  - Every other file needs a rule in the manifest's `search`: the notice that ships for it, why the shipped notices
+    cover it, or why it is not compiled for the engine. A file with no rule, and a rule that names no file, fail the
+    search.
+  - The run of 2026-10-27 is recorded in `engine/engine-notice-search.report.json` (each folder's files with hits,
+    by clause kind, and the rules used). It found the notices that THIRD_PARTY_NOTICES.md lists under "Below the link
+    line". DynASM's notice was added from a review, not by the search: DynASM's headers state their licence by
+    reference, which the first version of the search did not read. It reads them now.
+- **When the engine pin changes.** Read the new Makefile's link line; update the manifest's `build`, `makefile`
+  (its URL, SHA-256 and lines), `sources`, versions and notice files; run the table again. The unit test fails until
+  the manifest names the new pin. Then download the new source archives and run
+  `node scripts/engine-notice-search.mjs --archives DIR --since engine/engine-notice-search.report.json`: it lists
+  the files whose hits are new or changed, by folder, file and clause kinds (not by archive, whose name changes with
+  the pin). A person reads each of them and each problem, writes the rules and
+  notices, and records the run with `--report engine/engine-notice-search.report.json`. No release ships a new
+  engine pin before this is done.
+- **The notice in the patched glue.** `engine/patches/busytex-glue.mjs` holds `notice`: the original (TeXlyre's
+  release, copyright and licence), the date of the last change to the patches, who changed it, where the patches
+  are, and the SHA-256 of the patches (`patchesSha256`). `scripts/engine-patch.mjs` writes the notice at the head of
+  the patched glue and of `engine/patches/busytex.js.diff` (AGPL-3.0 section 5(a) and (b)); `patchesSha256` is not
+  written into the glue, so it changes neither the glue nor its pin. It is there for the unit test, which fails when
+  the patches change until `date` and `patchesSha256` follow. Only then does the glue change: run
+  `scripts/engine-patch.mjs` and pin the new glue's SHA-256 in `engine/pins.json`.
+- **The derived glue is keyed by its hash.** `engine-patch` writes the glue into
+  `../engine_assets/derived/<first 16 digits of its SHA-256>/` (`scripts/lib/derived-glue.mjs`). `stage-engine`,
+  the engine tests and the bundle builder read only the folder of the hash `engine/pins.json` pins. So worktrees
+  with different patches share the one assets folder without overwriting each other's glue.
+- **This version's source.** README.md (Licence) and THIRD_PARTY_NOTICES.md say "The source code of this version is
+  at https://github.com/haberwooki/liveMd2Tex/tree/v<version>", with the version of `package.json`;
+  `test/unit/releaseSources.test.ts` fails when the version changes and they do not. The repository must be public
+  before any package is published, so that this address works.
+- **Releases, in this order.** The sources are attached before any package reaches a store.
+  0. If the engine pin changed since the last release, the notice search's new hits have been read and ruled
+     ("When the engine pin changes", above), and its report is recorded.
+  1. Push the tag `v<version>` on the commit the packages are built from.
+  2. Make a draft release on GitHub for that tag, with the packages (`.vsix`) as its files.
+  3. Run `.github/workflows/release-sources.yml` by hand with the tag. It runs `scripts/release-sources.mjs`,
+     which checks the tag against the extension's version and README, and lists the sources each package needs:
+     for a package with the engine, the four archives of `engine/engine-notices.json`; for a data package, the
+     snapshot archives its `licences.json` lists, each under the pinned snapshot's mirrors. curl downloads them,
+     git lists the trees of the two commits GitHub's archives are made from (fetched with `--filter=blob:none`, so
+     only the trees come down), and the script checks each archive:
+     its SHA-256 or SHA-512, a data archive's SHA-512 against the pinned package database, a commit archive's files
+     against its commit, and TeXlyre's Makefile against the manifest. The workflow then attaches one tar file per
+     group (`engine-sources-<tag>.tar`, `core-data-sources-<tag>.tar`, `extra-data-sources-<tag>.tar`) and the list,
+     `sources.json`, to the draft.
+     On the first real run, confirm that `gh release download` and `gh release upload` find the draft by its tag:
+     GitHub's look-up by tag does not return drafts, and gh's way around that has not been tried here.
+  4. Only when that run has passed: publish the release.
+  5. Only then: upload the packages to the VS Code Marketplace and Open VSX.
+
+  GitHub makes the `archive/` files of TeXlyre's and TeX Live's commits on request, and promises the same files
+  for a commit, not the same bytes. An archive with other bytes but the commit's files is attached with its new
+  SHA-256 and a note; one whose files differ stops the run. Never make an archive by hand with a new hash.
+- **A fixed copy of the engine's sources (the maintainer's decision).** The reviewers suggest attaching the four
+  archives once, now, to a permanent release of this repository (for example `engine-sources-46ebb62`), so later
+  releases need not ask GitHub to make them again. That release is permanent, so whether to make it is the
+  maintainer's decision; none is made yet. If it is made: run the workflow's steps for the four archives into it,
+  then give each source in `engine/engine-notices.json` a `mirror` (the release file's address).
+  `scripts/release-sources.mjs` uses `mirror` before the upstream address, and still checks the same hashes.
+- **Open.**
+  - A "Licences" command that shows the notices inside VS Code, before the first release (GPL-3 and AGPL-3
+    section 5(d)).
+  - MakeIndex's notice asks that a modified work carry an identical notice; TeXlyre links MakeIndex into one binary
+    with GPL and AGPL code. Ask TeXlyre or TUG for a reading before the first release.
+  - pplib states no licence of its own and is recorded under LuaTeX's terms; ask LuaTeX's team.
+  - luaffi is Facebook's luaffifb, with Facebook's "Additional Grant of Patent Rights Version 2" (`PATENTS`). The
+    FSF's licence list has no entry for it; whether it raises a question for the GPL-3 and AGPL-3 parts is the
+    maintainer's to decide (THIRD_PARTY_NOTICES.md, the notes under "Inside the engine").
+  - A first bundle run on the new repository, to check `LICENSES/INDEX`, `CHANGES-GPL` and the archives in
+    `licences.json` against real packages.

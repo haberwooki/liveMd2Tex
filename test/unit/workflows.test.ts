@@ -14,13 +14,15 @@ const folder = path.join(root, '.github', 'workflows');
 const load = (name: string) => parse(readFileSync(path.join(folder, name), 'utf8')) as Workflow;
 
 describe('GitHub Actions workflows (G0 preparation)', () => {
-  it('every workflow parses and asks only for read access to the repository', () => {
+  it('every workflow parses and asks only for read access to the repository, but the release job', () => {
     const files = readdirSync(folder).filter((f) => f.endsWith('.yml'));
-    assert.deepEqual(files.sort(), ['bundle.yml', 'ci.yml', 'coverage.yml', 'floor.yml', 'references.yml', 'test-runner.yml']);
+    assert.deepEqual(files.sort(), ['bundle.yml', 'ci.yml', 'coverage.yml', 'floor.yml', 'references.yml', 'release-sources.yml', 'test-runner.yml']);
     for (const f of files) {
       const w = load(f) as Workflow & { permissions?: Record<string, string> };
-      // The coverage measurement also reads another run's artifacts (the bundle's data packages).
-      assert.deepEqual(w.permissions, f === 'coverage.yml' ? { contents: 'read', actions: 'read' } : { contents: 'read' }, f);
+      // The coverage measurement also reads another run's artifacts (the bundle's data packages); the release job
+      // attaches files to a release, which needs write access to the contents.
+      const want = f === 'coverage.yml' ? { contents: 'read', actions: 'read' } : f === 'release-sources.yml' ? { contents: 'write' } : { contents: 'read' };
+      assert.deepEqual(w.permissions, want, f);
       assert.doesNotMatch(readFileSync(path.join(folder, f), 'utf8'), /git push|git remote add|vsce publish|ovsx publish/, f);
     }
   });
@@ -108,7 +110,8 @@ describe('GitHub Actions workflows (G0 preparation)', () => {
     assert.ok(restore >= 0 && restore < at('fetch', /--stage fetch/) && save > at('fetch', /--stage fetch/));
     assert.equal(jobs.fetch.steps[save].if, 'always()');
     assert.equal(jobs.build.steps[at('build', /actions\/cache\/restore@/)].with?.['fail-on-cache-miss'], true);
-    // curl downloads (texlive.info's bot check admits curl, not Node); the builder only reads the downloaded copy.
+    // curl downloads (texlive.info's bot check gives Node's fetch a challenge page, and curl the file); the builder
+    // only reads the downloaded copy.
     assert.match(run('fetch'), /--curl-config "\$RUNNER_TEMP\/to-fetch\.curl"[\s\S]*curl --parallel [^\n]*-K "\$RUNNER_TEMP\/to-fetch\.curl"[\s\S]*--stage fetch --local "\$CACHE" --out/);
     for (const [name, job] of Object.entries(jobs)) {
       for (const line of job.steps.flatMap((s) => (s.run ?? '').split('\n')).filter((l) => /build-bundle\.mjs --stage (pin|fetch|build)/.test(l))) {
@@ -268,5 +271,37 @@ describe('GitHub Actions workflows (G0 preparation)', () => {
     assert.match(jobs.compile.steps[at('compile', /--stage reference/)].run ?? '', /sudo unshare --net --setuid/);
     assert.ok(jobs.sources.steps.some((s) => s.with?.key === "coverage-templates-${{ hashFiles('engine/coverage-templates.json') }}"));
     assert.match(run('report'), /--stage report .*--shards "\$SHARDS"/);
+  });
+
+  it('the release job attaches the sources to a draft release before it is published, each checked (the licence gates, M4, M6, F2-S2, L2-06)', () => {
+    type Step = { name?: string; run?: string; uses?: string; with?: Record<string, unknown>; env?: Record<string, string> };
+    const w = load('release-sources.yml') as Workflow & { concurrency: { group: string; 'cancel-in-progress': boolean } };
+    // By hand, on a draft: no trigger fires after the release is public.
+    assert.deepEqual(Object.keys(w.on), ['workflow_dispatch']);
+    assert.deepEqual(w.concurrency, { group: 'release-sources-${{ inputs.tag }}', 'cancel-in-progress': false });
+    const job = w.jobs.sources as { env: Record<string, string>; steps: Step[] };
+    const steps = job.steps;
+    const at = (re: RegExp) => steps.findIndex((s) => re.test(`${s.name ?? ''} ${s.run ?? ''} ${s.uses ?? ''}`));
+    assert.equal(steps[at(/actions\/checkout@/)].with?.['persist-credentials'], false);
+    for (const s of steps) {
+      assert.doesNotMatch(s.run ?? '', /\$\{\{/, `${s.name}: no expression inside a run script`);
+      if (s.uses) {
+        assert.match(s.uses, /^actions\/[a-z-]+@[0-9a-f]{40}$/, `${s.uses}: pinned by commit`);
+      }
+    }
+    // The token only where gh runs.
+    assert.equal(job.env.GH_TOKEN, undefined);
+    assert.deepEqual(steps.filter((s) => s.env?.GH_TOKEN).map((s) => /\bgh release (download|upload)\b/.test(s.run ?? '')), [true, true]);
+    assert.ok(steps.filter((s) => /\bgh release\b/.test(s.run ?? '')).every((s) => s.env?.GH_TOKEN), 'every gh step has the token');
+    // List, download, the commits' trees, check everything, and only then attach.
+    const list = at(/release-sources\.mjs list --out "\$RUNNER_TEMP\/sources" --tag "\$TAG"/);
+    const curl = at(/curl --fail [^\n]*-K "\$RUNNER_TEMP\/sources\/sources\.curl"/);
+    const trees = at(/git -C [^\n]* ls-tree -r --full-tree "\$commit" > "\$RUNNER_TEMP\/sources\/trees\/\$name\.ls-tree"/);
+    // Only the trees come down, not every file a second time (L3-03).
+    assert.match(steps[trees].run ?? '', /fetch -q --depth 1 --filter=blob:none "\$repository" "\$commit"/);
+    const check = at(/release-sources\.mjs check --out "\$RUNNER_TEMP\/sources"/);
+    const upload = at(/gh release upload "\$TAG"/);
+    assert.ok(list >= 0 && list < curl && curl < trees && trees < check && check < upload, [list, curl, trees, check, upload].join(' '));
+    assert.doesNotMatch(readFileSync(path.join(folder, 'release-sources.yml'), 'utf8'), /git push|git tag |vsce publish|ovsx publish|gh release (create|edit)/);
   });
 });

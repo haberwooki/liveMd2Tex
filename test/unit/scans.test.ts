@@ -49,6 +49,10 @@ interface VsixScan {
   missingNotices(entries: Map<string, Buffer>): string[];
   cc0Headers(entries: Map<string, Buffer>): string[];
   unpinnedGlue(entries: Map<string, Buffer>): string[];
+  engineNoticeFiles(): string[];
+  engineLinksLibpaper(entries: Map<string, Buffer>): string[];
+  wrongNotices(entries: Map<string, Buffer>): string[];
+  engineLinksLuaffiCode(entries: Map<string, Buffer>): string[];
 }
 interface Zip {
   readZip(zip: Buffer): Map<string, Buffer>;
@@ -252,6 +256,48 @@ describe('VSIX scan rules (scripts/vsix-scan.mjs)', () => {
     }
   });
 
+  it('fails a licence text or notice that is not the pinned one, not only a missing one (the licence gate, L2-05)', () => {
+    const real = (rel: string) => readFileSync(path.join(root, rel));
+    const entries = new Map<string, Buffer>([
+      ['extension/dist/extension.js', Buffer.from('')],
+      ['extension/LICENSE.txt', real('LICENSE')],
+      ['extension/dist/licenses/GPL-3.0.txt', real('LICENSE')],
+      ['extension/dist/licenses/LPPL-1.3c.txt', real('LICENSES/LPPL-1.3c.txt')],
+      ['extension/dist/licenses/engine/TeXlyre-BusyTeX-NOTICE.txt', real('LICENSES/engine/TeXlyre-BusyTeX-NOTICE.txt')],
+    ]);
+    assert.deepEqual(vsix.wrongNotices(entries), []);
+    entries.set('extension/dist/licenses/engine/TeXlyre-BusyTeX-NOTICE.txt', Buffer.from('x'));
+    entries.set('extension/dist/licenses/LPPL-1.3c.txt', Buffer.from('x'));
+    assert.deepEqual(vsix.wrongNotices(entries).map((f) => f.split(':')[0]).sort(), ['extension/dist/licenses/LPPL-1.3c.txt', 'extension/dist/licenses/engine/TeXlyre-BusyTeX-NOTICE.txt']);
+    // A data package's LICENSE.txt is its own text.
+    assert.deepEqual(vsix.wrongNotices(new Map([['extension/LICENSE.txt', Buffer.from('data terms')]])), []);
+  });
+
+  it("fails an engine that holds luaffi's own code or DynASM, which the notices say are not in it (L3-02)", () => {
+    const wasm = (text: string) => new Map([['extension/dist/engine/busytex.wasm', Buffer.from(text)]]);
+    assert.deepEqual(vsix.engineLinksLuaffiCode(wasm('The ffi module is available for')), [], "luaffi's stub only");
+    assert.equal(vsix.engineLinksLuaffiCode(wasm('dasm_link error %s; unable to convert argument %d')).length, 2);
+    assert.deepEqual(vsix.engineLinksLuaffiCode(new Map()), []);
+  });
+
+  it("fails an engine whose WebAssembly holds libpaper's strings (GPL-2.0-only; the licence gate, S5)", () => {
+    assert.deepEqual(vsix.engineLinksLibpaper(new Map([['extension/dist/engine/busytex.wasm', Buffer.from('no paper here')]])), []);
+    const found = vsix.engineLinksLibpaper(new Map([['extension/dist/engine/busytex.wasm', Buffer.from('getenv PAPERCONF and /etc/papersize')]]));
+    assert.equal(found.length, 2);
+    assert.match(found[0], /holds libpaper's "PAPERCONF"/);
+    assert.deepEqual(vsix.engineLinksLibpaper(new Map()), [], 'no engine, nothing to check');
+  });
+
+  it('keeps each patched glue in a folder of its own hash, which engine/pins.json names', async () => {
+    const lib = await importScript<{ derivedGlueFile(sha: string): string; pinnedGluePath(root: string, pins: unknown): string }>('scripts/lib/derived-glue.mjs');
+    const pins = JSON.parse(readFileSync(path.join(root, 'engine', 'pins.json'), 'utf8'));
+    const glue = pins.sources.find((s: { id: string }) => s.id === 'texlyre-busytex').patchedGlue;
+    assert.equal(glue.file, lib.derivedGlueFile(glue.sha256));
+    assert.equal(lib.derivedGlueFile(glue.sha256), `derived/${glue.sha256.slice(0, 16)}/busytex.patched.js`);
+    assert.equal(lib.pinnedGluePath('/assets', pins), path.join('/assets', 'derived', glue.sha256.slice(0, 16), 'busytex.patched.js'));
+    assert.throws(() => lib.derivedGlueFile('not-a-hash'), /is not a SHA-256/);
+  });
+
   it('fails an engine glue that is not the pinned patched glue (G1S-08)', () => {
     assert.deepEqual(vsix.unpinnedGlue(base()), []);
     const entries = base();
@@ -272,14 +318,19 @@ describe('VSIX scan rules (scripts/vsix-scan.mjs)', () => {
     entries.delete('extension/dist/licenses/AGPL-3.0.txt');
     assert.deepEqual(vsix.missingNotices(entries), ['extension/dist/licenses/AGPL-3.0.txt: licence file missing from the package']);
     entries.set('extension/dist/licenses/AGPL-3.0.txt', one);
-    // The engine has ICU and MakeIndex built in: their notices must ship with it.
+    // The engine: the notice of every part linked into it (engine/engine-notices.json; the licence gate, L-01 and
+    // M2), ICU's and MakeIndex's among them.
     entries.set('extension/dist/engine/busytex.wasm', one);
+    const engineNotices = vsix.engineNoticeFiles();
+    assert.ok(engineNotices.includes('extension/dist/licenses/ICU.txt') && engineNotices.includes('extension/dist/licenses/MakeIndex.txt'));
+    assert.ok(engineNotices.includes('extension/dist/licenses/engine/TeXlyre-BusyTeX-NOTICE.txt'));
     assert.deepEqual(
       vsix.missingNotices(entries).map((f) => f.split(':')[0]),
-      ['extension/dist/licenses/ICU.txt', 'extension/dist/licenses/MakeIndex.txt'],
+      engineNotices.filter((n) => !entries.has(n)),
     );
-    entries.set('extension/dist/licenses/ICU.txt', one);
-    entries.set('extension/dist/licenses/MakeIndex.txt', one);
+    for (const n of engineNotices) {
+      entries.set(n, one);
+    }
     assert.deepEqual(vsix.missingNotices(entries), []);
     entries.set('extension/dist/data/texlive-extra.data', one);
     entries.set('extension/dist/data/fonts/DejaVuSans.ttf', one);

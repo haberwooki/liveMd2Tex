@@ -6,8 +6,10 @@
 //     EventSource, RTCPeerConnection, WebTransport, sendBeacon) and no code built from text (eval, Function,
 //     a Worker with eval, process.binding; build gate 1, G1S-07), except child_process in extension/dist/fork.js
 //     (the one fork file, by rule) and the hits on security/vsix-scan-allowlist.json (file, line, text, reason);
-//   - every package: the licence texts (missingNotices; G1S-04); with the starting documents (templates/) or the
-//     example presets (examples/presets/), their CC0 notices and the CC0 legal text, and an SPDX CC0-1.0 line in
+//   - every package: the licence texts (missingNotices; G1S-04), each at its pinned bytes (wrongNotices), and with
+//     the engine the notice of every part TeXlyre's build links into it (engine/engine-notices.json) and no libpaper
+//     code in its WASM (engineLinksLibpaper); with the starting documents (templates/) or the example presets
+//     (examples/presets/), their CC0 notices and the CC0 legal text, and an SPDX CC0-1.0 line in
 //     each of their files that has a comment form (cc0Headers; docs/DESIGN.md#store-and-packaging);
 //   - every file: no native program or library, no shell script, no source map, no node_modules folder;
 //   - every file: no private marker (scripts/marker-scan.mjs), so no build path from this laptop ships. A file
@@ -54,8 +56,84 @@ export function loadPinnedHashes(file = path.join(root, 'engine', 'pins.json')) 
 }
 
 /**
- * The licence texts every package must carry (build gate 1, G1S-04): the notices and the licence folder, and in
- * a test copy the licences of the TeX image and the DejaVu fonts.
+ * The package paths of the engine's notice files: each component's in engine/engine-notices.json, where the build
+ * copies them (LICENSE as dist/licenses/GPL-3.0.txt, LICENSES/x as dist/licenses/x).
+ */
+export function engineNoticeFiles(file = path.join(root, 'engine', 'engine-notices.json')) {
+  const manifest = JSON.parse(readFileSync(file, 'utf8'));
+  const inPackage = (p) => (p === 'LICENSE' ? 'extension/dist/licenses/GPL-3.0.txt' : `extension/dist/licenses/${p.replace(/^LICENSES\//, '')}`);
+  return [...new Set(manifest.components.flatMap((c) => c.notices).map(inPackage))].sort();
+}
+
+/**
+ * Each licence text and notice in a package must be the pinned one, not only present (the licence gate, L2-05):
+ * the engine's notices at their SHA-256 in engine/engine-notices.json, the texts from LICENSES/ at theirs in
+ * engine/bundle-licences.json, and LICENSE (as LICENSE.txt and dist/licenses/GPL-3.0.txt) at the GPL-3.0's. A file
+ * that is missing is for missingNotices to report.
+ */
+export function wrongNotices(entries, manifestFile = path.join(root, 'engine', 'engine-notices.json'), rulesFile = path.join(root, 'engine', 'bundle-licences.json')) {
+  // The extension's own package only: a data package's LICENSE.txt is its own text.
+  if (!entries.has('extension/dist/extension.js')) {
+    return [];
+  }
+  const manifest = JSON.parse(readFileSync(manifestFile, 'utf8'));
+  const rules = JSON.parse(readFileSync(rulesFile, 'utf8'));
+  const want = new Map();
+  for (const t of Object.values(rules.texts)) {
+    if (t.file === 'LICENSE') {
+      want.set('extension/LICENSE.txt', t.sha256);
+      want.set('extension/LICENSE', t.sha256);
+      want.set('extension/dist/licenses/GPL-3.0.txt', t.sha256);
+    } else if (t.file?.startsWith('LICENSES/')) {
+      want.set(`extension/dist/licenses/${t.file.slice('LICENSES/'.length)}`, t.sha256);
+    }
+  }
+  for (const [file, { sha256 }] of Object.entries(manifest.files)) {
+    want.set(`extension/dist/licenses/${file.replace(/^LICENSES\//, '')}`, sha256);
+  }
+  const failures = [];
+  for (const [name, sha256] of want) {
+    const data = entries.get(name);
+    if (data && createHash('sha256').update(data).digest('hex') !== sha256) {
+      failures.push(`${name}: not the pinned text (SHA-256 ${sha256})`);
+    }
+  }
+  return failures;
+}
+
+/**
+ * The notices say that on wasm32 luaffi is only TeX Live's stub luaopen_ffi, so neither luaffifb's own code nor
+ * DynASM is in the engine (the licence re-gates, L3-02, F3-S1). A new engine build that brings them in fails here,
+ * until THIRD_PARTY_NOTICES.md says so: DynASM's "dasm_link error" (luaffi's call.c) and luaffi's "unable to convert
+ * argument" (ffi.c) are not in the pinned build.
+ */
+export function engineLinksLuaffiCode(entries) {
+  const wasm = entries.get('extension/dist/engine/busytex.wasm');
+  if (!wasm) {
+    return [];
+  }
+  const text = wasm.toString('latin1');
+  return ['dasm_link error', 'unable to convert argument'].filter((s) => text.includes(s)).map((s) => `extension/dist/engine/busytex.wasm: holds luaffi's "${s}"; THIRD_PARTY_NOTICES.md says only luaffi's stub is in the engine`);
+}
+
+/**
+ * The engine must not hold libpaper's code: it is GPL-2.0-only, which does not combine with the AGPL-3.0 parts. It is
+ * on TeXlyre's link line, but no code of it is in the pinned build (engine/engine-notices.json); a new engine build
+ * that carries its strings fails here (the licence gate, S5).
+ */
+export function engineLinksLibpaper(entries) {
+  const wasm = entries.get('extension/dist/engine/busytex.wasm');
+  if (!wasm) {
+    return [];
+  }
+  const text = wasm.toString('latin1');
+  return ['PAPERCONF', '/etc/papersize'].filter((s) => text.includes(s)).map((s) => `extension/dist/engine/busytex.wasm: holds libpaper's "${s}", and libpaper (GPL-2.0-only) may not ship with the AGPL-3.0 parts`);
+}
+
+/**
+ * The licence texts every package must carry (build gate 1, G1S-04): the notices and the licence folder; with the
+ * engine, the notice of every part TeXlyre's build links into it (engineNoticeFiles); in a test copy the licences
+ * of the TeX image and the DejaVu fonts.
  */
 export function missingNotices(entries) {
   const required = [];
@@ -71,9 +149,10 @@ export function missingNotices(entries) {
       'extension/dist/licenses/LPPL-1.3c.txt',
     );
   }
-  // ICU and MakeIndex are built into the engine (THIRD_PARTY_NOTICES.md).
+  // The engine: the notices of everything TeXlyre's build links into it (engine/engine-notices.json; the licence
+  // gate, L-01 and M2), ICU's and MakeIndex's among them.
   if (entries.has('extension/dist/engine/busytex.wasm')) {
-    required.push('extension/dist/licenses/ICU.txt', 'extension/dist/licenses/MakeIndex.txt');
+    required.push(...engineNoticeFiles());
   }
   for (const folder of ['templates', 'examples/presets']) {
     if ([...entries.keys()].some((n) => n.startsWith(`extension/${folder}/`))) {
@@ -264,7 +343,7 @@ async function main(argv) {
   const dataOnly = argv.includes('--data');
   const markerValues = loadMarkerValues();
   const result = scanEntries(entries, loadAllowlist(), loadMarkers(), loadPinnedHashes(), { dataOnly, markerValues });
-  result.failures.push(...missingNotices(entries), ...cc0Headers(entries), ...unpinnedGlue(entries));
+  result.failures.push(...missingNotices(entries), ...cc0Headers(entries), ...unpinnedGlue(entries), ...engineLinksLibpaper(entries), ...engineLinksLuaffiCode(entries), ...wrongNotices(entries));
   const unpacked = [...entries.values()].reduce((n, b) => n + b.length, 0);
   const report = {
     vsix: path.basename(vsixPath),

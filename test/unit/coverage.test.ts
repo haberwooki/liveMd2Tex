@@ -555,8 +555,11 @@ describe('M5: the coverage measurement (pure parts)', () => {
   });
 
   it('reports every sampled document from papers.json and the templates, and says first when a shard is missing', async () => {
-    const { report } = await importScript<{ report(dir: string, results: string, out: string, shards: string): void }>('scripts/coverage.mjs');
+    const { report } = await importScript<{ report(dir: string, results: string, out: string, shards: string, options?: { commit?: string | null }): void }>('scripts/coverage.mjs');
     const tmp = mkdtempSync(path.join(os.tmpdir(), 'coverage-report-test-'));
+    // The report reads its commit from its arguments only: a GITHUB_SHA in the environment (as on CI) changes nothing.
+    const sha = process.env.GITHUB_SHA;
+    process.env.GITHUB_SHA = 'from-the-environment';
     try {
       const papers = Array.from({ length: 6 }, (_, i) => ({ key: `2607.0010${i}`, kind: 'paper', stratum: 'cs', main: 'main.tex', engine: null }));
       const dir = path.join(tmp, 'coverage');
@@ -590,7 +593,34 @@ describe('M5: the coverage measurement (pure parts)', () => {
       assert.equal(json.method['docs/coverage-method.md'], createHash('sha256').update(readFileSync(path.join(root, 'docs', 'coverage-method.md'))).digest('hex'));
       assert.match(md, new RegExp(`${lost} not measured`));
       assert.match(md, /Skipped before each quota was met: 1 \(a PDF submission 1\)/);
+      assert.doesNotMatch(md, /from-the-environment|commit\(s\)|recorded no commit/);
+
+      // With the commit given: the shards' commit is checked against it, and a shard that recorded none is named.
+      const reportOn = (commit: string, shardCommit: string | undefined) => {
+        writeFileSync(path.join(results, 'shard.json'), JSON.stringify({ shard: '0/2', commit: shardCommit, documents: mine.map((d) => ({ key: d.key })), unreadable: [] }));
+        console.log = () => undefined;
+        try {
+          report(dir, path.join(tmp, 'results'), out, '2', { commit });
+        } finally {
+          console.log = log;
+        }
+        const j = JSON.parse(readFileSync(path.join(out, 'coverage-report.json'), 'utf8')) as { commit: string; notes: string[] };
+        return { commit: j.commit, notes: j.notes, first: readFileSync(path.join(out, 'coverage-report.md'), 'utf8').split('\n')[0] };
+      };
+      const same = reportOn('b'.repeat(40), 'b'.repeat(40));
+      assert.equal(same.commit, 'b'.repeat(40));
+      assert.equal(same.notes.length, 1, same.notes.join(' | '));
+      const other = reportOn('b'.repeat(40), 'a'.repeat(40));
+      assert.ok(other.notes.includes(`Shards ran on commit(s) ${'a'.repeat(40)}, the report on ${'b'.repeat(40)}.`), other.notes.join(' | '));
+      assert.ok(other.first.includes(`Shards ran on commit(s) ${'a'.repeat(40)}`));
+      const none = reportOn('b'.repeat(40), undefined);
+      assert.ok(none.notes.includes(`Shard(s) 0 recorded no commit; the report ran on ${'b'.repeat(40)}.`), none.notes.join(' | '));
     } finally {
+      if (sha === undefined) {
+        delete process.env.GITHUB_SHA;
+      } else {
+        process.env.GITHUB_SHA = sha;
+      }
       rmSync(tmp, { recursive: true, force: true });
     }
   });

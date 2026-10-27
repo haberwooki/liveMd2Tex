@@ -6,6 +6,7 @@ import * as assert from 'node:assert/strict';
 import { compileSafePattern, MAX_PATTERN_LENGTH, PatternError } from '../../src/converter/preset/safePattern';
 import { convertMarkdown } from '../../src/converter/markdownToLatex';
 import { parsePresetFile, resolveMode } from '../../src/converter/preset/load';
+import { clockMessage, timeOf, withinClock } from '../support/clock';
 import { examplePreset } from './support';
 
 describe('preset patterns in a safe language', () => {
@@ -29,12 +30,18 @@ describe('preset patterns in a safe language', () => {
 
   it('matches in linear time: patterns that make RegExp backtrack for ever finish at once', () => {
     const long = `${'a'.repeat(3998)}!`; // the longest text a pattern is tested on
+    const run = (p: string) =>
+      timeOf(() => {
+        const safe = compileSafePattern(p);
+        safe.test(long);
+        safe.test(' '.repeat(3998) + 'x');
+      });
+    // The reference: a plain pattern that reads every character too. In linear time the hostile patterns cost a few
+    // times as much (more automaton states); a pattern that backtracks would cost millions of times as much.
+    const reference = run('a+$') + run('\\s+$');
     for (const p of ['(a+)+$', '(a|a)*$', '(a*)*b', '^(\\w+\\s?)*$', '(x+x+)+y', '\\s*\\s*\\s*\\s*$']) {
-      const t0 = performance.now();
-      const safe = compileSafePattern(p);
-      safe.test(long);
-      safe.test(' '.repeat(3998) + 'x');
-      assert.ok(performance.now() - t0 < 2000, `"${p}" took ${Math.round(performance.now() - t0)} ms`);
+      const elapsed = run(p);
+      assert.ok(withinClock(elapsed, 2000, reference, 50), clockMessage(`"${p}"`, elapsed, 2000, reference, 50));
     }
   });
 
@@ -69,10 +76,15 @@ describe('preset patterns in a safe language', () => {
     const resolved = resolveMode(preset, 'paper');
     assert.equal(resolved.problems.filter((p) => /pattern/.test(p)).length, 2, resolved.problems.join(' | '));
     assert.deepEqual(resolved.mode.appendix?.dropLines, ['^(a+)+$', '^# ']); // the first is fine in the safe language
-    // Converting with it is quick even on a line built to make RegExp backtrack.
-    const t0 = performance.now();
-    convertMarkdown('Body.', { preset: resolved.mode, appendix: `${'a'.repeat(30000)}!\n# Dropped\nKept.` });
-    assert.ok(performance.now() - t0 < 3000);
+    // Converting with it is quick even on a line built to make RegExp backtrack. The reference: the same conversion
+    // with a plain pattern that reads the whole line too.
+    const appendix = `${'a'.repeat(30000)}!\n# Dropped\nKept.`;
+    const plainPreset = parsePresetFile(JSON.stringify({ name: 'plain', modes: { paper: { appendix: { heading: 'Methods', dropLines: ['a+$', '^# '] } } } })).preset;
+    assert.ok(plainPreset);
+    const plain = resolveMode(plainPreset, 'paper');
+    const reference = timeOf(() => convertMarkdown('Body.', { preset: plain.mode, appendix }));
+    const elapsed = timeOf(() => convertMarkdown('Body.', { preset: resolved.mode, appendix }));
+    assert.ok(withinClock(elapsed, 3000, reference, 20), clockMessage('the hostile preset', elapsed, 3000, reference, 20));
   });
 
   it('the example preset\'s patterns are all in the language: it loads with no problem', () => {

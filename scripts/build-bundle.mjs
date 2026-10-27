@@ -16,7 +16,8 @@
 // (tlpkg/texlive.tlpdb.xz, archive/<name>.tar.xz, and the <name>.doc.tar.xz and <name>.source.tar.xz archives that
 // licence texts come from). The builder then opens no connection at all. Every file is still
 // checked: the tlpdb against the pin, each archive against the tlpdb's SHA-512. The workflow downloads with curl,
-// because texlive.info's bot check lets only curl and wget through; the builder does not pretend to be either.
+// because texlive.info runs a bot check (Anubis): a browser, and Node's fetch, get a challenge page instead of the
+// file, while curl gets the file. The builder does not pretend to be curl.
 // --curl-config FILE (fetch stage, with --local): lists every archive that is missing or wrong in DIR as a curl
 // config (url and output pairs), instead of failing; the workflow downloads them with curl and runs the stage again.
 //
@@ -41,7 +42,7 @@
 //           (DataManifest format 1; core-data adds its mount root, its formats with their SHA-256, and
 //           extra-data's files and requires), licences.json, the closure test's targets, the selection
 //           (selection.json: every package of each set, for the reference install), and the data packages
-//           (VSIX) under 262,144,000 bytes.
+//           (VSIX) under our own cap of 262,144,000 bytes (250 MiB; no store's published limit).
 //  closure  Every target the build listed (each class, and each .sty of a package's own folder) loads alone in a
 //           minimal document on the built images; a shard takes every n-th package.
 // Each stage writes report-<stage>.json and .txt into --out after every step, and once more on an error, so a
@@ -54,8 +55,9 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
-import { archiveFile, CORE_ROOT, coreImageFiles, engineSupportFiles, extraImageFiles, fetchArchive, generatedFiles, isProgramFile, licenceGroup, licenceOf, overlap, packType1, selectSets, sizeBreakdown, sha256, sha512, sizeTable, unpackPackage } from './lib/bundle.mjs';
+import { archiveFile, CORE_ROOT, coreImageFiles, engineSupportFiles, extraImageFiles, fetchArchive, generatedFiles, isGplFamily, isProgramFile, licenceGroup, licenceOf, overlap, packType1, selectSets, sizeBreakdown, sha256, sha512, sizeTable, snapshotArchives, unpackPackage } from './lib/bundle.mjs';
 import { buildDataImage } from './lib/data-image.mjs';
+import { pinnedGluePath } from './lib/derived-glue.mjs';
 import { archiveTexts, classifyFonts, gplChanges, gplChangesPaths, isLicenceFile, licenceArchives, licenceFolder, loadTexts } from './lib/licence-texts.mjs';
 import { openImage } from './lib/image-files.mjs';
 import { buildPackageIndex } from './lib/package-index.mjs';
@@ -63,7 +65,7 @@ import { licenceClass, parseTlpdb, texmfPath } from './lib/tlpdb.mjs';
 import { unxz } from './lib/xz.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-/** The store's largest package (the VS Code Marketplace's limit). */
+/** Our own cap on a data package's size, 250 MiB. It is not a store's published limit (the licence gate, S12). */
 export const MAX_PACKAGE = 262144000;
 
 const readJson = (f) => JSON.parse(readFileSync(f, 'utf8'));
@@ -602,7 +604,11 @@ export async function main(argv, { fetchImpl = fetch, log = console.log } = {}) 
     };
     // The GPL's notice of changes for every packed font under the GPL, by the font's own terms (GPL fonts kept packed,
     // with a notice per file: decided by the maintainer, 2026-10-26). A packed GPL font it does not list stops the build.
-    const gplPacked = packedFonts.filter((f) => f.font?.class === 'gpl').map((f) => ({ path: f.name, package: f.owner, sha256: corePacked.packed[f.name] }));
+    // Each line also names the snapshot archive that holds the original, the GPL "source" of the packed form (L-09).
+    const snapshotBase = mirrorsOf(pins)[0];
+    const gplPacked = packedFonts
+      .filter((f) => f.font?.class === 'gpl')
+      .map((f) => ({ path: f.name, package: f.owner, sha256: corePacked.packed[f.name], original: `${snapshotBase}archive/${archiveFile(f.owner, db.get(f.owner)).file}` }));
     if (gplPacked.length > 0) {
       const changesFile = path.join(out, 'core-data', 'LICENSES', 'CHANGES-GPL');
       mkdirSync(path.dirname(changesFile), { recursive: true });
@@ -618,7 +624,18 @@ export async function main(argv, { fetchImpl = fetch, log = console.log } = {}) 
     const indexOf = (files) => buildPackageIndex([...files.keys()], (rel) => files.get(rel).toString('latin1'));
     const coreIndex = indexOf(filesOf.core);
     const extraIndex = indexOf(filesOf.extra);
-    const licences = (names) => Object.fromEntries([...names].sort().map((n) => [n, { licence: licenceOf(db.get(n), sets.licenceReviews), ctan: db.get(n).ctan || null, revision: db.get(n).revision }]));
+    // A package under the GPL, LGPL or AGPL, or with a packed font under the GPL, also gets its archives in the pinned
+    // snapshot, with their SHA-512: the source of the version shipped, which CTAN stops keeping at its next update
+    // (the licence gate, M6 and L-09).
+    const gplOwners = new Set(gplPacked.map((f) => f.package));
+    const licences = (names) =>
+      Object.fromEntries(
+        [...names].sort().map((n) => {
+          const licence = licenceOf(db.get(n), sets.licenceReviews);
+          const archives = licence.some(isGplFamily) || gplOwners.has(n) ? { archives: snapshotArchives(n, db.get(n), snapshotBase) } : {};
+          return [n, { licence, ctan: db.get(n).ctan || null, revision: db.get(n).revision, ...archives }];
+        }),
+      );
     const coreManifest = {
       format: 1,
       set: 'core-data',
@@ -666,11 +683,11 @@ export async function main(argv, { fetchImpl = fetch, log = console.log } = {}) 
     if (!argv.includes('--no-package')) {
       const { packageDataSet } = await import('./lib/bundle-package.mjs');
       for (const [set, dir] of [['core-data', path.join(out, 'core-data')], ['extra-data', path.join(out, 'extra-data')]]) {
-        const vsix = await packageDataSet(root, dir, set, version, path.join(out, `livemd2tex-${set}-${version}.vsix`), set === 'core-data' ? coreFonts : undefined);
+        const vsix = await packageDataSet(root, dir, set, version, path.join(out, `livemd2tex-${set}-${version}.vsix`), set === 'core-data' ? coreFonts : undefined, { date: pins.snapshot, url: snapshotBase });
         report.sizes[set === 'core-data' ? 'core' : 'extra'].vsix = vsix.bytes;
         report.sizes[set === 'core-data' ? 'core' : 'extra'].vsixSha256 = sha256(readFileSync(vsix.file));
         if (vsix.bytes >= MAX_PACKAGE) {
-          fail(`${set}: the package is ${vsix.bytes} bytes, over the store's ${MAX_PACKAGE}`);
+          fail(`${set}: the package is ${vsix.bytes} bytes, over our cap of ${MAX_PACKAGE}`);
         }
       }
       step('packages');
@@ -735,7 +752,7 @@ export async function main(argv, { fetchImpl = fetch, log = console.log } = {}) 
 /** The engine assets for the engine host, with the given core image. */
 function engineAssets(assetsDir, data, loader) {
   return {
-    glue: path.join(root, '..', 'engine_assets', 'derived', 'busytex.patched.js'),
+    glue: pinnedGluePath(path.join(root, '..', 'engine_assets'), readJson(path.join(root, 'engine', 'pins.json'))),
     wasm: path.join(assetsDir, 'busytex.wasm'),
     data,
     loader,

@@ -1,0 +1,22 @@
+Source: texk/web2c/mplibdir/lmplib.c in TeX Live's source tree at tag texlive-2026.0 (https://github.com/TeX-Live/texlive-source/blob/tags/texlive-2026.0/texk/web2c/mplibdir/lmplib.c), lines 1-20
+
+/* lmplib.c
+
+   Copyright 2012 Taco Hoekwater <taco@luatex.org>
+
+   This file is part of the MetaPost tarball, but belongs to LuaTeX.
+
+   LuaTeX is free software; you can redistribute it and/or modify it under
+   the terms of the GNU Lesser General Public License as published by the Free
+   Software Foundation; either version 3 of the License, or (at your
+   option) any later version.
+
+   LuaTeX is distributed in the hope that it will be useful, but WITHOUT
+   ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+   FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
+   License for more details.
+
+   You should have received a copy of the GNU Lesser General Public License along
+   with LuaTeX; if not, see <http://www.gnu.org/licenses/>.
+
+*/

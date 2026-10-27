@@ -2,7 +2,9 @@
 // WebAssembly module and the image bytes (a SharedArrayBuffer, not copied); this worker makes its own
 // Emscripten instance, mounts the image's file list (LZ4, decompressed only when read), writes the project into
 // MEMFS, and runs the tools one after another with BusyTeX's one-instance pattern: one callMain per tool, then
-// the WebAssembly memory is cleared and its first 64 MiB restored. Cancel is the host's worker.terminate().
+// the WebAssembly memory is cleared and its first 64 MiB restored. The pattern follows BusyTeX's
+// busytex_pipeline.js (Vadim Kantorov, MIT; https://github.com/busytex/busytex), written anew here (see step()
+// below, and THIRD_PARTY_NOTICES.md). Cancel is the host's worker.terminate().
 //
 // The image bytes are shared and only read. Each worker decompresses into chunk buffers of its own (the glue's
 // file_packager would put them at the end of the image buffer, where two workers could overwrite each other's
@@ -72,6 +74,7 @@ const TEXMFLOG = '/tmp/texmf.log';
 const TEXMFHOME = '/texmf-home';
 /** Where data extension images are mounted (G2E-02): a texmf tree searched after TEXMFHOME, before the bundle. */
 const TEXMF_EXTRA = '/texmf-extra';
+/** The memory restored after each tool: its first 64 MiB, as BusyTeX's busytex_pipeline.js does (MIT). */
 const HEADER_BYTES = 2 ** 26;
 // Requests for another pass in the log. Not the word "rerunfilecheck" alone: hyperref loads that package, so its
 // name is in every such log; its warning itself says "Rerun to get outlines right".
@@ -487,6 +490,8 @@ async function compile(setup: WorkerSetup, message: WorkerJob): Promise<CompileR
   const mainName = posix.basename(job.main);
   const base = mainName.replace(/\.tex$/i, '');
   const steps: StepRecord[] = [];
+  // One tool: callMain, then the memory is cleared and its first 64 MiB restored (BusyTeX's one-instance pattern,
+  // after its busytex_pipeline.js, MIT).
   const step = (argv: string[]): number => {
     push(`$ ${argv.join(' ')}`);
     if (M.FS.analyzePath(TEXMFLOG).exists) {

@@ -59,10 +59,11 @@ core data is inside the extension itself.
 
 | Item | What it holds | Size |
 |---|---|---|
-| liveMd2Tex (`haberwooki.livemd2tex`) | The extension: the compile loop, the viewer, the Markdown converter, the notices | not yet built |
-| liveMd2Tex core data (`haberwooki.livemd2tex-core-data`) | The TeX engines, the packages and fonts most documents use, the prebuilt formats | not yet built |
+| liveMd2Tex (`haberwooki.livemd2tex`) | The extension: the compile loop, the TeX engines, the viewer, the Markdown converter, the notices | not yet built |
+| liveMd2Tex core data (`haberwooki.livemd2tex-core-data`) | The packages and fonts most documents use, the prebuilt formats | not yet built |
 | Extra Packages (`haberwooki.livemd2tex-extra-data`) | Optional: many more packages and fonts, publishers' classes among them | not yet built |
 
+The TeX engines are part of the extension itself. The two data items hold TeX's files only, and no code.
 Installing liveMd2Tex from the store will install the core data with it. If you install from a `.vsix` file
 instead, install the core data's `.vsix` file first: VS Code fetches a dependency only from the store.
 
@@ -168,10 +169,29 @@ with TeX Live. Report problems and missing packages at https://github.com/haberw
 
 ## Licence
 
-liveMd2Tex is free software under GPL-3.0-or-later (`LICENSE`). The TeX engine's JavaScript wrapper (TeXlyre's
-busytex) keeps its AGPL-3.0 terms inside the combined work, so `package.json` declares
-`GPL-3.0-or-later AND AGPL-3.0-only`. Copyright (C) 2026 the liveMd2Tex authors. The parts by others and their
-licences are in `THIRD_PARTY_NOTICES.md`; the licence texts ship in `dist/licenses/`.
+liveMd2Tex is free software under GPL-3.0-or-later (`LICENSE`). TeXlyre's BusyTeX build (its JavaScript glue and
+the engine WebAssembly) keeps its AGPL-3.0 terms inside the combined work, so `package.json` declares
+`GPL-3.0-or-later AND AGPL-3.0-only`. Copyright (C) 2026 the liveMd2Tex authors; `AUTHORS.md` in the repository
+says who they are. The parts by others and their licences are in `THIRD_PARTY_NOTICES.md`. The licence texts and
+the notices of the engine's parts ship in `dist/licenses/`.
+
+The source code of this version is at https://github.com/haberwooki/liveMd2Tex/tree/v0.0.1. Each release is
+tagged with `v` and its version, and that tag's tree holds the whole source. Our changes to the engine's
+JavaScript glue are in its `engine/patches/` folder. The glue ships as readable JavaScript, so the shipped file is
+its own source.
+
+The engine is built from these sources: TeXlyre's build scripts at commit
+46ebb6216a5c1fe63dd1dc885831d1a8cef2dc86 (https://github.com/TeXlyre/texlyre-busytex-build, release
+`build_wasm_46ebb6216a5c1fe63dd1dc885831d1a8cef2dc86_31802832436_1`), TeX Live's source tree at tag texlive-2026.0
+(commit f26cc5ed05a1f784d1e694fe5b9cfc3ce992c03d, https://github.com/TeX-Live/texlive-source), Expat 2.5.0 and
+fontconfig 2.13.96, compiled with Emscripten 5.0.4. `THIRD_PARTY_NOTICES.md` ("The engine's source") gives each
+archive's address and SHA-256. Each release that ships the engine carries a copy of these archives, attached
+before the release is published, so they stay available.
+
+Credits. liveMd2Tex is built on TeX Live and its TeX engines; on BusyTeX (Vadim Kantorov) and TeXlyre's build of
+it (Fares Abawi); on PDF.js (Mozilla), markdown-it and isomorphic-git; and on the libraries inside the engine,
+which `THIRD_PARTY_NOTICES.md` lists. Portions of this software are copyright © 2025 The FreeType Project
+(https://freetype.org). All rights reserved.
 
 The files the extension copies into your folders come with no conditions at all: the starting documents of "New
 document from template" (`templates/`) and the example presets (`examples/presets/`) are dedicated to the public

@@ -170,7 +170,8 @@ describe('t1c: lossless packing of Type 1 fonts (B1, core-data)', () => {
 
   it("the data package's README and LICENSE.txt say how the fonts are stored, and quote the LPPL's clause 9 word for word", async () => {
     type Fonts = { lppl: string[]; vera?: string[]; gpl: string[]; kept: Record<string, string>; unpacked?: Record<string, { reason: string; files: string[] }[]>; gplChanges?: boolean };
-    const { licenceFile, readmeFiles } = await importScript<{ licenceFile(f?: Fonts): string; readmeFiles(y: string, p: boolean, g?: boolean): string }>('scripts/lib/bundle-package.mjs');
+    const { licenceFile, readmeFiles } = await importScript<{ licenceFile(f: Fonts | undefined, s: { date: string; url: string; releases: string }): string; readmeFiles(y: string, p: boolean, g?: boolean): string }>('scripts/lib/bundle-package.mjs');
+    const snapshot = { date: '2026/10/15', url: 'https://texlive.info/tlnet-archive/2026/10/15/tlnet/', releases: 'https://github.com/haberwooki/liveMd2Tex/releases' };
     // The groups come from each font's own terms (the t1c gate, T1S-02): DejaVu under its own terms, not the LPPL.
     const text = licenceFile({
       lppl: ['lm'],
@@ -178,10 +179,11 @@ describe('t1c: lossless packing of Type 1 fonts (B1, core-data)', () => {
       gpl: ['cm-super'],
       kept: { amsfonts: 'the SIL Open Font License' },
       unpacked: { courier: [{ reason: "IBM's Courier terms", files: ['fonts/type1/adobe/courier/pcrb8a.pfb', 'fonts/type1/adobe/courier/pcrr8a.pfb'] }] },
-    });
+    }, snapshot);
     const flat = text.replace(/\s+/g, ' ');
     const lppl = readFileSync(path.join(root, 'LICENSES', 'LPPL-1.3c.txt'), 'utf8');
-    const clause9 = /^9\. (.+)$/m.exec(lppl)?.[1].trim();
+    // The LaTeX Project's own text (LICENSES/LPPL-1.3c.txt) wraps the clause over several lines.
+    const clause9 = /^9\.\s+([\s\S]+?)\n\s*\n/m.exec(lppl)?.[1].replace(/\s+/g, ' ').trim();
     assert.ok(clause9 && flat.includes(`"${clause9}"`), 'clause 9 as the licence has it');
     assert.doesNotMatch(flat, /unchanged/);
     assert.match(flat, /stored with their encryption removed .* gives back the original file byte for byte, and checks the result against the SHA-256 of the original/);
@@ -193,15 +195,28 @@ describe('t1c: lossless packing of Type 1 fonts (B1, core-data)', () => {
     assert.match(flat, /These fonts are stored as they are, by the terms their own headers state: - courier, 2 fonts \(pcrb8a\.pfb, pcrr8a\.pfb\): IBM's Courier terms\./);
     assert.ok(text.split('\n').every((l) => l.length <= 115), 'wrapped');
     // A set that packs nothing keeps the plain statement, and names no font licence.
-    const plain = licenceFile(undefined).replace(/\s+/g, ' ');
+    const plain = licenceFile(undefined, snapshot).replace(/\s+/g, ' ');
     assert.match(plain, /are distributed unchanged from TeX Live/);
     assert.doesNotMatch(plain, /clause 9|DejaVu|Type 1/);
+    // Where the sources are: the pinned snapshot, which keeps the version shipped, and the release's copies; CTAN
+    // has only the newest version (the licence gate, M6).
+    for (const t of [flat, plain]) {
+      for (const words of [
+        "Where the sources are. The files are taken from TeX Live's snapshot of 2026/10/15, https://texlive.info/tlnet-archive/2026/10/15/tlnet/, which keeps each package as this data package has it",
+        'its sources in archive/<package>.source.tar.xz',
+        'For each package under the GNU GPL, LGPL or AGPL, and each package with a packed font under the GPL, data/licences.json lists these archives',
+        'the GitHub release that publishes this data package (https://github.com/haberwooki/liveMd2Tex/releases) carries a copy of each',
+      ]) {
+        assert.ok(t.includes(words), words);
+      }
+    }
+    assert.throws(() => licenceFile(undefined, undefined as never), /the snapshot \(date, url, releases\) is needed/);
     assert.match(readmeFiles('2026', false), /TeX Live 2026's packages, unchanged;/);
     assert.match(readmeFiles('2026', true), /^The TeX files are TeX Live 2026's packages\. The Type 1 font files \(\.pfb\) whose terms allow it are stored with their encryption removed/);
     assert.doesNotMatch(readmeFiles('2026', true), /unchanged/);
     // The GPL's notice of changes (decided by the maintainer, 2026-10-26): both texts point to LICENSES/CHANGES-GPL.
     assert.doesNotMatch(flat, /CHANGES-GPL/);
-    const withChanges = licenceFile({ lppl: [], gpl: ['cm-super'], kept: {}, gplChanges: true }).replace(/\s+/g, ' ');
+    const withChanges = licenceFile({ lppl: [], gpl: ['cm-super'], kept: {}, gplChanges: true }, snapshot).replace(/\s+/g, ' ');
     assert.match(withChanges, /\(version 2, section 2\(a\); version 3, section 5\(a\)\)\. LICENSES\/CHANGES-GPL lists every packed font under the GPL/);
     assert.match(readmeFiles('2026', true, true), /LICENSES\/CHANGES-GPL lists each font under the GNU GPL that is stored this way/);
     assert.doesNotMatch(readmeFiles('2026', true), /CHANGES-GPL/);

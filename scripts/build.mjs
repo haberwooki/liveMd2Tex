@@ -180,15 +180,29 @@ for (const [name, dir] of [...bundledPackages].sort((a, b) => a[0].localeCompare
   }
   index.push(`${name} ${pkg.version}: ${typeof pkg.license === 'string' ? pkg.license : JSON.stringify(pkg.license)} -> ${out}`);
 }
+// pako is "MIT AND Zlib": its LICENSE holds the MIT part, and the zlib notice of Jean-loup Gailly and Mark Adler is
+// in its zlib sources' headers; it is added from there (the licence gate, L-05).
+const pakoDir = bundledPackages.get('pako');
+if (pakoDir) {
+  const header = readFileSync(path.join(pakoDir, 'lib', 'zlib', 'deflate.js'), 'utf8').match(/^\/\/ \(C\) 1995[\s\S]*?(?=\n\n|\n[^/])/m)?.[0];
+  if (!header) {
+    throw new Error("pako: the zlib notice is not where it was (lib/zlib/deflate.js's header)");
+  }
+  writeFileSync(path.join(licences, 'pako.txt'), `${readFileSync(path.join(licences, 'pako.txt'), 'utf8')}\n\npako's port of zlib (lib/zlib/) is under the zlib licence, as its files state:\n\n${header}\n`);
+}
 cpSync(path.join(root, 'LICENSE'), path.join(licences, 'GPL-3.0.txt'));
 for (const text of readdirSync(path.join(root, 'LICENSES')).filter((f) => f.endsWith('.txt'))) {
   cpSync(path.join(root, 'LICENSES', text), path.join(licences, text));
 }
+// The notices of what the engine links (engine/engine-notices.json; THIRD_PARTY_NOTICES.md, "Inside the engine").
+cpSync(path.join(root, 'LICENSES', 'engine'), path.join(licences, 'engine'), { recursive: true });
 index.push(
   '',
-  'GPL-3.0.txt, AGPL-3.0.txt, LGPL-3.0.txt, Apache-2.0.txt, LPPL-1.3c.txt: the full licence texts.',
+  'GPL-3.0.txt, GPL-2.0.txt, AGPL-3.0.txt, LGPL-3.0.txt, LGPL-2.1.txt, Apache-2.0.txt, MIT.txt, LPPL-1.3c.txt: the full licence texts.',
   "ICU.txt: ICU's licence (the Unicode License V3 and its third-party notices), for the ICU built into the engine and its data.",
   "MakeIndex.txt: MakeIndex's notice, for the MakeIndex built into the engine; THIRD_PARTY_NOTICES.md says where its source is.",
+  'engine/: the notices of the other parts built into the engine (TeXlyre-BusyTeX, LuaHBTeX, HarfBuzz, FreeType, Lua and more);',
+  "THIRD_PARTY_NOTICES.md's table \"Inside the engine\" names each part, its version, its licence and its files here.",
   'CC0-1.0.txt: CC0 1.0 Universal, under which the liveMd2Tex authors dedicate the starting documents (templates/)',
   'and the example presets (examples/presets/) to the public domain, because they are copied into your own folders.',
 );

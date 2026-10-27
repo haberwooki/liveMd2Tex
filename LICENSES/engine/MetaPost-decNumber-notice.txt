@@ -1,0 +1,40 @@
+Source: texk/web2c/mplibdir/decNumber.c in TeX Live's source tree at tag texlive-2026.0 (https://github.com/TeX-Live/texlive-source/blob/tags/texlive-2026.0/texk/web2c/mplibdir/decNumber.c), lines 1-18: IBM's decNumber in MetaPost's libmputil. The ICU License 1.8.1 that it names is in full in ../ICU.txt, "ICU License - ICU 1.8.1 to ICU 57.1"
+
+/* ------------------------------------------------------------------ */
+/* Decimal Number arithmetic module                                   */
+/* ------------------------------------------------------------------ */
+/* Copyright (c) IBM Corporation, 2000, 2009.  All rights reserved.   */
+/*                                                                    */
+/* This software is made available under the terms of the             */
+/* ICU License -- ICU 1.8.1 and later.                                */
+/*                                                                    */
+/* The description and User's Guide ("The decNumber C Library") for   */
+/* this software is called decNumber.pdf.  This document is           */
+/* available, together with arithmetic and format specifications,     */
+/* testcases, and Web links, on the General Decimal Arithmetic page.  */
+/*                                                                    */
+/* Please send comments, suggestions, and corrections to the author:  */
+/*   mfc@uk.ibm.com                                                   */
+/*   Mike Cowlishaw, IBM Fellow                                       */
+/*   IBM UK, PO Box 31, Birmingham Road, Warwick CV34 5JL, UK         */
+/* ------------------------------------------------------------------ */
+
+Source: texk/web2c/mplibdir/decNumber.h in TeX Live's source tree at tag texlive-2026.0 (https://github.com/TeX-Live/texlive-source/blob/tags/texlive-2026.0/texk/web2c/mplibdir/decNumber.h), lines 1-7
+
+/* ------------------------------------------------------------------ */
+/* Decimal Number arithmetic module header                            */
+/* ------------------------------------------------------------------ */
+/* Copyright (c) IBM Corporation, 2000, 2010.  All rights reserved.   */
+/*                                                                    */
+/* This software is made available under the terms of the             */
+/* ICU License -- ICU 1.8.1 and later.                                */
+
+Source: texk/web2c/mplibdir/decContext.c in TeX Live's source tree at tag texlive-2026.0 (https://github.com/TeX-Live/texlive-source/blob/tags/texlive-2026.0/texk/web2c/mplibdir/decContext.c), lines 1-7
+
+/* ------------------------------------------------------------------ */
+/* Decimal Context module                                             */
+/* ------------------------------------------------------------------ */
+/* Copyright (c) IBM Corporation, 2000, 2009.  All rights reserved.   */
+/*                                                                    */
+/* This software is made available under the terms of the             */
+/* ICU License -- ICU 1.8.1 and later.                                */

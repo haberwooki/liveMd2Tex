@@ -130,6 +130,22 @@ export function archiveFile(name, pkg, kind = 'run') {
   return { file: `${name}.tar.xz`, checksum: pkg.containerChecksum };
 }
 
+/** Whether a Catalogue licence is one of the GNU licences that ask for the source of what ships: GPL, LGPL, AGPL. */
+export const isGplFamily = (key) => /^(?:a|l)?gpl/.test(key);
+
+/**
+ * A package's archives in the pinned snapshot (`base`, its tlnet URL), with the SHA-512 the tlpdb gives for each: its
+ * run files, and its source and doc archives where it has them. For a package under the GPL, LGPL or AGPL,
+ * licences.json lists them: they hold the source of the files the data package ships (the licence gate, M6), and
+ * the release attaches a copy of each (scripts/release-sources.mjs).
+ */
+export function snapshotArchives(name, pkg, base) {
+  return ['run', 'source', 'doc']
+    .map((kind) => ({ kind, ...archiveFile(name, pkg, kind) }))
+    .filter((a) => a.checksum)
+    .map((a) => ({ kind: a.kind, url: `${base}archive/${a.file}`, sha512: a.checksum }));
+}
+
 /**
  * A package's archive (archive/<name>.tar.xz, or its doc or source archive: `kind`), from the cache when its SHA-512
  * matches the tlpdb, else from the first mirror that gives the right bytes. Never a file whose checksum is wrong.

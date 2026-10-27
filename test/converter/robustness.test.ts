@@ -6,6 +6,7 @@ import * as assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import * as path from 'node:path';
 import { convertMarkdown } from '../../src/converter/markdownToLatex';
+import { clockMessage, timeOf, withinClock } from '../support/clock';
 import { lineMapProblems, testDir } from './support';
 
 /** Mulberry32: a small seeded generator, so a failure can be replayed from its seed. */
@@ -175,11 +176,21 @@ describe('robustness', () => {
   });
 
   it('converts a 20 000-line document in well under a second per 4 000 lines', () => {
-    const md = Array.from({ length: 2000 }, (_, i) => `## Part ${i}\n\nText with $x_${i}$, [@k${i}] and **bold** ${i}.\n\n- a\n- b\n`).join('\n');
-    const started = Date.now();
-    const result = convertMarkdown(md);
-    const ms = Date.now() - started;
+    const doc = (parts: number) => Array.from({ length: parts }, (_, i) => `## Part ${i}\n\nText with $x_${i}$, [@k${i}] and **bold** ${i}.\n\n- a\n- b\n`).join('\n');
+    // The reference: the same amount of text as ten documents a tenth as long. A conversion in linear time takes about
+    // as long for both; one that turns quadratic in the length takes ten times as long for the one document.
+    const small = doc(200);
+    const reference = timeOf(() => {
+      for (let k = 0; k < 10; k++) {
+        convertMarkdown(small);
+      }
+    });
+    let result!: ReturnType<typeof convertMarkdown>;
+    const md = doc(2000);
+    const ms = timeOf(() => {
+      result = convertMarkdown(md);
+    });
     assert.ok(result.lineMap.length > 15000);
-    assert.ok(ms < 5000, `${ms} ms`);
+    assert.ok(withinClock(ms, 5000, reference, 5), clockMessage('a 20 000-line document', ms, 5000, reference, 5));
   });
 });

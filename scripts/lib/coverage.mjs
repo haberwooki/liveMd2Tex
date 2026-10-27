@@ -616,7 +616,10 @@ export function referenceCompiles(reference) {
 
 // ---- Statistics ---------------------------------------------------------------------------------------------------
 
-/** The share k/n and its Wilson score interval (z = 1.96 for 95 %). */
+/**
+ * The share k/n and its Wilson score interval (z = 1.96 for 95 %): E. B. Wilson, "Probable inference, the law of
+ * succession, and statistical inference", J. Am. Stat. Assoc. 22 (1927) 209-212.
+ */
 export function wilson(k, n, z = 1.96) {
   if (n === 0) {
     return { k, n, share: null, low: null, high: null };

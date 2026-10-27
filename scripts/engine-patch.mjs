@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Development tool: applies engine/patches/busytex-glue.mjs to the pinned glue busytex.js and writes the
-// patched copy OUTSIDE the repository, in <engine_assets>/derived/. It also writes the patch as a unified diff,
-// engine/patches/busytex.js.diff, for review. The input is checked against its pinned SHA-256 first.
+// patched copy OUTSIDE the repository, in <engine_assets>/derived/<its SHA-256's first 16 digits>/
+// (scripts/lib/derived-glue.mjs). It also writes the patch as a unified diff, engine/patches/busytex.js.diff, for
+// review. The input is checked against its pinned SHA-256 first.
 //
 //   node scripts/engine-patch.mjs [--root DIR]
 
@@ -10,13 +11,14 @@ import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { derivedGlueFile } from './lib/derived-glue.mjs';
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const i = process.argv.indexOf('--root');
 const assetsRoot = path.resolve(i >= 0 ? process.argv[i + 1] : path.join(repo, '..', 'engine_assets'));
 const pins = JSON.parse(readFileSync(path.join(repo, 'engine', 'pins.json'), 'utf8'));
 const texlyre = pins.sources.find((s) => s.id === 'texlyre-busytex');
-const { input, patches } = await import(pathToFileURL(path.join(repo, 'engine', 'patches', 'busytex-glue.mjs')).href);
+const { input, notice, patches } = await import(pathToFileURL(path.join(repo, 'engine', 'patches', 'busytex-glue.mjs')).href);
 
 const sha = (buf) => createHash('sha256').update(buf).digest('hex');
 const source = readFileSync(path.join(assetsRoot, texlyre.folder, input.file));
@@ -34,13 +36,21 @@ for (const p of patches) {
   }
   text = text.split(p.find).join(p.replace);
 }
-const header = `// PATCHED COPY of ${input.file} (sha256 ${input.sha256}); patches: ${patches.map((p) => p.id).join(', ')}.\n`;
+// The notice of the change (AGPL-3.0 section 5(a) and (b)) and TeXlyre's notice, kept (sections 4 and 5).
+const noticeLines = [
+  `PATCHED COPY of ${input.file} (sha256 ${input.sha256}); patches: ${patches.map((p) => p.id).join(', ')}.`,
+  `Modified on ${notice.date} by ${notice.by}, from ${notice.original}.`,
+  `${notice.licence}. Each change is marked "PATCHED". The patches: ${notice.patches}.`,
+];
+const header = noticeLines.map((l) => `// ${l}\n`).join('');
 const out = header + text;
-const derived = path.join(assetsRoot, 'derived');
-mkdirSync(derived, { recursive: true });
-const outFile = path.join(derived, 'busytex.patched.js');
+// Into a folder keyed by the glue's own SHA-256 (scripts/lib/derived-glue.mjs), so a worktree with other patches
+// never overwrites the glue another worktree's pins name.
+const outSha = sha(Buffer.from(out));
+const outFile = path.join(assetsRoot, ...derivedGlueFile(outSha).split('/'));
+mkdirSync(path.dirname(outFile), { recursive: true });
 writeFileSync(outFile, out);
-writeFileSync(`${outFile}.sha256`, `${sha(Buffer.from(out))}  busytex.patched.js\n`);
+writeFileSync(`${outFile}.sha256`, `${outSha}  busytex.patched.js\n`);
 
 // A reviewable unified diff with neutral labels (no local paths).
 const diff = spawnSync('git', ['diff', '--no-index', '--no-color', '-U3', path.join(assetsRoot, texlyre.folder, input.file), outFile], {
@@ -52,5 +62,9 @@ const body = diff.stdout
   .filter((l) => !l.startsWith('diff --git') && !l.startsWith('index '))
   .map((l) => (l.startsWith('--- ') ? '--- a/busytex.js' : l.startsWith('+++ ') ? '+++ b/busytex.js' : l))
   .join('\n');
-writeFileSync(path.join(repo, 'engine', 'patches', 'busytex.js.diff'), body);
-console.log(`patched ${patches.length} places; wrote ${outFile} (sha256 ${sha(Buffer.from(out))}) and engine/patches/busytex.js.diff`);
+// Text before the first "---" line is not part of the patch, so the diff can carry the same notice.
+writeFileSync(path.join(repo, 'engine', 'patches', 'busytex.js.diff'), `${noticeLines.map((l) => `# ${l}`).join('\n')}\n# Written by scripts/engine-patch.mjs from engine/patches/busytex-glue.mjs.\n${body}`);
+console.log(`patched ${patches.length} places; wrote ${outFile} (sha256 ${outSha}) and engine/patches/busytex.js.diff`);
+if (texlyre.patchedGlue?.sha256 !== outSha) {
+  console.log(`engine/pins.json pins the patched glue ${texlyre.patchedGlue?.sha256 ?? '(none)'}; review the patches, then pin ${outSha} (patchedGlue.sha256, file ${derivedGlueFile(outSha)})`);
+}
