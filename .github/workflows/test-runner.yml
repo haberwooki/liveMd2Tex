@@ -1,5 +1,5 @@
-# One runner's full check, called by ci.yml and floor.yml (docs/DESIGN.md#store-and-packaging, #testing, G0). Prepared on the laptop
-# before G0 and not yet run on GitHub; the first runs at G0 may need small fixes.
+# One runner's full check, called by ci.yml and floor.yml (docs/DESIGN.md#store-and-packaging, #testing, G0). It runs
+# on GitHub; its runs on main have passed on Linux x64, Linux arm64 and Windows x64.
 #
 # The steps are the laptop's suites, in the same order: lint, typecheck, unit, engine, VS Code integration, and
 # (on one runner) both VSIX scans. Engine inputs come from engine/pins.json into ../engine_assets, outside the

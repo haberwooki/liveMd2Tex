@@ -1,4 +1,4 @@
-// The GitHub Actions workflows (.github/workflows), prepared before G0 and not yet run on GitHub: each one parses,
+// The GitHub Actions workflows (.github/workflows), which run on GitHub: each one parses,
 // and the matrix is the one docs/DESIGN.md#store-and-packaging sets for the private phase (Linux x64 and arm64 and Windows x64 on
 // every push; Windows arm64 and Apple Silicon on release candidates), with the floor test on VS Code 1.105 and
 // the marker scan over the whole history.

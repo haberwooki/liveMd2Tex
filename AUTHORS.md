@@ -9,5 +9,5 @@ It means the people whose work is in liveMd2Tex's own files: every file of this 
 https://github.com/haberwooki/liveMd2Tex, records each change and the account that made it, and that record is
 the list of authors. A contributor whose change is merged becomes one of them.
 
-The publisher account, haberwooki (https://github.com/haberwooki), answers for the authors. Reach it through the
-repository's issues.
+The publisher account, haberwooki (https://github.com/haberwooki), is the contact for the authors. Reach it through
+the repository's issues.
