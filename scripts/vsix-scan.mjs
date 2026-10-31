@@ -7,8 +7,8 @@
 //     a Worker with eval, process.binding; build gate 1, G1S-07), except child_process in extension/dist/fork.js
 //     (the one fork file, by rule) and the hits on security/vsix-scan-allowlist.json (file, line, text, reason);
 //   - every package: the licence texts (missingNotices; G1S-04), each at its pinned bytes (wrongNotices), and with
-//     the engine the notice of every part TeXlyre's build links into it (engine/engine-notices.json) and no libpaper
-//     code in its WASM (engineLinksLibpaper); with the starting documents (templates/) or the example presets
+//     the engine the notice of every part TeXlyre's build links into it (engine/engine-notices.json) and libpaper's
+//     two old strings absent (engineLinksLibpaper, which cannot see TeX Live's libpaper); with the starting documents (templates/) or the example presets
 //     (examples/presets/), their CC0 notices and the CC0 legal text, and an SPDX CC0-1.0 line in
 //     each of their files that has a comment form (cc0Headers; docs/DESIGN.md#store-and-packaging);
 //   - every file: no native program or library, no shell script, no source map, no node_modules folder;
@@ -117,9 +117,10 @@ export function engineLinksLuaffiCode(entries) {
 }
 
 /**
- * The engine must not hold libpaper's code: it is GPL-2.0-only, which does not combine with the AGPL-3.0 parts. It is
- * on TeXlyre's link line, but no code of it is in the pinned build (engine/engine-notices.json); a new engine build
- * that carries its strings fails here (the licence gate, S5).
+ * The engine must not hold libpaper's code: it is GPL-2.0-only, which does not combine with the AGPL-3.0 parts. These
+ * two strings are not in TeX Live's libpaper, so this check cannot see it, and the pinned TeXlyre build does link it
+ * (THIRD_PARTY_NOTICES.md, libpaper): no release ships that engine. The engine that replaces it is checked for
+ * libpaper's paper table and PAPERSIZE instead (the stage 1 gate, S1-S-01).
  */
 export function engineLinksLibpaper(entries) {
   const wasm = entries.get('extension/dist/engine/busytex.wasm');

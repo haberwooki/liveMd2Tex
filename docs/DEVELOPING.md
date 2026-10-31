@@ -1045,9 +1045,10 @@ The licence gates (2026-10-26) checked every part by others that a package ships
     fails the test until the manifest is updated. The release check compares the copy with the Makefile inside
     TeXlyre's archive at that commit (its SHA-256, and line by line).
   - The VSIX scan fails a package whose engine notices or licence texts are missing, or are not the pinned bytes
-    (`missingNotices`, `wrongNotices`). It also fails an engine whose WebAssembly holds libpaper's strings
-    (`PAPERCONF`, `/etc/papersize`). libpaper is GPL-2.0-only and may not ship with the AGPL-3.0 parts; it is on the
-    link line, but none of its code is in the pinned build.
+    (`missingNotices`, `wrongNotices`). Its libpaper check (`PAPERCONF`, `/etc/papersize`) cannot see TeX Live's
+    libpaper, which holds neither string: the pinned build does link libpaper (GPL-2.0-only, which may not ship
+    with the AGPL-3.0 parts; THIRD_PARTY_NOTICES.md), so no release ships this engine. Our own engine replaces it
+    and its check (PLAN_engine stage 3) looks for libpaper's paper table and `PAPERSIZE` instead.
 - **Below the link line.** A linked library can hold code by other authors under terms of their own, which the
   link-line test cannot see. `node scripts/engine-notice-search.mjs --archives DIR` helps a person find it; it is
   an aid to reading, not a proof. It reads the four source archives (by their names in the manifest's `sources`)

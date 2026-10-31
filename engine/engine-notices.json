@@ -1175,7 +1175,7 @@
       "musl": "inside Emscripten 5.0.4 (see emscripten)",
       "llvm": "inside Emscripten 5.0.4 (see emscripten)",
       "minilz4": "Emscripten's LZ4 decoder in busytex.js, whose notice stays in that file",
-      "libpaper": "none of its code is in the engine (scripts/vsix-scan.mjs checks this)"
+      "libpaper": "linked into this engine, which no release ships (THIRD_PARTY_NOTICES.md, libpaper)"
     },
     "report": "engine/engine-notice-search.report.json"
   },
@@ -1655,12 +1655,13 @@
     {
       "id": "libpaper",
       "name": "libpaper",
+      "copyright": "Copyright (C) Yves Arrouye, 1996",
       "version": "TeX Live 2026",
       "licence": "GPL-2.0-only",
       "links": [
         "libpaper.a"
       ],
-      "absent": "on the link line, but none of its code is in the WebAssembly (no PAPERCONF or /etc/papersize string; scripts/vsix-scan.mjs checks this): it ships nothing, and it would not combine with the AGPL-3.0 parts",
+      "note": "none, because no release ships this engine: libpaper is linked into it (its paper table and PAPERSIZE are in busytex.wasm), and GPL-2.0-only does not combine with the AGPL-3.0 parts. Our own engine leaves libpaper out",
       "notices": []
     },
     {

@@ -208,7 +208,7 @@ holds one. Their notices ship all the same.
 | ICU (and its data file, icudt78l.dat) | 78.2 | Unicode-3.0 | `dist/licenses/ICU.txt` |
 | fontconfig (and fcmatrix.c's notice, Tuomas J. Lukka) | 2.13.96 (the tarball TeXlyre hosts) | HPND (MIT-style) | `dist/licenses/engine/fontconfig-COPYING.txt`, `dist/licenses/engine/fontconfig-fcmatrix-notice.txt` |
 | Expat (and each source file's copyright lines) | 2.5.0 | MIT | `dist/licenses/engine/expat-COPYING.txt`, `dist/licenses/engine/expat-file-notices.txt` |
-| libpaper | TeX Live 2026 | GPL-2.0-only | none: on the link line, but none of its code is in the WebAssembly (no PAPERCONF or /etc/papersize string; scripts/vsix-scan.mjs checks this): it ships nothing, and it would not combine with the AGPL-3.0 parts |
+| libpaper; Copyright (C) Yves Arrouye, 1996 | TeX Live 2026 | GPL-2.0-only | none, because no release ships this engine: libpaper is linked into it (its paper table and PAPERSIZE are in busytex.wasm), and GPL-2.0-only does not combine with the AGPL-3.0 parts. Our own engine leaves libpaper out |
 | Emscripten's runtime (in busytex.js) and system libraries (in busytex.wasm) | 5.0.4 | MIT or NCSA | `dist/licenses/engine/Emscripten-LICENSE.txt` |
 | musl libc, inside Emscripten | Emscripten 5.0.4 | MIT | `dist/licenses/engine/musl-COPYRIGHT.txt` |
 | libc++, libc++abi and compiler-rt, inside Emscripten | Emscripten 5.0.4 | Apache-2.0 WITH LLVM-exception (no notice needed for compiled forms) | `dist/licenses/engine/LLVM-libcxx-LICENSE.txt`, `dist/licenses/Apache-2.0.txt` |
@@ -240,10 +240,13 @@ Notes on the table:
   GPL, and the engine holds GPL code, so FreeType is taken here under its GPL option. Its credit, as the FTL words
   it, is kept anyway: Portions of this software are copyright © 2025 The FreeType Project (https://freetype.org).
   All rights reserved. Its BDF and PCF drivers and its hash code are under their own MIT and X11 terms (above).
-- **libpaper** is GPL-2.0-only, which does not combine with the AGPL-3.0 parts. It is on TeXlyre's link line, but
-  none of its code is in this build: the WebAssembly holds neither its environment variable (`PAPERCONF`) nor its
-  file (`/etc/papersize`). `scripts/vsix-scan.mjs` fails a package whose engine holds either, so a new engine build
-  that brings it in is caught.
+- **libpaper** (Copyright (C) Yves Arrouye, 1996; "Use under the GPL version 2") is GPL-2.0-only, which does not
+  combine with the AGPL-3.0 parts. It is linked into this engine. Until 2026-10-31 these notices said it was not:
+  the check looked for strings (`PAPERCONF`, `/etc/papersize`) that TeX Live's libpaper never holds. The
+  WebAssembly holds libpaper's paper table (`halfexecutive`, `csheet` and the rest, which dvipdfmx's own table
+  lacks) and its variable `PAPERSIZE`, and not the four sizes dvipdfmx compiles in only without libpaper (`isob3`
+  to `isob6`). No release of liveMd2Tex ships this engine, and none will: our own engine, which replaces it,
+  leaves libpaper out and checks for these strings.
 - **pplib** (Paweł Jackowski). Its own files state no licence; it is recorded as shipped as part of LuaTeX, under
   LuaTeX's terms (GPL-2.0-or-later). Two of its files state their authors' terms, and their notices ship:
   `util/utilsha.c` (BSD-3-Clause) and `util/utilmd5.c` (Zlib-style). Debian records pplib as GPL-2+, and Fedora

@@ -56,7 +56,7 @@ describe('the engine notices (engine/engine-notices.json)', () => {
       }
     }
     const noNotice = manifest.components.filter((c) => c.notices.length === 0).map((c) => c.id).sort();
-    assert.deepEqual(noNotice, ['libpaper', 'minilz4', 'web2c'], 'only libpaper (absent), MiniLZ4 (its notice is in the glue) and web2c (permissive, no notice condition) carry none');
+    assert.deepEqual(noNotice, ['libpaper', 'minilz4', 'web2c'], 'only libpaper (in an engine no release ships), MiniLZ4 (its notice is in the glue) and web2c (permissive, no notice condition) carry none');
   });
 
   it("THIRD_PARTY_NOTICES.md's table is the one the manifest gives, and it names the engine's sources exactly", () => {
