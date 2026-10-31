@@ -4,7 +4,8 @@
 // scripts/stage-engine.mjs extracts from TeXlyre's loader) with the file list and the chunk table. The engine host
 // reads both with fs and mounts the image in each compile worker with the same code as the core image
 // (src/engine-host/engine/worker.ts, mountImage): a data extension's under /texmf-extra, which kpathsea searches
-// after the user's package folder and before the core; the core's at the root of the worker's file system.
+// after the user's package folder and before the core, through the ls-R the worker writes for it; the core's at the
+// root of the worker's file system.
 //
 // The file contents are one stream cut into 2,048-byte chunks. Each chunk is stored as one LZ4 block when that is
 // smaller (successes 1), raw otherwise (successes 0); without `compress` every chunk is raw (the test stand-in).

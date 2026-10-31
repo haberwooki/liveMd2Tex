@@ -1,6 +1,6 @@
 // The engine build's own tools (engine/build/tools; docs/DEVELOPING.md, "The TeX engine: our own build"), on made-up llvm-nm listings, link traces and link maps:
-// the rename and shared lists, the library clashes, the deny list, the libpaper strings, the link map's parts and
-// the musl notices.
+// the rename and shared lists, the library clashes, the deny list, the libpaper strings, the link map's parts, the
+// musl notices, and the check that the build machine's programs change nothing configure writes.
 
 import * as assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
@@ -98,6 +98,51 @@ describe('the engine build tools (engine/build/tools)', () => {
       assert.deepEqual(leaks(manifest('/srv/runner/build'), on).map((l) => l.what), ['the user name in a path']);
       assert.deepEqual(leaks(manifest('/srv/runners/build'), on), []);
       assert.deepEqual(leaks(manifest('/mnt/c/x'), on).map((l) => l.what), ['a path under /mnt/']);
+    });
+  });
+
+  describe('the check that the build machine\'s programs change nothing configure writes (configure-check.mjs)', () => {
+    type Problems = (files: { path: string; text: string; log?: boolean }[]) => string[];
+    let problems: Problems;
+    before(async () => {
+      problems = (await importScript<{ configureProblems: Problems }>('engine/build/tools/configure-check.mjs')).configureProblems;
+    });
+    const configLog = (lex: string, yacc: string, extra = '') => `## Output variables. ##\n\nLEX='${lex}'\nLEXLIB=''\nYACC='${yacc}'\n${extra}`;
+    const header = (yytext: boolean) => `#define HAVE_UNISTD_H 1\n${yytext ? '#define YYTEXT_POINTER 1' : '/* #undef YYTEXT_POINTER */'}\n`;
+
+    it('passes a tree configured with LEX=: and YACC=: (what WSL and the runner must both give)', () => {
+      assert.deepEqual(problems([
+        { path: 'texk/web2c/config.log', text: configLog(':', ':', "PKG_CONFIG='pkg-config'\n") },
+        { path: 'texk/web2c/w2c/c-auto.h', text: header(false) },
+        { path: 'config.log', text: "  $ ./configure '--with-system-zlib=no' '--without-system-libpng'\nno lex here\n" },
+        { path: 'logs/build.log', text: 'make[1]: Entering directory \'<root>/wasm/texk/web2c\'\n', log: true },
+      ]), []);
+    });
+
+    it('fails on a found flex or bison, a library of the build machine and a generator make ran', () => {
+      const found = problems([
+        { path: 'texk/web2c/config.log', text: configLog('flex', 'bison -y') },
+        { path: 'texk/web2c/web2c/kpathsea/c-auto.h', text: header(true) },
+        { path: 'libs/harfbuzz/config.log', text: configLog(':', ':', "pkg_cv_GLIB_CFLAGS=-I/usr/include/glib-2.0\n  $ ./configure '--with-system-zlib'\n") },
+        { path: 'logs/texk.log', text: 'ok\ncd ../../tl/texk/web2c && /bin/bash ../../tl/build-aux/missing automake-1.17 --foreign\n', log: true },
+        { path: 'logs/build.log', text: '/bin/bash ../../../tl/build-aux/ylwrap web2c-parser.y y.tab.c web2c-parser.c -- bison -y\n', log: true },
+      ]);
+      assert.equal(found.length, 7, found.join('\n'));
+      assert.match(found[0], /LEX='flex'.*lex/);
+      assert.match(found[1], /YACC='bison -y'.*yacc/);
+      assert.match(found[2], /YYTEXT_POINTER/);
+      assert.match(found[3], /pkg_cv_GLIB_CFLAGS/);
+      assert.match(found[4], /a library of the build machine was used \('--with-system-zlib'\)/);
+      assert.match(found[5], /^logs\/texk\.log:2: make ran a generator/);
+      assert.match(found[6], /ylwrap/);
+    });
+
+    it('build.sh passes LEX=: and YACC=: to both configure runs and runs the check after each', () => {
+      const sh = readFileSync(path.join(root, 'engine', 'build', 'build.sh'), 'utf8');
+      assert.equal((sh.match(/AWK=gawk LEX=: YACC=:$/gm) ?? []).length, 2);
+      assert.match(sh, /tools\/configure-check\.mjs" "\$NATIVE"$/m);
+      assert.match(sh, /tools\/configure-check\.mjs" "\$WASM" --logs "\$ROOT\/logs"$/m);
+      assert.match(sh, /^ {2}NODE=\$EMSDK_NODE$/m);
     });
   });
 

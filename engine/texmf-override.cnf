@@ -19,6 +19,12 @@ MKOFM = 0
 % Files are written only below the current folder (TeX Live's default, stated here on purpose).
 openout_any = p
 %
+% kpathsea's file name databases (ls-R): TeX Live's own trees, as in TeX Live's texmf.cnf, and the data
+% extensions' tree, /texmf-extra, whose ls-R the engine host writes for the files it mounts there. The engine host
+% marks that tree "!!" in TEXMFHOME, so its files are looked up in that list only and its folders are never
+% searched on disk (docs/DESIGN.md, "Mounting").
+TEXMFDBS = {!!$TEXMFLOCAL,!!$TEXMFSYSCONFIG,!!$TEXMFSYSVAR,!!$TEXMFDIST,!!/texmf-extra}
+%
 % Long log lines are not wrapped (TeX Live wraps at 79 columns), so the extension's log parser sees whole
 % file names and messages.
 max_print_line = 10000

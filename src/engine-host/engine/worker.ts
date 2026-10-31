@@ -18,6 +18,7 @@ import { STUB_STATE_KEY, type StubReport } from '../../shared/engineProtocol';
 import { pdfProblem } from '../../shared/pdfCheck';
 import { t1cUnpack } from './t1c';
 import { loadGlue, type EmscriptenModule } from './glue';
+import { lsR } from './lsR';
 import { damagedMessage, type ImageIndex } from './packageMeta';
 
 interface FsNode {
@@ -94,8 +95,10 @@ async function createInstance(setup: WorkerSetup, print: (line: string) => void)
     TEXMFDIST: '/texlive/texmf-dist',
     TEXMFVAR: '/texlive/texmf-dist/texmf-var',
     TEXMFCACHE: '/texlive/texmf-dist/texmf-var',
-    // The user's package folder first, then the data extensions' images (kpathsea expands the braces).
-    TEXMFHOME: `{${TEXMFHOME},${TEXMF_EXTRA}}`,
+    // The user's package folder first, then the data extensions' images (kpathsea expands the braces). "!!": the
+    // images' files are looked up in their ls-R only (writeExtrasLsR), never by a search of their folders on disk;
+    // the user's folder has no ls-R and keeps its disk search.
+    TEXMFHOME: `{${TEXMFHOME},!!${TEXMF_EXTRA}}`,
     TEXMFLOG,
     // Our fonts.conf (engine/fonts.conf), not the image's, which also lists the Type 1 folder.
     FONTCONFIG_PATH: '/engine',
@@ -253,22 +256,46 @@ function damagedReport(): string {
     .join(' ');
 }
 
-/** Everything that does not depend on the job: the image, our texmf.cnf and fonts.conf, fontconfig's cache. */
 /** The data images mounted in this worker, by id. */
 const mountedExtras = new Set<string>();
+/** Their files, relative to TEXMF_EXTRA: the list its ls-R holds. */
+const extraFiles = new Set<string>();
 
-function mountExtras(M: EmscriptenModule, extras: ExtraImage[]): void {
+/** Mounts the images not mounted yet, and writes the tree's ls-R again; false if every image was mounted already. */
+function mountExtras(M: EmscriptenModule, extras: ExtraImage[]): boolean {
   let added = false;
   for (const extra of extras) {
     if (!mountedExtras.has(extra.key)) {
       mountImage(M, extra.image, extra.index, TEXMF_EXTRA, extra.id);
       mountedExtras.add(extra.key);
+      for (const name of extra.index.names.split('\n')) {
+        if (name.length > 1 && name !== '/ls-R') {
+          extraFiles.add(name.slice(1));
+        }
+      }
       added = true;
     }
   }
   if (added) {
+    writeExtrasLsR(M);
     stampFolders(M, TEXMF_EXTRA, extrasTime([...mountedExtras]));
   }
+  return added;
+}
+
+/**
+ * Writes TEXMF_EXTRA/ls-R, kpathsea's file name database for every file mounted there (lsR.ts), in place of any
+ * image's own: with two images, one image's ls-R would leave the other's files out. Our texmf.cnf lists the tree in
+ * TEXMFDBS and TEXMFHOME marks it "!!", so kpathsea looks an add-on's file up in this list and never searches the
+ * tree's folders on disk, whether it finds the file or not (with an add-on's thousands of folders, a search on disk
+ * for each lookup made a compile up to a hundred times slower).
+ */
+function writeExtrasLsR(M: EmscriptenModule): void {
+  const target = `${TEXMF_EXTRA}/ls-R`;
+  if (M.FS.analyzePath(target).exists) {
+    M.FS.unlink(target);
+  }
+  M.FS.writeFile(target, lsR(extraFiles));
 }
 
 /**
@@ -298,10 +325,13 @@ function stampFolders(M: EmscriptenModule, top: string, time: number): void {
   walk(M.FS.lookupPath(top).node as FsNode);
 }
 
+/** Everything that does not depend on the job: the image, our texmf.cnf and fonts.conf, fontconfig's cache. */
 function mountStatic(M: EmscriptenModule, setup: WorkerSetup): void {
   mountImage(M, setup.image, setup.index);
   M.FS.mkdirTree(TEXMF_EXTRA);
-  mountExtras(M, setup.extras ?? []);
+  if (!mountExtras(M, setup.extras ?? [])) {
+    writeExtrasLsR(M); // no image yet: an empty list, so the tree is never searched on disk
+  }
   M.FS.mkdirTree(CNF_DIR);
   M.FS.writeFile(`${CNF_DIR}/texmf.cnf`, setup.cnfOverride);
   M.FS.writeFile(FONTS_CONF, setup.fontsConf);

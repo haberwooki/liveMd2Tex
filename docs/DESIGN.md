@@ -127,7 +127,10 @@ These rules hold for everyone who installs the extension.
 - **Mounting.** The engine host mounts a data extension's image whole, when a compile needs one of its packages
   (or an earlier "not found" named one of its files), under a tree searched after the user's own packages and
   before the core. It keeps images by id, version and content, forgets images that were removed or updated,
-  and a worker mounts exactly the images its job lists. A Type 1 font file that pdfTeX cannot open counts as
+  and a worker mounts exactly the images its job lists. TeX finds the images' files in a file list (kpathsea's
+  ls-R) that the worker writes for the files it mounted, and never searches the tree's folders on disk, for a
+  file an image has or one no image has. The user's own package folder is still searched on disk.
+  A Type 1 font file that pdfTeX cannot open counts as
   "not found" too, and so does a font that XeTeX cannot find by name. XeTeX finds an add-on's OpenType and
   TrueType fonts by name, because fontconfig's file names the add-ons' font folders.
 - **Package help.** Before each compile a preamble scan lists every file the document needs that no installed

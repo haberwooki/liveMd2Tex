@@ -376,7 +376,10 @@ export function packedFontLicences(names, licencesOf) {
  */
 export const licenceGroup = (licences) => (licences.some((l) => /^lppl1\.3[a-c]?$/.test(l) || l === 'gfl') ? 'lppl' : licences.some((l) => /^gpl/.test(l)) ? 'gpl' : 'unread');
 
-/** The extra image's files: texmf-relative paths (mounted under /texmf-extra), with its own ls-R. */
+/**
+ * The extra image's files: texmf-relative paths (mounted under /texmf-extra), with its own ls-R. The engine host
+ * does not use that ls-R: it writes the tree's ls-R itself, for every image it mounts there (worker.ts).
+ */
 export function extraImageFiles(extraFiles) {
   const out = new Map(extraFiles);
   out.set('ls-R', Buffer.from(lsR([...extraFiles.keys()])));

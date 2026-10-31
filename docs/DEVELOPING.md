@@ -151,9 +151,12 @@ node scripts/engine-shakedown.mjs --b ~/engine-out --a busytex --images DATA_PAC
 - **Host tools** (Ubuntu package names; `engine-build-pins.json`, `hostTools`): `build-essential python3 xz-utils
   curl git gawk`; for the font check also `fontconfig libfreetype-dev libexpat1-dev pkg-config gperf`. `gawk` is
   required: kpathsea's `paths.h`, which is compiled in, is written by awk, Ubuntu's default awk is `mawk`, and
-  `build.sh` passes `AWK=gawk` to both configure runs. The manifest records each tool's version and Debian package
-  (`toolchain.host`) and, on CI, the runner image. Emscripten and its Node come from the pinned archives, which
-  `build.sh` installs into the build root.
+  `build.sh` passes `AWK=gawk` to both configure runs. It also passes `LEX=:` and `YACC=:`, so a flex or bison on
+  the machine (GitHub's runner has both, WSL neither) changes nothing configure writes: TeX Live ships the scanners
+  and parsers they would make. The manifest records each tool's version and Debian package (`toolchain.host`) and,
+  on CI, the runner image. Emscripten and its Node come from the pinned archives, which `build.sh` installs into the
+  build root; the build's own tools run on that Node (`EMSDK_NODE`), never on another node on `PATH`, and the build
+  stops if its version is not the pinned one.
 - **Where things go.** The build root must be outside the repository and, under WSL, in the Linux file system
   (`/home/<user>/...`). Use at most `--jobs 6` on a machine with 8 GB or less. `<out>` gets `engine.wasm`,
   `engine.js`, `engine-build.json` and `generated-sources/` (the generated C and headers: web2c's output, every
@@ -175,7 +178,12 @@ node scripts/engine-shakedown.mjs --b ~/engine-out --a busytex --images DATA_PAC
   the `system()` controls (with `-g1` the deny list must catch `__emscripten_system`; without it the unnamed-import
   rule must); and the safety checks on what ships (imports, exports, layout with the static end, libpaper's paper
   table and `PAPERSIZE` absent and dvipdfmx's `isob3` to `isob6` present, the strings of the dropped parts, the
-  glue's watched names).
+  glue's watched names). **The configure check** (`tools/configure-check.mjs`, after the native step and after the
+  build step) fails the build if any configure run took a lex or yacc other than `:`, if a `c-auto.h` or `config.h`
+  defines `YYTEXT_POINTER`, if a library came from the machine (`--with-system-…`, or pkg-config found one), or if
+  a step log shows make running a generator (`build-aux/missing` for autoconf, automake or makeinfo, `build-aux/ylwrap` for flex or bison,
+  `help2man`). So a new runner image with other programs cannot change the generated sources without stopping the
+  build.
 - **No file of TeX Live's source is patched.** The build edits files TeX Live generated, each listed in the manifest
   (`generatedEdits`): dvipdfm-x's `config.h` and `Makefile` (no libpaper), `pdftexd.h` (the shared names),
   `libicudata.a` (ICU's data compiled whole) and the execute bit of the configure scripts it skips. No autoconf
@@ -214,9 +222,14 @@ node scripts/engine-shakedown.mjs --b ~/engine-out --a busytex --images DATA_PAC
 - **The LaTeX shake-down** (`scripts/engine-shakedown.mjs`) runs real LaTeX through the extension's engine host
   (build `dist/` and `out/` first): it makes `pdflatex.fmt` and `xelatex.fmt` with each engine given as a folder,
   puts them into a copy of the core image, and compiles the corpus and its own cases (XeLaTeX with OpenType fonts and
-  bibtex8; `\write18` and `\input|` with shell escape forced) on A and B in turn. It reports pages, error lines,
-  embedded fonts, SyncTeX, times and peak memory, and whether the PDFs match. A speed comparison of two builds
-  measures with it.
+  bibtex8; `\write18` and `\input|` with shell escape forced) on A and B in turn. Each job is prepared by the
+  extension's own compile pipeline, so the add-on image is mounted only for a document whose preamble needs one of
+  its packages, or after a "not found" names one of its files, as the extension mounts it (`--extra always` mounts it
+  for every compile, to measure its cost; `--extra never` leaves it out; `--host DIR` runs another checkout's engine
+  host). It reports pages, error lines, font warnings, embedded fonts, SyncTeX, times and memory, and whether the
+  PDFs match; on B, `\write18` must reach our stub (its log says `runsystem(...)...executed`), and B may not warn
+  where A does not. A speed comparison of two builds measures with it. It runs under today's engine host, which does
+  not yet give the engine our font list, so it does not test fonts that LaTeX looks up by name.
 - **Decisions, 2026-10-31.** Fonts by name go through our stand-in, with no fontconfig and no expat. The `-g1` glue
   ships. The collision report is on request only, and the builder checks collisions across the sets mounted together.
   The engine is built at `-Oz`; another level may replace it until the last CI round before the release, if it builds
@@ -769,7 +782,11 @@ Tests:
   the user's package folder and before the core, so files a package loads indirectly (`.fd`, `.def`, `.cfg`,
   `.ldf`) are found too. Nothing of it is copied into a compile. If a compile reports "not found" for a file that
   an installed image has, the next compile mounts that image. Once the engine host has read an image, it stays
-  mounted, as in a TeX installation with the add-on.
+  mounted, as in a TeX installation with the add-on. kpathsea looks the tree's files up in its `ls-R`, which the
+  worker writes for every file it mounted there (`src/engine-host/engine/lsR.ts`): `engine/texmf-override.cnf`
+  lists `/texmf-extra` in `TEXMFDBS`, and the worker's `TEXMFHOME` marks it `!!`, so no lookup searches its
+  folders on disk (with the add-on's thousands of folders, that search made a compile up to a hundred times
+  slower). The user's package folder, also in `TEXMFHOME`, has no `ls-R` and is searched on disk.
 - **"Add a package from a file"** takes a `.sty`, `.cls` (with their small files), a `.dtx` with its `.ins`, or a
   CTAN `.zip`. A `.ins` runs on the bundled engine (docstrip, in memory), as a job of the compile scheduler, so a
   live compile and the build never cancel each other. The result goes into the user's package folder under VS

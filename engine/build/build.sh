@@ -263,7 +263,20 @@ activate_emsdk() {
   source "$EMSDK/emsdk_env.sh" >/dev/null 2>&1
   EM_BIN=$(dirname "$(command -v emcc)")
   LLVM_BIN="$EMSDK/upstream/bin"
-  NODE=$(command -v node)
+  # Our tools run on the pinned Node, which emsdk_env.sh exports as EMSDK_NODE (emcc runs the same one, from
+  # .emscripten). Not the first node on PATH: emsdk puts its own there only when PATH has none, and a GitHub
+  # runner has one, whose version then reached the manifest.
+  local want
+  want=v$(pin emsdk.node.version)
+  if [ -z "${EMSDK_NODE:-}" ] || [ ! -x "$EMSDK_NODE" ]; then
+    echo "build.sh: emsdk_env.sh did not set EMSDK_NODE to a program" >&2
+    exit 2
+  fi
+  NODE=$EMSDK_NODE
+  if [ "$("$NODE" --version)" != "$want" ]; then
+    echo "build.sh: EMSDK_NODE is Node $("$NODE" --version), not the pinned $want" >&2
+    exit 2
+  fi
   export EM_BIN LLVM_BIN NODE
 }
 
@@ -272,8 +285,10 @@ do_native() {
   rm -rf "$NATIVE" "$TOOLS"
   mkdir -p "$NATIVE" "$TOOLS"
   cd "$NATIVE"
+  # LEX=: and YACC=:, here and in the engine's configure: configure uses no lex or yacc of the build machine
+  # (tools/configure-check.mjs, which fails the step otherwise).
   "$TL/configure" --disable-all-pkgs --enable-missing --without-x --disable-shared --enable-static \
-    --disable-native-texlive-build CFLAGS=-O2 CXXFLAGS=-O2 AWK=gawk
+    --disable-native-texlive-build CFLAGS=-O2 CXXFLAGS=-O2 AWK=gawk LEX=: YACC=:
   # The first make configures every subfolder and builds nothing, all packages being off (TL doc/tlbuild.texi,
   # "Build one engine"); the four tools are then made by name, kpathsea with them.
   make
@@ -284,6 +299,7 @@ do_native() {
   for t in tangle ctangle otangle tie; do
     cp "texk/web2c/$t" "$TOOLS/$t"
   done
+  "$NODE" "$HERE/tools/configure-check.mjs" "$NATIVE"
 }
 
 # The stand-in for fontconfig (engine/build/fontlist), built as the libfontconfig.a TeX Live's configure links
@@ -315,6 +331,10 @@ do_configure() {
   # --disable-ipc: TeX's --ipc option (texk/web2c/lib/texmfmp.c:1286-1553, 1952) opens a socket to a viewer and
   # may start one with system(); web2c builds it unless told not to (texk/web2c/ac/web2c.ac:26-29; IPC was 1 in
   # c-auto.h), which links socket() and connect() and so Emscripten's SOCKFS into the glue.
+  # LEX=: and YACC=: (as in the native step): TeX Live ships the scanners and parsers flex and bison would make, and a
+  # found flex is written into two c-auto.h files (YYTEXT_POINTER, which no source reads): with it, a GitHub runner,
+  # which has flex, and WSL, which has not, wrote different generated sources. The top level passes both to every
+  # folder's configure run; tools/configure-check.mjs checks that each took them.
   emconfigure "$TL/configure" --host=wasm32-unknown-emscripten --build=x86_64-pc-linux-gnu \
     --disable-all-pkgs --enable-pdftex --enable-xetex --enable-dvipdfm-x --enable-bibtex-x \
     --disable-shared --enable-static --without-x --disable-native-texlive-build --disable-multiplatform \
@@ -323,7 +343,7 @@ do_configure() {
     --with-banner-add=/liveMd2Tex --disable-ipc \
     CC=emcc CXX=em++ AR=emar RANLIB=emranlib \
     BUILDCC=gcc BUILDCXX=g++ BUILDCFLAGS=-O2 BUILDCXXFLAGS=-O2 CC_BUILD=gcc \
-    CFLAGS="$COMPILE_FLAGS" CXXFLAGS="$COMPILE_FLAGS" AWK=gawk
+    CFLAGS="$COMPILE_FLAGS" CXXFLAGS="$COMPILE_FLAGS" AWK=gawk LEX=: YACC=:
   echo "$COMPILE_FLAGS" >"$ROOT/stamps/compile-flags"
   sed -n 's/^  \$ //p' config.log | head -n 1 >"$ROOT/stamps/configure-line"
   # TeX Live configures its libs/* and texk/* folders from make's "recurse" target (am/recurse.am), which then
@@ -446,6 +466,8 @@ do_build() {
   build_objects "$dpx" xdvipdfmx
   build_objects "$bib" bibtex8
   assert_no_libpaper
+  # Every folder is configured by now (web2c's converters in this step).
+  "$NODE" "$HERE/tools/configure-check.mjs" "$WASM" --logs "$ROOT/logs"
 }
 
 # build_objects DIR PROGRAM [EXTRA]: (re)compiles the program's own objects with -Dmain=<program>_main and EXTRA.
