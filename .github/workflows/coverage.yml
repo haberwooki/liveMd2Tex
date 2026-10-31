@@ -34,7 +34,7 @@
 #   that fails makes it fail.
 # - rehearse (job: rehearse): texlive, compile and report as above, on the public corpus and the probes alone; no
 #   request goes anywhere for documents. Each probe proves one part of the reference (Ghostscript and repstopdf,
-#   the DVI route, biber, no network, openin_any = p, a missing file).
+#   the DVI route, biber, no network, a missing file).
 #
 # The minutes, estimated for the public repository's 4-vCPU runners, where they cost nothing, and to be measured
 # on the first run: local 20 to 60 the first time (about 590 documentation archives, most under 2 MB, one second

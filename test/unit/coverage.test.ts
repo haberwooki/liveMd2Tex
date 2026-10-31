@@ -426,7 +426,8 @@ describe('M5: the coverage measurement (pure parts)', () => {
     for (const n of lib.LOG_LINE_SETTINGS) {
       assert.equal(env[n], ours[n], n);
     }
-    assert.deepEqual([env.openin_any, env.openout_any, env.shell_escape, env.PATH], ['p', 'p', 'p', '/usr/bin']);
+    assert.deepEqual([env.openout_any, env.shell_escape, env.PATH], ['p', 'p', '/usr/bin']);
+    assert.equal(env.openin_any, undefined, 'since TeX Live 2026 openin_any limits nothing, so it is not set');
     const script = readFileSync(path.join(root, 'scripts', 'coverage.mjs'), 'utf8');
     assert.ok(script.includes('const env = referenceEnvironment();'), 'the reference runs with that environment');
     // The reader takes "name = value" lines, ignores comments, and refuses a setting that is not there.
@@ -522,7 +523,7 @@ describe('M5: the coverage measurement (pure parts)', () => {
     const probes = lib.rehearsalProbes();
     assert.deepEqual(
       probes.map((p) => p.key),
-      ['probe-eps', 'probe-dvi', 'probe-biber', 'probe-openin', 'probe-missing'],
+      ['probe-eps', 'probe-dvi', 'probe-biber', 'probe-missing'],
     );
     for (const p of probes) {
       const files = new Map(Object.entries(p.files).map(([n, s]) => [n, bytes(s)]));
@@ -540,7 +541,6 @@ describe('M5: the coverage measurement (pure parts)', () => {
       'probe-eps': { engine: 'pdflatex', pdf: true, pages: 1, fatal: false, missing: [] },
       'probe-dvi': { engine: 'latex', pdf: true, pages: 1, fatal: false, missing: [] },
       'probe-biber': { engine: 'pdflatex', pdf: true, pages: 4, fatal: false, missing: [] },
-      'probe-openin': { engine: 'pdflatex', pdf: true, pages: 1, fatal: false, missing: [] },
       'probe-missing': { engine: 'pdflatex', pdf: true, pages: 1, fatal: false, missing: ['missing-figure.pdf'] },
       'corpus-P1': { engine: 'pdflatex', pdf: true, pages: 2, fatal: false, missing: [] },
     };
@@ -555,10 +555,9 @@ describe('M5: the coverage measurement (pure parts)', () => {
     const facts = { offline: true, ghostscript: ['10.02.1'] };
     const all = lib.rehearsalChecks(docs(), facts);
     assert.deepEqual(all.filter((c) => !c.ok), []);
-    assert.equal(all.length, 5 + 1 + 3);
+    assert.equal(all.length, 4 + 1 + 3);
     const failing = (over: Record<string, Partial<Outcome & { engine: string }>>, f = facts) =>
       lib.rehearsalChecks(docs(over), f).filter((c) => !c.ok).map((c) => c.key);
-    assert.deepEqual(failing({ 'probe-openin': { pages: 2 } }), ['probe-openin'], 'TeX read /etc/passwd');
     assert.deepEqual(failing({ 'probe-eps': { missing: ['figure-eps-converted-to.pdf'] } }), ['probe-eps'], 'no Ghostscript');
     assert.deepEqual(failing({ 'probe-dvi': { engine: 'pdflatex' } }), ['probe-dvi']);
     assert.deepEqual(failing({ 'probe-biber': { pages: 1 } }), ['probe-biber'], 'an empty bibliography');
@@ -616,11 +615,11 @@ describe('M5: the coverage measurement (pure parts)', () => {
       assert.deepEqual(passed.checks?.filter((c) => !c.ok), []);
       const md = readFileSync(path.join(tmp, 'out', 'coverage-report.md'), 'utf8');
       assert.match(md.split('\n')[0], /^\*\*Rehearsal: all \d+ checks pass\.\*\* No arXiv paper was fetched/);
-      // TeX Live reads /etc/passwd: the rehearsal fails, and says which check.
-      write('reference.json', { ghostscript: '10.02.1', offline: true, canary: healthy, documents: Object.fromEntries(sample.map((d) => [d.key, d.key === 'probe-openin' ? { ...ok, engine: 'pdflatex', pages: 2 } : ref(d.key)])) });
+      // biber leaves the bibliography empty on TeX Live: the rehearsal fails, and says which check.
+      write('reference.json', { ghostscript: '10.02.1', offline: true, canary: healthy, documents: Object.fromEntries(sample.map((d) => [d.key, d.key === 'probe-biber' ? { ...ok, engine: 'pdflatex', pages: 1 } : ref(d.key)])) });
       const failed = report(dir, path.join(tmp, 'results'), path.join(tmp, 'out'), '1');
-      assert.deepEqual(failed.checks?.filter((c) => !c.ok).map((c) => c.key), ['probe-openin']);
-      assert.match(readFileSync(path.join(tmp, 'out', 'coverage-report.md'), 'utf8').split('\n')[0], /^\*\*Rehearsal: 1 of \d+ checks fail\*\* \(probe-openin\)/);
+      assert.deepEqual(failed.checks?.filter((c) => !c.ok).map((c) => c.key), ['probe-biber']);
+      assert.match(readFileSync(path.join(tmp, 'out', 'coverage-report.md'), 'utf8').split('\n')[0], /^\*\*Rehearsal: 1 of \d+ checks fail\*\* \(probe-biber\)/);
     } finally {
       console.log = log;
       rmSync(tmp, { recursive: true, force: true });
@@ -1137,7 +1136,7 @@ describe('M5: the coverage measurement (pure parts)', () => {
         ['clashpkg', "its example's folder cannot be used"],
         ['oddpkg', 'no example file is a LaTeX main file'],
       ]);
-      assert.ok(papers.papers.some((p) => p.kind === 'corpus') && papers.papers.some((p) => p.key === 'probe-openin'));
+      assert.ok(papers.papers.some((p) => p.kind === 'corpus') && papers.papers.some((p) => p.key === 'probe-missing'));
 
       // The report: the checks first, the shares of TeX Live's own documents, never of papers.
       const sample = lib.sampleDocuments(papers.papers, [], papers.seed, 1);

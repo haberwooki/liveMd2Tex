@@ -746,7 +746,8 @@ run by hand). Nothing of it runs on a development machine except its tests, on t
   `engine/bundle-closure.json` holds the test's rules. `setup` gives a file the preamble it needs first
   (babelbib needs babel with a language). `expected` lists the failures that are right for core-data, each with
   its reason: documentation tools and helpers that need a package only extra-data holds, psnfss's font options
-  whose fonts are in extra-data, and the LuaTeX branches. The report says which missing files extra-data holds.
+  whose fonts are in extra-data, old code a package loads only on a LaTeX older than ours (draftwatermark-2x),
+  and the LuaTeX branches. The report says which missing files extra-data holds.
   It also names a listed file that loads now. Any other failure stops the build.
 - **Stages.** `--stage pin`, `fetch`, `build` and `closure` run apart, each in its own job. Each stage writes
   `report-<stage>.json` and `.txt` after every step and once more on an error, so a failed run keeps what it
@@ -879,7 +880,7 @@ first, then a change to the method, to that file and to the workflow, and a gate
 2. **Rehearse.** Run the workflow with job `rehearse` (the default) and that run's id as `bundle_run`. Each compile
    job builds its documents from the repository (`--stage rehearse`: the public corpus and the probes of
    `scripts/lib/coverage.mjs`), so no document is fetched. The report's first lines list its checks (Ghostscript
-   and `repstopdf`, the DVI route, biber, no network, `openin_any=p`, a missing file, the corpus on TeX Live, every
+   and `repstopdf`, the DVI route, biber, no network, a missing file, the corpus on TeX Live, every
    corpus document and probe measured on both sides), and the job fails when one does not pass. Fix and rehearse
    again until all pass.
 3. **Tag the method.** Tag the commit to be measured (say `coverage-method-1`), so the method is fixed before any
@@ -917,7 +918,8 @@ first, then a change to the method, to that file and to the workflow, and a gate
      document holds the engine that rule chooses, so TeX Live runs that engine for a document the process died on.
      When only a compile with the add-on is rejected, the core result stands. `--stage reference` runs the same two
      canaries on TeX Live and compiles each on TeX Live, started with `sudo unshare --net` and dropped back to the
-     runner's user: no network, a small environment, restricted shell escape and `openin_any=p`, and the log line
+     runner's user: no network, a small environment, restricted shell escape and `openout_any=p` (since TeX Live
+     2026 nothing limits reading; `docs/coverage-method.md`, "The reference"), and the log line
      lengths of `engine/texmf-override.cnf` (`referenceEnvironment`). TeX Live's own Perl tools (`repstopdf`,
      `biber`) run there, inside that sandbox. Ghostscript comes from the runner's Ubuntu archive
      (the job's one other use of `sudo`). The checkout keeps no token, and the job saves no cache. Results are
@@ -1132,12 +1134,13 @@ The licence gates (2026-10-26) checked every part by others that a package ships
   maintainer's decision; none is made yet. If it is made: run the workflow's steps for the four archives into it,
   then give each source in `engine/engine-notices.json` a `mirror` (the release file's address).
   `scripts/release-sources.mjs` uses `mirror` before the upstream address, and still checks the same hashes.
+- **pplib's licence (the maintainer's decision, 2026-10-30).** pplib states no licence of its own. It stays
+  recorded under LuaTeX's terms, GPL-2.0-or-later, as Debian and Fedora record it, and no question goes upstream.
 - **Open.**
   - A "Licences" command that shows the notices inside VS Code, before the first release (GPL-3 and AGPL-3
     section 5(d)).
   - MakeIndex's notice asks that a modified work carry an identical notice; TeXlyre links MakeIndex into one binary
     with GPL and AGPL code. Ask TeXlyre or TUG for a reading before the first release.
-  - pplib states no licence of its own and is recorded under LuaTeX's terms; ask LuaTeX's team.
   - luaffi is Facebook's luaffifb, with Facebook's "Additional Grant of Patent Rights Version 2" (`PATENTS`). The
     FSF's licence list has no entry for it; whether it raises a question for the GPL-3 and AGPL-3 parts is the
     maintainer's to decide (THIRD_PARTY_NOTICES.md, the notes under "Inside the engine").

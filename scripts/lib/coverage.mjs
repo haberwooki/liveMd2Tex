@@ -223,6 +223,8 @@ const BIB = Array.from({ length: 120 }, (_, i) => `@book{b${i},\n  author = {Exa
 /**
  * The rehearsal's probes: small documents written for it, each proving one part of the reference before any arXiv
  * request, with what TeX Live must give for it (`ok`, on the reference's result). Written by the project; CC0.
+ * No probe asks whether TeX can read outside the folder: since TeX Live 2026 it can, whatever openin_any says
+ * (docs/coverage-method.md, "The reference").
  */
 export function rehearsalProbes() {
   return [
@@ -266,19 +268,6 @@ Text.\nocite{*}
 \end{document}
 `, 'refs.bib': BIB },
       ok: (r) => r.pdf && r.pages >= 3 && !r.fatal,
-    },
-    {
-      key: 'probe-openin',
-      what: 'TeX cannot read a file outside the folder (openin_any = p): one page, not two',
-      files: { 'main.tex': String.raw`\documentclass{article}
-\newread\probe
-\begin{document}
-Page one.
-\openin\probe=/etc/passwd
-\ifeof\probe\else\closein\probe\newpage Page two: TeX read a file outside the document's folder.\fi
-\end{document}
-` },
-      ok: (r) => r.pdf && r.pages === 1,
     },
     {
       key: 'probe-missing',

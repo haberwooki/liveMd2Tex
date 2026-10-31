@@ -203,7 +203,7 @@ holds one. Their notices ship all the same.
 | libpng | 1.6.55 | libpng-2.0 | `dist/licenses/engine/libpng-LICENSE.txt` |
 | zlib | 1.3.2 | Zlib | `dist/licenses/engine/zlib-LICENSE.txt` |
 | zziplib | 0.13.72 | LGPL-2.0-or-later (or MPL-1.1); the LGPL taken | `dist/licenses/engine/zziplib-README-COPYING.txt`, `dist/licenses/engine/zziplib-COPYING.LIB.txt` |
-| pplib (Paweł Jackowski), used by LuaTeX and pdfTeX | 2.05.0 | pplib's own files state no licence: recorded as shipped as part of LuaTeX, under LuaTeX's terms (GPL-2.0-or-later). Two of its files state their authors' terms: util/utilsha.c (SHA-2, Aaron D. Gifford): BSD-3-Clause; util/utilmd5.c (MD5, L. Peter Deutsch, Aladdin Enterprises): Zlib-style | `dist/licenses/GPL-2.0.txt`, `dist/licenses/engine/pplib-utilsha-notice.txt`, `dist/licenses/engine/pplib-utilmd5-notice.txt` |
+| pplib (Paweł Jackowski), used by LuaTeX and XeTeX | 2.05.0 | pplib's own files state no licence: recorded as shipped as part of LuaTeX, under LuaTeX's terms (GPL-2.0-or-later). Two of its files state their authors' terms: util/utilsha.c (SHA-2, Aaron D. Gifford): BSD-3-Clause; util/utilmd5.c (MD5, L. Peter Deutsch, Aladdin Enterprises): Zlib-style | `dist/licenses/GPL-2.0.txt`, `dist/licenses/engine/pplib-utilsha-notice.txt`, `dist/licenses/engine/pplib-utilmd5-notice.txt` |
 | xpdf (its PDF reading code, used by pdfTeX) | 4.06 | GPL-2.0 or GPL-3.0 | `dist/licenses/engine/xpdf-README.txt`, `dist/licenses/GPL-2.0.txt`, `dist/licenses/GPL-3.0.txt` |
 | ICU (and its data file, icudt78l.dat) | 78.2 | Unicode-3.0 | `dist/licenses/ICU.txt` |
 | fontconfig (and fcmatrix.c's notice, Tuomas J. Lukka) | 2.13.96 (the tarball TeXlyre hosts) | HPND (MIT-style) | `dist/licenses/engine/fontconfig-COPYING.txt`, `dist/licenses/engine/fontconfig-fcmatrix-notice.txt` |
@@ -246,7 +246,8 @@ Notes on the table:
   that brings it in is caught.
 - **pplib** (Paweł Jackowski). Its own files state no licence; it is recorded as shipped as part of LuaTeX, under
   LuaTeX's terms (GPL-2.0-or-later). Two of its files state their authors' terms, and their notices ship:
-  `util/utilsha.c` (BSD-3-Clause) and `util/utilmd5.c` (Zlib-style). Open: ask LuaTeX's team for pplib's own terms.
+  `util/utilsha.c` (BSD-3-Clause) and `util/utilmd5.c` (Zlib-style). Debian records pplib as GPL-2+, and Fedora
+  covers it inside its LuaTeX packages as GPL-2.0-or-later.
 - **MetaPost's decNumber.** Its files say "This software is made available under the terms of the ICU License --
   ICU 1.8.1 and later". That licence's text is in `dist/licenses/ICU.txt` ("ICU License - ICU 1.8.1 to ICU 57.1"),
   and decNumber's own copyright lines are in `dist/licenses/engine/MetaPost-decNumber-notice.txt`.

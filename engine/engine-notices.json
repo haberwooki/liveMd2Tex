@@ -1587,7 +1587,7 @@
     },
     {
       "id": "pplib",
-      "name": "pplib (Paweł Jackowski), used by LuaTeX and pdfTeX",
+      "name": "pplib (Paweł Jackowski), used by LuaTeX and XeTeX",
       "version": "2.05.0",
       "licence": "pplib's own files state no licence: recorded as shipped as part of LuaTeX, under LuaTeX's terms (GPL-2.0-or-later). Two of its files state their authors' terms: util/utilsha.c (SHA-2, Aaron D. Gifford): BSD-3-Clause; util/utilmd5.c (MD5, L. Peter Deutsch, Aladdin Enterprises): Zlib-style",
       "links": [

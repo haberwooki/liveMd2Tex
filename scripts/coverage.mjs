@@ -495,15 +495,16 @@ function online() {
 }
 
 /**
- * TeX Live's environment on the reference: a small one of its own. TeX may read and write only below the document's
- * folder (no absolute paths, no "..", no dot files), and its shell escape runs only TeX Live's restricted list. The
+ * TeX Live's environment on the reference: a small one of its own. TeX may write only below the document's folder
+ * (no absolute paths, no "..", no dot files); since TeX Live 2026 it may read any file, whatever openin_any says, so
+ * openin_any is not set (docs/coverage-method.md). Its shell escape runs only TeX Live's restricted list. The
  * log's line lengths are the extension's own (engine/texmf-override.cnf), so both sides write their logs the same
  * way: with TeX Live's default of 79 columns a long path would break an error's "file:line:" across lines, and
  * rule 4 would miss that error on the reference's side only (docs/coverage-method.md).
  */
 export function referenceEnvironment(base = process.env) {
   const log = cnfSettings(readFileSync(path.join(root, 'engine', 'texmf-override.cnf'), 'utf8'), LOG_LINE_SETTINGS);
-  return { PATH: base.PATH ?? '/usr/bin:/bin', HOME: base.HOME ?? os.tmpdir(), LANG: 'C.UTF-8', openin_any: 'p', openout_any: 'p', shell_escape: 'p', ...log };
+  return { PATH: base.PATH ?? '/usr/bin:/bin', HOME: base.HOME ?? os.tmpdir(), LANG: 'C.UTF-8', openout_any: 'p', shell_escape: 'p', ...log };
 }
 
 async function reference(work, minutes) {

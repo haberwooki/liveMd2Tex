@@ -187,9 +187,12 @@ error.
 
 - TeX Live as installed from the snapshot, scheme-full, with its restricted shell escape (only TeX Live's own
   list of programs, `repstopdf` among them).
-- TeX may not open a file by an absolute path, through `..`, or with a name that starts with a dot
-  (`openin_any = p` and `openout_any = p`), so it reads and writes only in the document's folder and TeX Live's
-  own trees. The extension, too, reads only the document's folder.
+- TeX may not write a file by an absolute path, through `..`, or with a name that starts with a dot
+  (`openout_any = p`), so it writes only in the document's folder. Reading is not limited: since TeX Live 2026,
+  kpathsea lets TeX read any file, whatever `openin_any` says (`texk/kpathsea/tex-file.c`, "As of 2026", at TeX
+  Live's commit 6a300188). The extension reads only the document's folder and its data packages. So a document
+  that reads a file outside its folder can compile on the reference and fail on the extension: the difference
+  counts only against the extension. The reference has no network, and only names and counts leave the runner.
 - It runs as the runner's user, without network, in a copy of the document's folder.
 - TeX writes its log with the extension's line lengths (`max_print_line`, `error_line` and `half_error_line`,
   read from `engine/texmf-override.cnf`), not TeX Live's default of 79 columns, so both logs are written the
@@ -325,13 +328,12 @@ a document is not compiled twice; its core result stands for both.
 
 Before a measurement, the workflow's `rehearse` job runs the same steps (unpacking, the extension's compiles, the
 reference, the report) on documents from the repository alone: each folder of the public corpus (`test/corpus`,
-CC0) and five probes written for it (`rehearsalProbes` in `scripts/lib/coverage.mjs`). A measurement of the frame
+CC0) and four probes written for it (`rehearsalProbes` in `scripts/lib/coverage.mjs`). A measurement of the frame
 without arXiv runs the same probes beside its documents. Each probe proves one part of the reference:
 
 - an `.eps` figure is converted (`repstopdf`, then Ghostscript);
 - `00README.json`'s `latex` runs the DVI route (`latex`, `dvips`, `ps2pdf`);
 - biber runs without network and fills the bibliography;
-- TeX cannot read a file outside the document's folder (`openin_any = p`);
 - a file missing on TeX Live too makes the document "broken as submitted".
 
 The report also checks:
