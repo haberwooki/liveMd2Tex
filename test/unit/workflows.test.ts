@@ -16,7 +16,7 @@ const load = (name: string) => parse(readFileSync(path.join(folder, name), 'utf8
 describe('GitHub Actions workflows (G0 preparation)', () => {
   it('every workflow parses and asks only for read access to the repository, but the release job', () => {
     const files = readdirSync(folder).filter((f) => f.endsWith('.yml'));
-    assert.deepEqual(files.sort(), ['bundle.yml', 'ci.yml', 'coverage.yml', 'floor.yml', 'references.yml', 'release-sources.yml', 'test-runner.yml']);
+    assert.deepEqual(files.sort(), ['bundle.yml', 'ci.yml', 'coverage.yml', 'engine.yml', 'floor.yml', 'references.yml', 'release-sources.yml', 'test-runner.yml']);
     for (const f of files) {
       const w = load(f) as Workflow & { permissions?: Record<string, string> };
       // The coverage measurement also reads another run's artifacts (the bundle's data packages); the release job
@@ -341,5 +341,66 @@ describe('GitHub Actions workflows (G0 preparation)', () => {
     const upload = at(/gh release upload "\$TAG"/);
     assert.ok(list >= 0 && list < curl && curl < trees && trees < check && check < upload, [list, curl, trees, check, upload].join(' '));
     assert.doesNotMatch(readFileSync(path.join(folder, 'release-sources.yml'), 'utf8'), /git push|git tag |vsce publish|ovsx publish|gh release (create|edit)/);
+  });
+
+  it('the engine build runs on ubuntu-26.04 read-only, and only its release job may write, to make a draft', () => {
+    type Step = { name?: string; run?: string; uses?: string; with?: Record<string, unknown>; env?: Record<string, string>; if?: string };
+    type Job = { 'runs-on': string; 'timeout-minutes': number; permissions: Record<string, string>; needs?: string; if?: string; env?: Record<string, string>; steps: Step[] };
+    const w = load('engine.yml') as Workflow & { permissions: Record<string, string>; concurrency: { 'cancel-in-progress': boolean } };
+    assert.deepEqual(Object.keys(w.on), ['workflow_dispatch']);
+    assert.deepEqual(w.permissions, { contents: 'read' });
+    assert.equal(w.concurrency['cancel-in-progress'], false);
+    const jobs = w.jobs as unknown as Record<string, Job>;
+    assert.deepEqual(Object.keys(jobs), ['build', 'release']);
+    for (const [name, job] of Object.entries(jobs)) {
+      // The exact label of the WSL build's Ubuntu, never -latest; a limit on every job.
+      assert.equal(job['runs-on'], 'ubuntu-26.04', name);
+      assert.ok(job['timeout-minutes'] > 0 && job['timeout-minutes'] <= 120, name);
+      assert.equal(job.steps.find((s) => /actions\/checkout@/.test(s.uses ?? ''))?.with?.['persist-credentials'], false, name);
+      for (const s of job.steps) {
+        assert.doesNotMatch(s.run ?? '', /\$\{\{/, `${name}/${s.name}: no expression inside a run script`);
+        if (s.uses) assert.match(s.uses, /^actions\/[a-z-]+@[0-9a-f]{40}$/, `${s.uses}: pinned by commit`);
+      }
+    }
+    // GitHub sets permissions per job: the build reads, the release alone writes, and only after the build.
+    assert.deepEqual(jobs.build.permissions, { contents: 'read' });
+    assert.deepEqual(jobs.release.permissions, { contents: 'write' });
+    assert.equal(jobs.release.needs, 'build');
+    assert.equal(jobs.release.if, "inputs.release && github.ref == 'refs/heads/main'");
+    const run = (job: Job) => job.steps.map((s) => s.run ?? '').join('\n');
+    // The host tools installed from the pins' list, which must hold gawk; the build run with the pins; artifacts kept
+    // 7 days.
+    assert.match(run(jobs.build), /hostTools\.build\.join/);
+    assert.match(run(jobs.build), /case "\$tools" in \*gawk\*/);
+    assert.match(run(jobs.build), /apt-get install [^\n]*\$tools/);
+    const pins = JSON.parse(readFileSync(path.join(root, 'engine', 'engine-build-pins.json'), 'utf8')) as { hostTools: { build: string[] } };
+    assert.ok(pins.hostTools.build.includes('gawk'), 'engine-build-pins.json lists gawk');
+    assert.match(run(jobs.build), /set -o pipefail[^]*bash engine\/build\/build\.sh --fetch --root "\$RUNNER_TEMP\/engine-build" --out "\$RUNNER_TEMP\/engine-out"/);
+    assert.equal(jobs.build.env?.BUILD_SCRIPTS_COMMIT, '${{ github.sha }}');
+    const uploads = jobs.build.steps.filter((s) => /upload-artifact/.test(s.uses ?? ''));
+    assert.deepEqual(uploads.map((s) => [s.with?.name, s.with?.['retention-days']]), [['engine-build', 7], ['engine-generated-sources', 7]]);
+    // The release: list, download, the trees, check and assemble, and only then the draft, which gh makes with
+    // the token of that one step; nothing is published, pushed or tagged by hand.
+    const rs = jobs.release.steps;
+    const at = (re: RegExp) => rs.findIndex((s) => re.test(`${s.name ?? ''} ${s.run ?? ''} ${s.uses ?? ''}`));
+    // First, before anything is fetched: the run is on main, at the commit whose build was compared.
+    assert.match(rs[0].run ?? '', /\[ "\$GITHUB_REF" = refs\/heads\/main \]/);
+    assert.match(rs[0].run ?? '', /\[ "\$GITHUB_SHA" = "\$EXPECTED_COMMIT" \]/);
+    assert.match(rs[0].run ?? '', /case "\$CANDIDATE" in/);
+    assert.deepEqual(jobs.release.env, { CANDIDATE: '${{ inputs.candidate }}', EXPECTED_COMMIT: '${{ inputs.expected_commit }}', EXPECTED_WASM: '${{ inputs.expected_wasm_sha256 }}', EXPECTED_GLUE: '${{ inputs.expected_glue_sha256 }}' });
+    const order = [/download-artifact@/, /engine-release\.mjs list --dir "\$RUNNER_TEMP\/release"/, /curl --fail [^\n]*-K "\$RUNNER_TEMP\/release\/sources\.curl"/, /fetch -q --depth 1 --filter=blob:none "\$repository" "\$commit"/, /engine-release\.mjs assemble --dir "\$RUNNER_TEMP\/release" [^\n]*--expect-wasm "\$EXPECTED_WASM" --expect-glue "\$EXPECTED_GLUE" --scripts-archive /, /gh release create "\$TAG" [^\n]*--draft/].map(at);
+    // Our scripts at this commit, archived before the assembly checks them.
+    assert.ok(at(/git archive [^\n]*"\$GITHUB_SHA" engine\/build engine\/engine-build-pins\.json LICENSE/) < order[4]);
+    // In the draft step: the tag is free before the draft, and the draft holds every file after it.
+    const draft = rs.find((x) => x.name === 'The draft release')?.run ?? '';
+    const free = draft.indexOf('git ls-remote --exit-code --tags');
+    const create = draft.indexOf('gh release create');
+    const count = draft.indexOf("--json assets --jq '.assets | length'");
+    assert.ok(free >= 0 && free < create && draft.indexOf('select(.tag_name ==') < create && create < count, [free, create, count].join(' '));
+    assert.ok(order.every((i, k) => i >= 0 && (k === 0 || i > order[k - 1])), order.join(' '));
+    assert.deepEqual(rs.filter((s) => s.env?.GH_TOKEN).map((s) => s.name), ['The draft release']);
+    assert.match(run(jobs.release), /case "\$CANDIDATE" in/);
+    assert.doesNotMatch(readFileSync(path.join(folder, 'engine.yml'), 'utf8'), /git push|git tag |gh release (edit|upload)|--latest|--draft=false/);
+    assert.equal((run(jobs.release).match(/gh release create/g) ?? []).length, 1);
   });
 });

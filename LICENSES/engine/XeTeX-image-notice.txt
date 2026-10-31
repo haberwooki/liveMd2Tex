@@ -1,0 +1,47 @@
+Source: texk/web2c/xetexdir/image/jpegimage.c in TeX Live's source tree at commit 6a300188053b8f2ded89dbd52293732a706b9c0e (the head of refs/heads/tags/texlive-2026.1; https://github.com/TeX-Live/texlive-source/blob/6a300188053b8f2ded89dbd52293732a706b9c0e/texk/web2c/xetexdir/image/jpegimage.c), lines 1-45. XeTeX's image readers (xetexdir/image/*.c, built by texk/web2c/xetexdir/am/xetex.am) carry this notice: GPL-2.0-or-later, derived from dvipdfmx. The GNU General Public License, version 2: ../GPL-2.0.txt.
+
+/****************************************************************************\
+ Part of the XeTeX typesetting system
+ Copyright (c) 1994-2017 by SIL International
+
+ SIL Author(s): Jonathan Kew
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 2 of the License, or
+    (at your option) any later version.
+    
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+    
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA.
+\****************************************************************************/
+
+/* this file is derived from the dvipdfmx project;
+   the original header follows... */
+
+/* This is dvipdfmx, an eXtended version of dvipdfm by Mark A. Wicks.
+
+    Copyright (C) 2002-2017 by Jin-Hwan Cho and Shunsaku Hirata,
+    the dvipdfmx project team.
+
+    Copyright (C) 1998, 1999 by Mark A. Wicks <mwicks@kettering.edu>
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 2 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA.
+*/

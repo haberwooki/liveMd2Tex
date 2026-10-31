@@ -120,7 +120,7 @@ export function engineLinksLuaffiCode(entries) {
  * The engine must not hold libpaper's code: it is GPL-2.0-only, which does not combine with the AGPL-3.0 parts. These
  * two strings are not in TeX Live's libpaper, so this check cannot see it, and the pinned TeXlyre build does link it
  * (THIRD_PARTY_NOTICES.md, libpaper): no release ships that engine. The engine that replaces it is checked for
- * libpaper's paper table and PAPERSIZE instead (the stage 1 gate, S1-S-01).
+ * libpaper's paper table and PAPERSIZE instead (engine/build/tools/wasm-inspect.mjs).
  */
 export function engineLinksLibpaper(entries) {
   const wasm = entries.get('extension/dist/engine/busytex.wasm');

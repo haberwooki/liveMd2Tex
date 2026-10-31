@@ -1,0 +1,184 @@
+# Builds liveMd2Tex's TeX engine from TeX Live's source (docs/DEVELOPING.md, "The TeX engine: our own build"), and,
+# when asked, makes its release as a draft, complete before anyone publishes it: a published release cannot change.
+#
+# Run it by hand (Actions, engine, Run workflow) on the commit to build. Two jobs:
+# - build (read-only): engine/build/build.sh with the pins of engine/engine-build-pins.json, on ubuntu-26.04, the
+#   exact runner label (never -latest), so its GCC, Python, coreutils, make and tar match the WSL build that is
+#   compared with it; gawk is installed and build.sh passes it as AWK to both configure runs. The
+#   safety checks on what ships run inside the build and fail it. Then the smoke test (engine/build/tools/run.mjs). It
+#   uploads the engine, its manifest and logs, and the generated C and headers (to trace a difference between two
+#   builds to the host tool that wrote it), kept 7 days.
+# - release (only with "release" ticked, only on main; write access to contents, for this job alone, since GitHub
+#   sets permissions per job, not per step): a release run must be told the commit and the two SHA-256 that an
+#   earlier run printed "match" for (node scripts/engine-compare.mjs, against a WSL build from the same commit), and
+#   fails before the draft unless this run is on main at that commit and its new build has those hashes. It
+#   downloads the build's artifacts, fetches TeX Live's and Emscripten's source archives and their commits' trees,
+#   makes an archive of our build scripts at this commit, checks every file (scripts/engine-release.mjs, with
+#   release-sources.mjs's tree check), assembles the notices, a generated NOTICE and the release notes with the
+#   source directions, checks that the tag is free, makes the draft release engine-<TeX Live short commit>-<n>, and
+#   counts its files. The owner publishes it, with "Set as the latest release" unticked.
+# Neither job pushes, tags or publishes; the checkouts keep no token. The minutes, estimated: 50 for the build, 10
+# for the release.
+
+name: engine
+
+on:
+  workflow_dispatch:
+    inputs:
+      release:
+        description: Also make the draft release of this build
+        type: boolean
+        default: false
+      candidate:
+        description: The candidate number n of the tag engine-<TeX Live short commit>-<n>
+        type: string
+        default: '1'
+      expected_commit:
+        description: For a release, the commit whose build engine-compare matched (40 hex digits)
+        type: string
+        default: ''
+      expected_wasm_sha256:
+        description: For a release, engine.wasm's SHA-256 in that matched build
+        type: string
+        default: ''
+      expected_glue_sha256:
+        description: For a release, engine.js's SHA-256 in that matched build
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: engine-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 120
+    permissions:
+      contents: read
+    env:
+      BUILD_SCRIPTS_COMMIT: ${{ github.sha }}
+    steps:
+      # actions/checkout v4.4.0 and actions/setup-node v4.4.0, pinned by commit, as release-sources.yml pins them.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Host tools (engine-build-pins.json, hostTools.build, gawk among them)
+        run: |
+          tools="$(node -p "require('./engine/engine-build-pins.json').hostTools.build.join(' ')")"
+          case "$tools" in *gawk*) ;; *) echo "hostTools.build lacks gawk" >&2; exit 1 ;; esac
+          sudo apt-get update -q
+          # shellcheck disable=SC2086
+          sudo apt-get install -y -q --no-install-recommends $tools
+          echo "user: $(id -un)"
+      - name: Build the engine
+        run: |
+          set -o pipefail
+          mkdir -p "$RUNNER_TEMP/engine-out"
+          bash engine/build/build.sh --fetch --root "$RUNNER_TEMP/engine-build" --out "$RUNNER_TEMP/engine-out" 2>&1 | tee "$RUNNER_TEMP/engine-out/build.log"
+      - name: The step logs
+        if: always()
+        run: tar -czf "$RUNNER_TEMP/engine-out/engine-logs.tar.gz" -C "$RUNNER_TEMP/engine-build" logs
+      - name: The smoke test, on the pinned DejaVu fonts
+        run: |
+          node scripts/engine-assets.mjs --source ctan-dejavu
+          node engine/build/tools/run.mjs "$RUNNER_TEMP/engine-out"
+      - name: The engine, its manifest and logs
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: engine-build
+          retention-days: 7
+          if-no-files-found: ignore
+          path: |
+            ${{ runner.temp }}/engine-out/engine.wasm
+            ${{ runner.temp }}/engine-out/engine.js
+            ${{ runner.temp }}/engine-out/engine-build.json
+            ${{ runner.temp }}/engine-out/build.log
+            ${{ runner.temp }}/engine-out/engine-logs.tar.gz
+      - name: The generated C and headers
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: engine-generated-sources
+          retention-days: 7
+          if-no-files-found: ignore
+          path: ${{ runner.temp }}/engine-out/generated-sources/
+
+  release:
+    needs: build
+    if: inputs.release && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 60
+    permissions:
+      contents: write
+    env:
+      CANDIDATE: ${{ inputs.candidate }}
+      EXPECTED_COMMIT: ${{ inputs.expected_commit }}
+      EXPECTED_WASM: ${{ inputs.expected_wasm_sha256 }}
+      EXPECTED_GLUE: ${{ inputs.expected_glue_sha256 }}
+    steps:
+      - name: The release is of the commit and the bytes that were compared
+        run: |
+          # Each input has its form, or nothing goes further (they reach the shell only through env).
+          case "$CANDIDATE" in ''|*[!0-9]*|0*) echo "candidate must be a number from 1" >&2; exit 1 ;; esac
+          case "$EXPECTED_COMMIT" in [0-9a-f]*) ;; *) echo "expected_commit is required: 40 hex digits" >&2; exit 1 ;; esac
+          for v in "$EXPECTED_COMMIT:40" "$EXPECTED_WASM:64" "$EXPECTED_GLUE:64"; do
+            value="${v%:*}"; want="${v##*:}"
+            case "$value" in *[!0-9a-f]*|'') echo "an expected value is not lower-case hex: $value" >&2; exit 1 ;; esac
+            [ "${#value}" = "$want" ] || { echo "an expected value has ${#value} digits, not $want" >&2; exit 1; }
+          done
+          [ "$GITHUB_REF" = refs/heads/main ] || { echo "a release runs on main only, not $GITHUB_REF" >&2; exit 1; }
+          [ "$GITHUB_SHA" = "$EXPECTED_COMMIT" ] || { echo "this run is on $GITHUB_SHA, not the compared commit $EXPECTED_COMMIT" >&2; exit 1; }
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      # actions/download-artifact v4.3.0, pinned by commit.
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: engine-build
+          path: ${{ runner.temp }}/artifacts
+      - name: List the source archives
+        run: node scripts/engine-release.mjs list --dir "$RUNNER_TEMP/release"
+      - name: Our build scripts at this commit, as one archive
+        run: git archive --format=tar.gz --prefix=liveMd2Tex-engine-build/ -o "$RUNNER_TEMP/release/engine-build-scripts.tar.gz" "$GITHUB_SHA" engine/build engine/engine-build-pins.json LICENSE
+      - name: Download them with curl
+        run: curl --fail --location --retry 3 --create-dirs -K "$RUNNER_TEMP/release/sources.curl"
+      - name: The trees of the commits GitHub's archives are made from
+        run: |
+          mkdir -p "$RUNNER_TEMP/release/trees"
+          while IFS="$(printf '\t')" read -r name repository commit; do
+            git init -q "$RUNNER_TEMP/git/$name"
+            git -C "$RUNNER_TEMP/git/$name" fetch -q --depth 1 --filter=blob:none "$repository" "$commit"
+            git -C "$RUNNER_TEMP/git/$name" ls-tree -r --full-tree "$commit" > "$RUNNER_TEMP/release/trees/$name.ls-tree"
+          done < "$RUNNER_TEMP/release/git.tsv"
+      - name: Check everything and assemble the release
+        run: |
+          TAG="engine-$(node -p "require('./engine/engine-build-pins.json').texLive.commit.slice(0, 7)")-$CANDIDATE"
+          echo "TAG=$TAG" >> "$GITHUB_ENV"
+          NODE_OPTIONS=--max-old-space-size=4096 node scripts/engine-release.mjs assemble --dir "$RUNNER_TEMP/release" --artifacts "$RUNNER_TEMP/artifacts" --tag "$TAG" --commit "$GITHUB_SHA" --expect-wasm "$EXPECTED_WASM" --expect-glue "$EXPECTED_GLUE" --scripts-archive "$RUNNER_TEMP/release/engine-build-scripts.tar.gz" --repository "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY"
+      - name: The draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # The tag must be free: GitHub ignores --target when the tag exists, and a release of that tag, draft or
+          # not, would be another candidate's.
+          if git ls-remote --exit-code --tags "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" "refs/tags/$TAG" >/dev/null; then
+            echo "the tag $TAG exists already" >&2; exit 1
+          fi
+          taken="$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases" --jq ".[] | select(.tag_name == \"$TAG\") | .id")"
+          [ -z "$taken" ] || { echo "a release of $TAG exists already" >&2; exit 1; }
+          mapfile -t assets < "$RUNNER_TEMP/release/assets.txt"
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --draft --target "$GITHUB_SHA" --title "$TAG" --notes-file "$RUNNER_TEMP/release/notes.md" "${assets[@]}"
+          count="$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets | length')"
+          [ "$count" = "${#assets[@]}" ] || { echo "the draft holds $count files, not ${#assets[@]}" >&2; exit 1; }
+          echo "the draft $TAG holds its ${#assets[@]} files"

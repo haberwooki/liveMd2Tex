@@ -1,0 +1,58 @@
+{
+  "about": "The pinned inputs of liveMd2Tex's own TeX engine (docs/DEVELOPING.md, \"The TeX engine: our own build\"). engine/build/build.sh --fetch downloads each archive by its address into <root>/downloads, and every run checks each archive's size and SHA-256 against this file before it is used. The SHA-256 values were recorded at the first download (2026-10-31, anonymous). Never commit the archives themselves.",
+  "texLive": {
+    "repository": "https://github.com/TeX-Live/texlive-source",
+    "commit": "6a300188053b8f2ded89dbd52293732a706b9c0e",
+    "tree": "ebfc6fdc4127a2cb720272160b8a54ddf4704aa3",
+    "committed": "2026-03-17T16:16:03Z",
+    "note": "The head of the branch refs/heads/tags/texlive-2026.1 ('texlive-2026.1 tag based on r78399, with dvipdfmx psfile quoting fix'). There is no git tag of that name, so the commit is pinned, never the branch.",
+    "archive": {
+      "name": "texlive-source-6a300188053b8f2ded89dbd52293732a706b9c0e.tar.gz",
+      "url": "https://github.com/TeX-Live/texlive-source/archive/6a300188053b8f2ded89dbd52293732a706b9c0e.tar.gz",
+      "size": 149471985,
+      "sha256": "ab72044ed1abd9866d3e3899941cf5e66b0f22f889c749ce606d8c4cf571872b"
+    }
+  },
+  "emscripten": {
+    "release": "6.0.13",
+    "commit": "e13ee988ce3d87a738dd8f3661d02223308c412a",
+    "releasesBuild": "eb132757325583b787fe9414b09afea9442b72ad",
+    "note": "releasesBuild is the emscripten-releases build that emsdk's emscripten-releases-tags.json (at the emsdk commit below) names for 6.0.13; wasm-binaries.tar.xz is that build. The source archive is not used by the build: it is the corresponding source of the runtime and system libraries compiled into the engine, attached to the engine release.",
+    "sourceArchive": {
+      "name": "emscripten-e13ee988ce3d87a738dd8f3661d02223308c412a.tar.gz",
+      "url": "https://github.com/emscripten-core/emscripten/archive/e13ee988ce3d87a738dd8f3661d02223308c412a.tar.gz",
+      "size": 32869624,
+      "sha256": "0eb45cf55702db363e5dacd06fec69b63345ce6ffe61156c0e7fcbf3ae842d4e"
+    }
+  },
+  "emsdk": {
+    "repository": "https://github.com/emscripten-core/emsdk",
+    "tag": "6.0.13",
+    "commit": "35659964bc2762fffec0d257997fb61475f765b7",
+    "note": "build.sh unpacks this archive, puts the two hash-checked archives below into emsdk/downloads under the names emsdk expects, and runs 'emsdk install 6.0.13' with EMSDK_KEEP_DOWNLOADS=1, so emsdk reuses them and downloads nothing (emsdk.py download_file; the SDK's Linux dependencies are node-24.19.0-64bit and releases-<releasesBuild>-64bit, emsdk_manifest.json).",
+    "archive": {
+      "name": "emsdk-35659964bc2762fffec0d257997fb61475f765b7.tar.gz",
+      "url": "https://github.com/emscripten-core/emsdk/archive/35659964bc2762fffec0d257997fb61475f765b7.tar.gz",
+      "size": 178410,
+      "sha256": "e3ef5e4a46753aecc700ec72f81abda6d0601a262c5afe2669323ce2721a22b8"
+    },
+    "wasmBinaries": {
+      "name": "eb132757325583b787fe9414b09afea9442b72ad-wasm-binaries.tar.xz",
+      "url": "https://storage.googleapis.com/webassembly/emscripten-releases-builds/linux/eb132757325583b787fe9414b09afea9442b72ad/wasm-binaries.tar.xz",
+      "size": 311791988,
+      "sha256": "cda6801012ff3319a539111826ed02a9abd7eff135c2ef261c8941caf5a3763e"
+    },
+    "node": {
+      "version": "24.19.0",
+      "name": "node-v24.19.0-linux-x64.tar.xz",
+      "url": "https://storage.googleapis.com/webassembly/emscripten-releases-builds/deps/node-v24.19.0-linux-x64.tar.xz",
+      "size": 31633904,
+      "sha256": "14b342e71204f811bde6153be8e04b62aef63c236fef92b55f9c83154b409647"
+    }
+  },
+  "hostTools": {
+    "about": "What build.sh needs on the build machine (Ubuntu package names); engine.yml installs this list. build.sh passes gawk as AWK to both configure runs (Ubuntu's default awk is mawk). The fontCheck packages are for the font check only (engine/build/tools/font-check.mjs, with a native fc-scan of fontconfig 2.13.96 as the reference); nothing built from them ships.",
+    "build": ["build-essential", "python3", "xz-utils", "curl", "git", "gawk"],
+    "fontCheck": ["fontconfig", "libfreetype-dev", "libexpat1-dev", "pkg-config", "gperf"]
+  }
+}

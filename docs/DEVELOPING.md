@@ -132,6 +132,102 @@ pending, and `stage-engine` says it skipped. CI fetches the files before its tes
 - Results go to `../s1_runs/`, outside the repository. For a private document they hold numbers only. The
   tests fail when the engine host's peak memory reaches 1.5 GB, or a cancel takes a second or more.
 
+### The TeX engine: our own build (not yet shipped)
+
+`engine/build/` builds the engine that is to replace TeXlyre's: one `engine.wasm` and its glue `engine.js`, with
+pdfTeX, XeTeX, xdvipdfmx and bibtex8 on kpathsea, from TeX Live's source at commit `6a300188` with Emscripten
+6.0.13. `engine/engine-build-pins.json` pins every input by address, size and SHA-256. It runs under Linux, Ubuntu
+26.04 (WSL2, or GitHub's `ubuntu-26.04` runner), never under Windows itself.
+
+```sh
+bash engine/build/build.sh --fetch --root ~/engine-build --out ~/engine-out   # the build (about 45 min, 3.7 GB)
+node engine/build/tools/run.mjs ~/engine-out [--thai-font Loma.otf]          # the smoke test (31 cases)
+node engine/build/tools/wasm-inspect.mjs ~/engine-out --check                # the safety checks (also run by the build)
+node scripts/engine-compare.mjs CI_OUT WSL_OUT                               # two builds: prints "match" or what differs
+node scripts/engine-shakedown.mjs --b ~/engine-out --a busytex --images DATA_PACKAGES_DIR --work WORK_DIR \
+  --corpus CORPUS_DIR --reference CORPUS_REFERENCE_JSON   # real LaTeX, A and B paired
+```
+
+- **Host tools** (Ubuntu package names; `engine-build-pins.json`, `hostTools`): `build-essential python3 xz-utils
+  curl git gawk`; for the font check also `fontconfig libfreetype-dev libexpat1-dev pkg-config gperf`. `gawk` is
+  required: kpathsea's `paths.h`, which is compiled in, is written by awk, Ubuntu's default awk is `mawk`, and
+  `build.sh` passes `AWK=gawk` to both configure runs. The manifest records each tool's version and Debian package
+  (`toolchain.host`) and, on CI, the runner image. Emscripten and its Node come from the pinned archives, which
+  `build.sh` installs into the build root.
+- **Where things go.** The build root must be outside the repository and, under WSL, in the Linux file system
+  (`/home/<user>/...`). Use at most `--jobs 6` on a machine with 8 GB or less. `<out>` gets `engine.wasm`,
+  `engine.js`, `engine-build.json` and `generated-sources/` (the generated C and headers: web2c's output, every
+  `config.h`, `c-auto.h` and `paths.h`); the step logs stay in `<root>/logs/`. Nothing of it is committed.
+- **Steps.** Each step logs to `<root>/logs/<step>.log` and is skipped when it is done; `--from STEP` redoes a step
+  and every step after it. A speed variant sets `OPT` (default `-Oz`), `EXTRA_CFLAGS` or `EXTRA_LDFLAGS` and builds
+  into its own `--root` and `--out`, sharing the archives with `--downloads`: for example `OPT=-O2 bash
+  engine/build/build.sh --root ~/engine-build-O2 --downloads ~/engine-build/downloads --out ~/engine-out-O2`. A
+  change of `EXTRA_LDFLAGS` alone may reuse a root with `--from link`. The manifest records them.
+- **`-g1` is required** (`--no-g1` is refused). It changes no byte of the wasm (the build checks it), and it keeps
+  the glue's whitespace, comments and import names: without it Emscripten writes each library function into
+  `wasmImports` in place, so the import check cannot name 43 of the 46 imports, the scan's allow-list cannot tell its
+  entries apart in a two-line file, and MiniLZ4's notice drops out of the glue. The glue's one `SOCKFS` (a comment)
+  is a reviewed entry of `engine/build/glue-allow.json`, pinned to the glue's SHA-256 and line.
+- **What the build checks, and fails on.** The rename and shared lists (a shared name must sit in `.bss`; strong
+  names two libraries define are listed, and two loaded definers fail); the `-g1` link's wasm against the link
+  without it; the link map, every input mapped to its part of the engine (`LINK_PARTS` in `link-report.mjs`) and
+  nothing else; the linked libc files' own notices, each of which `LICENSES/engine/musl-file-notices.txt` must hold;
+  the `system()` controls (with `-g1` the deny list must catch `__emscripten_system`; without it the unnamed-import
+  rule must); and the safety checks on what ships (imports, exports, layout with the static end, libpaper's paper
+  table and `PAPERSIZE` absent and dvipdfmx's `isob3` to `isob6` present, the strings of the dropped parts, the
+  glue's watched names).
+- **No file of TeX Live's source is patched.** The build edits files TeX Live generated, each listed in the manifest
+  (`generatedEdits`): dvipdfm-x's `config.h` and `Makefile` (no libpaper), `pdftexd.h` (the shared names),
+  `libicudata.a` (ICU's data compiled whole) and the execute bit of the configure scripts it skips. No autoconf
+  answer is given: three that an earlier draft gave were read by no configure script it runs, and were dropped.
+- **Two builds must match.** The CI build (`.github/workflows/engine.yml`) and a WSL build from a fresh clone of the
+  same public commit, never from a worktree, with nothing edited during the build, must give the same `engine.wasm`
+  and `engine.js`; their manifests may differ only in the fields `scripts/engine-compare.mjs` lists as `IGNORABLE`:
+  `toolchain.machine`, `toolchain.runnerImage`, `toolchain.host.*`, `toolchain.nativeCompiler` and `toolchain.python`
+  (the scripts' commit counts: both sides build the same public commit). When they differ, the tool prints each wasm section's size, the
+  data strings one side holds only (a path, a date), the glue lines, the manifest fields and the generated sources
+  that differ; the CI run's `engine-generated-sources` artifact holds the same set as `<out>/generated-sources` under
+  WSL. If GitHub ever serves a commit archive with other bytes, `build.sh` refuses the pinned SHA-256; build with
+  `--downloads` pointing at the engine release's copy of the archive.
+- **The release.** Published releases cannot change, so the draft holds everything, and it holds the bytes that
+  were compared. The order: run `engine.yml` on `main` without "release"; download its `engine-build` artifact and
+  its `engine-generated-sources` artifact into `<dir>/generated-sources/` beside it (the artifact is rooted at the
+  folder itself); build under WSL from a fresh clone of the same commit; run `engine-compare.mjs`. Only on "match",
+  run `engine.yml` again on `main` with "release" ticked and three inputs copied from the compared run: the commit
+  (`expected_commit`) and the SHA-256 of `engine.wasm` and `engine.js`. The release job fails before the draft
+  unless it runs on `main` at that commit and its new build has those hashes. It checks TeX Live's and Emscripten's
+  archives against their commits' trees, the artifacts against the manifest, the pins and the checkout, and an
+  archive of our build scripts at the commit (`engine/build/`, the pins and `LICENSE`, whose files must give the
+  manifest's tree hash); it fails if the tag or a release of it exists; and it makes the draft
+  `engine-<TeX Live short commit>-<n>`: the engine, its manifest and logs, the licence texts and notice files of
+  `engine/engine-notices.next.json` (musl's 6.0.13 `COPYRIGHT` taken from Emscripten's archive while
+  `LICENSES/engine` holds today's engine's copy), a generated `NOTICE`, the two source archives, our scripts'
+  archive, and notes with the source directions (`scripts/engine-release.mjs`); then it counts the draft's files.
+  The owner publishes it with "Set as the latest release" unticked (the extension's releases are the latest), and
+  `engine/engine-build.json` is committed from the draft's own copy. Nothing is added later.
+- **The font check** (`engine/build/tools/font-check.mjs`) compares the font list our fontconfig stand-in reads with
+  a native `fc-scan` of fontconfig 2.13.96 (check 1), and every font name through today's engine and the new one
+  (check 2). It builds the list as the host will: each data set's list with its own `fontOrder` rules, joined core
+  first; a name two sets share, a rule that does not hold and a rule that decides nothing fail it. `--evidence`
+  leaves each rule out once and records the requests that then differ. `FcInit`'s collision report is printed only
+  when `LIVEMD2TEX_FONT_LIST_CHECK` is set, which the builder and the font check do and the host never does.
+- **The LaTeX shake-down** (`scripts/engine-shakedown.mjs`) runs real LaTeX through the extension's engine host
+  (build `dist/` and `out/` first): it makes `pdflatex.fmt` and `xelatex.fmt` with each engine given as a folder,
+  puts them into a copy of the core image, and compiles the corpus and its own cases (XeLaTeX with OpenType fonts and
+  bibtex8; `\write18` and `\input|` with shell escape forced) on A and B in turn. It reports pages, error lines,
+  embedded fonts, SyncTeX, times and peak memory, and whether the PDFs match. A speed comparison of two builds
+  measures with it.
+- **Decisions, 2026-10-31.** Fonts by name go through our stand-in, with no fontconfig and no expat. The `-g1` glue
+  ships. The collision report is on request only, and the builder checks collisions across the sets mounted together.
+  The engine is built at `-Oz`; another level may replace it until the last CI round before the release, if it builds
+  in its own root, passes the build's checks and the font check, measures with the shake-down paired against `-Oz`
+  with every PDF the same, passes the recursion case with the workers' stack, and passes its own gate. CI runs on
+  `ubuntu-26.04`.
+- **Runtimes.** The smoke test runs under Node 22 and 24, and under VS Code's own runtime (`Code.exe` with
+  `ELECTRON_RUN_AS_NODE=1`; on 2026-10-31 Electron 43.7.7 with Node 24.21.0 and V8 15.0). The engine's workers need a
+  larger stack than Node's default: with `resourceLimits: { stackSizeMb: 16 }` TeX's own `expand_depth` stops a
+  runaway macro; with the default 4 MB the `-Oz` pdfTeX meets V8's `RangeError` first. The smoke test records both.
+
 ## Version 0: compile on save (V0)
 
 - Saving a `.tex` file compiles its root document: the file named by `% !TEX root`, the file itself when it
@@ -1048,7 +1144,7 @@ The licence gates (2026-10-26) checked every part by others that a package ships
     (`missingNotices`, `wrongNotices`). Its libpaper check (`PAPERCONF`, `/etc/papersize`) cannot see TeX Live's
     libpaper, which holds neither string: the pinned build does link libpaper (GPL-2.0-only, which may not ship
     with the AGPL-3.0 parts; THIRD_PARTY_NOTICES.md), so no release ships this engine. Our own engine replaces it
-    and its check (PLAN_engine stage 3) looks for libpaper's paper table and `PAPERSIZE` instead.
+    and its check (`engine/build/tools/wasm-inspect.mjs`) looks for libpaper's paper table and `PAPERSIZE` instead.
 - **Below the link line.** A linked library can hold code by other authors under terms of their own, which the
   link-line test cannot see. `node scripts/engine-notice-search.mjs --archives DIR` helps a person find it; it is
   an aid to reading, not a proof. It reads the four source archives (by their names in the manifest's `sources`)
