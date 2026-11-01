@@ -1080,7 +1080,7 @@
       "notices": [
         "LICENSES/engine/MiniLZ4-notice.txt"
       ],
-      "note": "the -g1 glue keeps its MIT notice in engine.js (mini-lz4.js lines 1-25); the notice also ships as a file, so it travels with the engine whatever glue a later build ships"
+      "note": "the -g1 glue keeps its MIT notice in engine.js (mini-lz4.js lines 1-29); the notice also ships as a file, so it travels with the engine whatever glue a later build ships"
     },
     {
       "id": "busytex",
@@ -1220,7 +1220,7 @@
       "from": "libs/zlib/zlib-src/LICENSE in TeX Live's source tree at tag texlive-2026.0 (https://github.com/TeX-Live/texlive-source/blob/tags/texlive-2026.0/libs/zlib/zlib-src/LICENSE) The same lines at commit 6a300188053b8f2ded89dbd52293732a706b9c0e (texlive-2026.1 differs from 2026.0 only in five dvipdfmx files: ChangeLog, configure, configure.ac, data/dvipdfmx.cfg, dpxfile.c)."
     },
     "LICENSES/engine/MiniLZ4-notice.txt": {
-      "sha256": "a4f0326e6993abea4d6a8c2e3ecb5f6c1a7c3f38bcd3acb59d05dfb054e0ca62",
+      "sha256": "33d3dc7f032f61feaaf20a4b8388ae311927704bb5fd5104e473706cf802879c",
       "from": "third_party/mini-lz4.js of Emscripten 6.0.13 (https://github.com/emscripten-core/emscripten/blob/e13ee988ce3d87a738dd8f3661d02223308c412a/third_party/mini-lz4.js), lines 1-29."
     },
     "LICENSES/engine/XeTeX-image-notice.txt": {

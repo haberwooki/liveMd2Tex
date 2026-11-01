@@ -1,4 +1,4 @@
-Source: third_party/mini-lz4.js in Emscripten's source at commit e13ee988ce3d87a738dd8f3661d02223308c412a (release 6.0.13; https://github.com/emscripten-core/emscripten/blob/e13ee988ce3d87a738dd8f3661d02223308c412a/third_party/mini-lz4.js), lines 1-29. The engine's JavaScript glue (engine.js) holds MiniLZ4; the -Oz link drops this comment from the glue, so the notice ships here.
+Source: third_party/mini-lz4.js in Emscripten's source at commit e13ee988ce3d87a738dd8f3661d02223308c412a (release 6.0.13; https://github.com/emscripten-core/emscripten/blob/e13ee988ce3d87a738dd8f3661d02223308c412a/third_party/mini-lz4.js), lines 1-29. The engine's JavaScript glue (engine.js) holds MiniLZ4 and, linked with -g1, this notice too; the notice also ships here, so it travels with the engine whatever glue a build ships.
 
 /*
 MiniLZ4: Minimal LZ4 block decoding and encoding.

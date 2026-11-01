@@ -9,7 +9,8 @@
 //   node wasm-inspect.mjs OUT --check [MANIFEST]     the checks on OUT/engine.wasm and OUT/engine.js against
 //                                                    MANIFEST (default OUT/engine-build.json); exit 1 on a failure
 //   node wasm-inspect.mjs FILE --strings             the string checks only, each "found" or "absent" (the
-//                                                    positive control on today's busytex.wasm and busytex.js)
+//                                                    positive control on the earlier engine's busytex.wasm and
+//                                                    busytex.js, TeXlyre's build)
 //
 // The library functions are used by write-manifest.mjs.
 
@@ -191,7 +192,8 @@ export function layout(w) {
   };
 }
 
-// Strings that must never be in the engine: those of the parts it leaves out, and of TeXlyre's remote features. Each is searched in the wasm read as latin1;
+// Strings that must never be in the engine: those of the parts it leaves out, and of the earlier engine's remote
+// features (TeXlyre's build). Each is searched in the wasm read as latin1;
 // the remote-fetch and font-index ones in the glue as well. "whole": only as a whole string, with a zero byte on
 // each side (a short name can sit inside a longer string).
 export const STRING_CHECKS = [
@@ -200,7 +202,7 @@ export const STRING_CHECKS = [
   // markers of an unmodified libpaper only, never as the proof. The proof is its paper table
   // (libs/libpaper/libpaper-src/lib/paperspecs.h: halfexecutive, csheet, dsheet, esheet and flse are in no table of
   // dvipdfmx, texk/dvipdfm-x/dpxconf.c:35-95) and its variable PAPERSIZE (PAPERSIZEVAR, read at paper.c:107), with
-  // dvipdfmx's own table below (REQUIRED_STRINGS). Today's busytex.wasm fails both rules.
+  // dvipdfmx's own table below (REQUIRED_STRINGS). The earlier engine's busytex.wasm (TeXlyre's build) fails both rules.
   { check: 'engineLinksLibpaper', part: 'libpaper', text: 'halfexecutive' },
   { check: 'engineLinksLibpaper', part: 'libpaper', text: 'csheet' },
   { check: 'engineLinksLibpaper', part: 'libpaper', text: 'dsheet' },

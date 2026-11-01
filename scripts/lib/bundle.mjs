@@ -411,7 +411,9 @@ export function fileKind(name) {
   if (/\.(otf|ttf|ttc)$/i.test(rel)) return 'fonts: OpenType and TrueType';
   if (/\.tfm$/i.test(rel)) return 'fonts: TFM';
   if (/\.vf$/i.test(rel)) return 'fonts: VF';
-  if (/\.afm$/i.test(rel)) return 'fonts: AFM (metrics no engine here reads)';
+  // Reports made before this label changed call this kind 'fonts: AFM (metrics no engine here reads)'; a size
+  // comparison with one of them (the first data build's report) maps that name to this one.
+  if (/\.afm$/i.test(rel)) return 'fonts: AFM (metrics XeTeX reads for Type 1 fonts named by file)';
   if (/\.(pfm|enc|map|fd|ofm|ovf|ovp|pl|vpl|mf)$/i.test(rel)) return 'fonts: other (enc, map, fd, mf, pfm)';
   if (/^tex\/generic\/(hyph-utf8|hyphen|dehyph[^/]*)\/|\.pat(\.txt)?$/i.test(rel)) return 'hyphenation patterns';
   if (/^scripts\//.test(rel)) return 'scripts/ (programs TeX never runs)';

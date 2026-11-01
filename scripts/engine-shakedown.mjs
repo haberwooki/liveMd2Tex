@@ -10,8 +10,9 @@
 //   2. each document compiled as the extension compiles it: the worker's own steps (-recorder, -synctex=1,
 //      -file-line-error, bibtex8 when the .aux asks for it, the extra passes, xdvipdfmx after XeLaTeX), the add-on
 //      image mounted only when the preamble scan needs one of its packages, and once more after a "not found" names
-//      one of its files (imagesForNotFound), as the extension does; on A and B in turn, compile by compile, the order
-//      alternating from one round to the next;
+//      one of its files (imagesForNotFound), as the extension does (that second compile starts without the first's
+//      state, and the document's time covers both); on A and B in turn, compile by compile, the order alternating
+//      from one round to the next;
 //   3. for each compile: the page count, the error lines and the font warnings (missing characters, undefined font
 //      shapes), the fonts embedded (FontFile, FontFile2, FontFile3 in the PDF), whether SyncTeX was written, the
 //      steps' exit codes and times, and the WebAssembly memory size after each step; whether A's and B's PDFs are
@@ -41,8 +42,11 @@
 //
 // The cases the harness adds (in <work>/cases): a XeLaTeX document with OpenType fonts by file name, mathematics and
 // a bibliography (bibtex8 and xdvipdfmx), and two pdfLaTeX documents with shell escape forced on, one with \write18
-// and one with \input|, whose commands must reach the engine's stubs and run nothing. On B, \write18's log must show
-// runsystem(...)...executed: the command reached system(), which is our stub.
+// and one with \input|, whose commands must reach the engine's stubs and run nothing. For \write18 (X2) the log must
+// show runsystem(...)...executed, which TeX prints whenever it calls system(), and the file the command would make
+// must not appear, and on B the transcript must show "system returned with code -1": \write18 reached system(),
+// which ran nothing and refused the command, as our stub does. Today's engine's system() answers the same, so this
+// does not tell the two apart: that our stub is the system() linked is shown by the build's import checks.
 
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -352,6 +356,8 @@ async function compileOn(host, doc, packages) {
     errors: errorLines(result.log),
     warnings: warningLines(result.log),
     runsystem: ((result.log ?? '').match(/runsystem\([^\n]*?\)\.\.\.[a-z ]+/g) ?? []).slice(0, 5),
+    // What system() returned, as TeX prints it on stderr (the worker's transcript).
+    systemReturned: ((result.transcript ?? '').match(/system returned with code -?\d+/g) ?? []).slice(0, 5),
     pdf: result.pdf ? { sha256: sha256(result.pdf), normalized: sha256(Buffer.from(normalized(result.pdf), 'latin1')) } : null,
   };
 }
@@ -421,8 +427,10 @@ async function main() {
     if (a && a[0].pages !== first.pages && doc.id !== 'X3') problems.push(`${doc.id}: ${a[0].pages} page(s) on A, ${first.pages} on B`);
     if (line.errorsOnlyB?.length) problems.push(`${doc.id}: error lines on B only: ${line.errorsOnlyB.join(' | ')}`);
     if (line.warningsOnlyB?.length) problems.push(`${doc.id}: font warnings on B only: ${line.warningsOnlyB.join(' | ')}`);
-    // The positive control of the stubs: with shell escape on, \write18 reached system(), which printed nothing.
-    if (doc.id === 'X2' && !first.runsystem.some((r) => /^runsystem\(touch [^)]*\)\.\.\.executed/.test(r))) problems.push('X2: the log shows no runsystem(touch ...)...executed: \\write18 did not reach the stub');
+    // The positive control of the stubs: with shell escape on, \write18 reached system() (TeX's "executed"), which
+    // ran nothing (no marker, checked above) and answered -1, as our stub does.
+    if (doc.id === 'X2' && !first.runsystem.some((r) => /^runsystem\(touch [^)]*\)\.\.\.executed/.test(r))) problems.push('X2: the log shows no runsystem(touch ...)...executed: \\write18 did not reach system()');
+    if (doc.id === 'X2' && !first.systemReturned.includes('system returned with code -1')) problems.push(`X2: the transcript does not show "system returned with code -1" (${first.systemReturned.join(' | ') || 'nothing'}): system() did not refuse the command`);
     if (doc.id === 'X1' && first.fonts && first.fonts.FontFile3 + first.fonts.FontFile2 === 0) problems.push('X1: xdvipdfmx embedded no OpenType font');
     if (a) {
       const same = (k) => b.every((r) => r.pdf && a.every((x) => x.pdf && x.pdf[k] === r.pdf[k]));

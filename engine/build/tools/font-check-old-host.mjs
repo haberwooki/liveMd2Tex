@@ -1,9 +1,10 @@
 // engine/build/tools/font-check-old-host.mjs: side A of the font check (font-check.mjs, check 2):
-// today's engine (the build engine/pins.json pins, busytex.wasm with its patched glue) under today's host, run from
-// a worktree of main at the commit the data packages were built on, with its dist/ and out/ built. Each fixture runs as an explicit
+// the earlier engine (TeXlyre's build, busytex.wasm with its patched glue) under its own host, run from a worktree of
+// main at a commit that still pins it, with data packages built for it, with its dist/ and out/ built. Each fixture runs as an explicit
 // "xelatex -ini -etex -no-pdf" step, as scripts/lib/bundle-engine.mjs runs -ini steps (-etex: XeTeX's own
 // primitives, \XeTeXglyph among them, exist only in extended mode), with the core-data package's image as the host's data
-// and the extra-data package's image as a data image (mounted under /texmf-extra), and engine/fonts.conf as today.
+// and the extra-data package's image as a data image (mounted under /texmf-extra), and engine/fonts.conf as that
+// host gave it.
 //
 // Ours (the liveMd2Tex authors), GPL-3.0-or-later.
 

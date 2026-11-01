@@ -12,7 +12,9 @@
 //                         esbuild's metafile), with an index, and the GPL-3, AGPL-3, LGPL-3, Apache-2.0, LPPL and
 //                         CC0 texts from LICENSES/ (build gate 1, G1S-04)
 //
-// Usage: node scripts/build.mjs [--production]
+// Usage: node scripts/build.mjs [--production | --speed-probe]
+//   --speed-probe builds the worker with the speed probe (docs/DEVELOPING.md, "Measuring speed"), for the speed
+//   benchmark only; every other build bundles its inert stand-in, speedProbeOff.ts, so no probe code ships.
 
 import { cpSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -22,6 +24,23 @@ import * as esbuild from 'esbuild-wasm';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const dist = path.join(root, 'dist');
 const production = process.argv.includes('--production');
+const speedProbe = process.argv.includes('--speed-probe');
+if (production && speedProbe) {
+  console.error('--speed-probe is for measuring only and cannot be combined with --production.');
+  process.exit(2);
+}
+
+// The worker imports ./speedProbe. Outside a --speed-probe build, any import of a path that ends in speedProbe
+// (in any letter case, with or without .js, .mjs, .cjs or .ts), in any bundle, resolves to the inert stand-in; the
+// VSIX scan fails a packaged script that still holds the probe.
+const speedProbeStandIn = {
+  name: 'speed-probe-stand-in',
+  setup(build) {
+    build.onResolve({ filter: /(^|[\\/])speedProbe(\.(m?js|cjs|ts))?$/i }, () =>
+      speedProbe ? undefined : { path: path.join(root, 'src', 'engine-host', 'engine', 'speedProbeOff.ts') },
+    );
+  },
+};
 const pdfjsRoot = path.join(root, 'node_modules', 'pdfjs-dist');
 
 rmSync(dist, { recursive: true, force: true });
@@ -43,6 +62,7 @@ const common = {
   legalComments: 'inline',
   logLevel: 'warning',
   absWorkingDir: root,
+  plugins: [speedProbeStandIn],
 };
 
 const nodeTarget = 'node22'; // VS Code 1.105 runs Node 22 (EVIDENCE [389]); later versions run Node 24.
@@ -58,7 +78,7 @@ const builds = [
     format: 'cjs',
     target: nodeTarget,
     external: ['vscode'],
-    plugins: [forkModuleExternal],
+    plugins: [forkModuleExternal, speedProbeStandIn],
     // isomorphic-git's ES-module entry, so esbuild drops the commands the Git reader does not import. Its
     // CommonJS entry (picked by the "node" condition) keeps every command, including fetch, clone, push and
     // the HTTP remote helpers, and the VSIX scan would then find network names in the bundle (C0a).

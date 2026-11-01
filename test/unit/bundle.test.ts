@@ -317,7 +317,7 @@ describe('B1 bundle builder, without the engine (scripts/build-bundle.mjs)', fun
     const { fileKind } = await importScript<{ fileKind(n: string): string }>('scripts/lib/bundle.mjs');
     assert.deepEqual(
       ['texlive/texmf-dist/fonts/type1/public/cm-super/sfrm1000.pfb', 'texlive/texmf-dist/texmf-var/web2c/pdftex/pdflatex.fmt', 'texlive/texmf-dist/fonts/afm/public/lm/lmr10.afm', 'texlive/icudt78l.dat', 'texlive/texmf-dist/doc/latex/x/x.pdf', 'texlive/texmf-dist/source/latex/x/x.dtx'].map(fileKind),
-      ['fonts: Type 1', 'formats', 'fonts: AFM (metrics no engine here reads)', 'engine support (ICU data, /bin, /etc)', 'documentation (doc/)', 'sources (.dtx, .ins, source/)'],
+      ['fonts: Type 1', 'formats', 'fonts: AFM (metrics XeTeX reads for Type 1 fonts named by file)', 'engine support (ICU data, /bin, /etc)', 'documentation (doc/)', 'sources (.dtx, .ins, source/)'],
     );
     // The selection, for the reference install (GB1E-07).
     const selection = JSON.parse(readFileSync(path.join(out, 'selection.json'), 'utf8'));

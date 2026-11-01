@@ -4,7 +4,8 @@
 // nobody has starts a search of the tree's folders on disk, which with the real add-on's thousands of folders made
 // a compile up to a hundred times slower. The user's own package folder has no ls-R and keeps its disk search.
 // kpathsea's "stat" debugging (-kpathsea-debug=1) prints a dir_links line for each folder a disk search visits.
-// The "not found once, then the image is mounted" route is gate2.test.ts's.
+// Before any image is mounted there is no ls-R, and kpathsea prints no warning about one. An image's own ls-R, ls-r
+// and alias table are not kept. The "not found once, then the image is mounted" route is gate2.test.ts's.
 
 import * as assert from 'node:assert/strict';
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
@@ -57,7 +58,7 @@ describe('lookups in the data images\' tree: from its ls-R, never a search on di
     mkdirSync(path.join(folder, 'data'), { recursive: true });
     writeFileSync(path.join(folder, 'data', 'extra.data'), image.data);
     writeFileSync(path.join(folder, 'data', 'extra.index.json'), JSON.stringify(image.index));
-    const index = buildPackageIndex(Object.keys(files).filter((f) => f !== 'ls-R'), (rel) => files[rel]);
+    const index = buildPackageIndex(Object.keys(files).filter((f) => !['ls-R', 'ls-r', 'aliases'].includes(f)), (rel) => files[rel]);
     const manifest = { format: 1, version: '1', texLive: expected.texLive, abi: expected.abi, image: { file: 'extra.data', index: 'extra.index.json', bytes: image.data.length, sha256: image.sha256 }, index };
     writeFileSync(path.join(folder, 'data', 'manifest.json'), JSON.stringify(manifest));
     return folder;
@@ -81,9 +82,29 @@ describe('lookups in the data images\' tree: from its ls-R, never a search on di
       // A package of the user's own (TEXMFHOME's other folder, searched on disk).
       texmfFiles: [{ path: 'tex/latex/userpkg/userpkg.sty', data: bytes(tex(['\\ProvidesPackage{userpkg}', '\\typeout{USER-PKG-LOADED}'])) }],
       steps: [['pdflatex', '-no-shell-escape', '-interaction=nonstopmode', '-kpathsea-debug=1', '-fmt', ENGINE_FORMATS.pdflatex, 'main.tex']],
-      readBack: ['/texmf-extra/ls-R'],
+      readBack: ['/texmf-extra/ls-R', '/texmf-extra/ls-r', '/texmf-extra/aliases'],
     };
   }
+
+  it('without an add-on: no ls-R, no warning about one, and no disk search of the empty tree', async () => {
+    const doc = path.join(tmp, 'doc-none');
+    mkdirSync(doc, { recursive: true });
+    writeFileSync(path.join(doc, 'main.tex'), tex([
+      '\\documentclass{article}',
+      '\\IfFileExists{ao-nobody-has-this.sty}{\\typeout{AO-MISSING-FOUND}}{\\typeout{AO-MISSING-REFUSED}}',
+      '\\begin{document}',
+      'Text.',
+      '\\end{document}',
+    ]));
+    const job = await debugJob(doc, []);
+    assert.equal(job.dataImages, undefined);
+    const { result } = await engine.compile(job);
+    assert.ok(result.pdf, result.log.split('\n').slice(-10).join('\n'));
+    assert.match(result.log, /AO-MISSING-REFUSED/);
+    assert.doesNotMatch(result.transcript, /No usable entries in ls-R|how to generate ls-R/);
+    assert.deepEqual(diskSearch(result.transcript, '/texmf-extra'), []);
+    assert.equal(result.readBack?.['/texmf-extra/ls-R'], undefined, 'an ls-R before any image');
+  });
 
   it('an add-on\'s file and a missing file are each found or refused without a disk search; the user\'s folder is searched on disk', async () => {
     const extra = await readDataExtension(await dataExtension('ao-a', filesA), 'ao-a', expected);
@@ -114,9 +135,11 @@ describe('lookups in the data images\' tree: from its ls-R, never a search on di
   });
 
   it('a second image mounted beside the first: its files are in the tree\'s ls-R too, though the first image has its own', async () => {
-    // An image with its own ls-R, which lists only its files (the add-on's builder writes one).
+    // An image with its own ls-R, which lists only its files (the add-on's builder writes one), and an ls-r and an
+    // alias table, which kpathsea would also read at the tree's top.
     const { lsR } = await importScript<{ lsR(p: Iterable<string>): string }>('scripts/lib/texmf-config.mjs');
-    const a = await readDataExtension(await dataExtension('ao-a2', { ...filesA, 'ls-R': lsR(Object.keys(filesA)) }), 'ao-a2', expected);
+    const own = lsR(Object.keys(filesA));
+    const a = await readDataExtension(await dataExtension('ao-a2', { ...filesA, 'ls-R': own, 'ls-r': own, aliases: 'aopkg.sty ao-alias.sty\n' }), 'ao-a2', expected);
     const b = await readDataExtension(await dataExtension('ao-b', filesB), 'ao-b', expected);
     assert.ok('image' in a && 'image' in b);
     const doc = path.join(tmp, 'doc-ab');
@@ -130,5 +153,8 @@ describe('lookups in the data images\' tree: from its ls-R, never a search on di
     const list = result.readBack?.['/texmf-extra/ls-R'] ?? '';
     assert.match(list, /^aopkg\.sty$/m);
     assert.match(list, /^bopkg\.sty$/m);
+    assert.doesNotMatch(list, /^(ls-R|ls-r|aliases)$/m);
+    assert.equal(result.readBack?.['/texmf-extra/ls-r'], undefined);
+    assert.equal(result.readBack?.['/texmf-extra/aliases'], undefined);
   });
 });

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // engine/build/tools/font-check.mjs: the font check of the fontconfig stand-in (docs/DEVELOPING.md, "The TeX engine:
-// our own build"). It decides whether the fontconfig stand-in (engine/build/fontlist) finds every font by name as today's
-// engine does.
+// our own build"). It decides whether the fontconfig stand-in (engine/build/fontlist) finds every font by name as the
+// earlier engine (TeXlyre's build, with fontconfig) does.
 //
 // Ours (the liveMd2Tex authors), GPL-3.0-or-later.
 //
@@ -22,13 +22,13 @@
 //   --batch N        requests per fixture (default 200: one XeTeX run must not load more fonts than 576 MiB hold)
 //   --batches I,J    run only these fixtures, for debugging
 //   --images DIR     the data packages (livemd2tex-core-data-*.vsix, livemd2tex-extra-data-*.vsix): their font
-//                    files under fonts/opentype/ and fonts/truetype/, mounted where today's host mounts them (the
+//                    files under fonts/opentype/ and fonts/truetype/, mounted where the extension's host mounts them (the
 //                    core at its index's paths, /texlive/...; an add-on under /texmf-extra)
 //   --fonts-dir DIR  instead, a plain folder of font files, mounted at --mount
 //   --fc-scan PATH   fontconfig 2.13.96's fc-scan, built natively (check 1's reference; never shipped)
-//   --old-host DIR   a worktree of main at the commit the data packages were built on, with its dist/ and out/
-//                    built: side A, today's engine
-//                    under today's host. Without it, check 2 records side B only.
+//   --old-host DIR   a worktree of main at a commit that still pins the earlier engine (TeXlyre's build), with
+//                    its dist/ and out/ built: side A, that engine under its own host. Without it, check 2
+//                    records side B only.
 //   --work DIR       extracted fonts, the fixtures and the reports (outside the repository): fonts.list,
 //                    font-check.json (both checks), font-check-rows.json (every request on both sides),
 //                    side-a.json, and font-order-proposed.json (a rule for every colliding name)
@@ -275,8 +275,8 @@ async function sideB(o, fonts, listText, batches) {
     if (b === 0) logs[0].collisionLines = transcript.filter((l) => l.startsWith('fonts.list:')).slice(0, 200);
     console.log(`side B batch ${b}: exit ${code}, ${pages.size} pages of ${batch.reqs.length} requests`);
   }
-  // The font files one XeTeX pass opens with the whole list mounted (the speed planner's question: today's
-  // fontconfig reads every font file of the image on every pass). Emscripten's open syscall goes through FS.open.
+  // The font files one XeTeX pass opens with the whole list mounted (the speed planner's question: the earlier
+  // engine's fontconfig read every font file of the image on every pass). Emscripten's open syscall goes through FS.open.
   const opened = new Set();
   const realOpen = FS.open;
   FS.open = function (p, ...rest) {
@@ -310,7 +310,7 @@ async function sideB(o, fonts, listText, batches) {
   return { chosen, logs };
 }
 
-// ---------- side A: today's engine under today's host ----------
+// ---------- side A: the earlier engine (TeXlyre's build) under its own host ----------
 
 async function sideA(o, batches) {
   const { runOldHost } = await import(new URL('./font-check-old-host.mjs', import.meta.url).href);
@@ -423,7 +423,7 @@ async function main() {
     differences: differences.map((r) => ({ name: r.name, size: r.size, old: fmt(r.a), new: fmt(r.b) })),
   };
   if (a) {
-    // Leave each rule out once: the requests whose result then differs from today's are that rule's evidence.
+    // Leave each rule out once: the requests whose result then differs from side A's are that rule's evidence.
     let evidence = null;
     if (o.evidence && o.new && rules.length > 0) {
       evidence = new Map();
@@ -431,7 +431,7 @@ async function main() {
         const without = joinSets(sets, rules.filter((r) => r !== rule));
         const bw = await sideB(o, fonts, `${without.faces.map((f) => listLine(f)).join('\n')}\n`, batches);
         const differ = reqs.map((r, i) => ({ r, old: fmt(a.chosen.get(i + 1)), now: fmt(bw.chosen.get(i + 1)) })).filter((x) => x.old !== x.now);
-        evidence.set(rule.name, differ.map((x) => `${x.r.name} at ${x.r.size} pt: ${x.now} without the rule, ${x.old} today`));
+        evidence.set(rule.name, differ.map((x) => `${x.r.name} at ${x.r.size} pt: ${x.now} without the rule, ${x.old} on the earlier engine`));
         console.log(`evidence: without "${rule.name}", ${differ.length} requests differ`);
       }
       // Rules that put the same file first can each stand in for the other, so leaving one out changes nothing:
@@ -445,7 +445,7 @@ async function main() {
         const differ = reqs.map((r, i) => ({ r, old: fmt(a.chosen.get(i + 1)), now: fmt(bw.chosen.get(i + 1)) })).filter((x) => x.old !== x.now);
         const names = group.map((r) => r.name);
         for (const r of group) {
-          evidence.set(r.name, { group: names, lines: differ.map((x) => `${x.r.name} at ${x.r.size} pt: ${x.now} without these rules, ${x.old} today`) });
+          evidence.set(r.name, { group: names, lines: differ.map((x) => `${x.r.name} at ${x.r.size} pt: ${x.now} without these rules, ${x.old} on the earlier engine`) });
         }
         console.log(`evidence: without the ${group.length} rules that put ${first} first, ${differ.length} requests differ`);
       }
@@ -461,10 +461,10 @@ async function main() {
 
 /**
  * A fontOrder rule for every colliding name, each with its reason and its evidence:
- * - the face today's engine chose for the name at 10 pt;
- * - where today's engine resolves the name to none, the face whose own family and subfamily (name IDs 1 and 2)
+ * - the face the earlier engine (side A, TeXlyre's build) chose for the name at 10 pt;
+ * - where that engine resolves the name to none, the face whose own family and subfamily (name IDs 1 and 2)
  *   make the name, else the list's first, and the reason says which;
- * - with --evidence, the requests whose result differs from today's when side B runs without that rule; a rule
+ * - with --evidence, the requests whose result differs from side A's when side B runs without that rule; a rule
  *   without one says so (it records the order where nothing depends on it).
  */
 function proposeRules(ordered, rows, evidence) {
@@ -482,14 +482,14 @@ function proposeRules(ordered, rows, evidence) {
     let why;
     if (today) {
       first = today.file;
-      why = "today's engine chose it";
+      why = "the earlier engine (TeXlyre's build) chose it";
     } else {
       const candidates = [c.first, ...ordered.collisions.filter((x) => x.name === c.name).map((x) => x.other)];
       const own = candidates.find((file) => (facesByFile.get(file) ?? []).some((f) => f.legacy === c.name));
       first = own ?? c.first;
       why = own
-        ? "today's engine resolves the name to none; the face whose own family and subfamily (name IDs 1 and 2) make the name"
-        : "today's engine resolves the name to none, and no face's own family and subfamily make it; the list's first";
+        ? "the earlier engine (TeXlyre's build) resolves the name to none; the face whose own family and subfamily (name IDs 1 and 2) make the name"
+        : "the earlier engine (TeXlyre's build) resolves the name to none, and no face's own family and subfamily make it; the list's first";
     }
     const entry = { name: c.name, kind: c.kind, set: c.set, first, why };
     if (evidence && evidence.has(c.name)) {

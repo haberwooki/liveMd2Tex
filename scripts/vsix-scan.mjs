@@ -6,6 +6,7 @@
 //     EventSource, RTCPeerConnection, WebTransport, sendBeacon) and no code built from text (eval, Function,
 //     a Worker with eval, process.binding; build gate 1, G1S-07), except child_process in extension/dist/fork.js
 //     (the one fork file, by rule) and the hits on security/vsix-scan-allowlist.json (file, line, text, reason);
+//     and no speed probe (the text LIVEMD2TEX_SPEED_; docs/DEVELOPING.md, "Measuring speed");
 //   - every package: the licence texts (missingNotices; G1S-04), each at its pinned bytes (wrongNotices), and with
 //     the engine the notice of every part TeXlyre's build links into it (engine/engine-notices.json) and libpaper's
 //     two old strings absent (engineLinksLibpaper, which cannot see TeX Live's libpaper); with the starting documents (templates/) or the example presets
@@ -262,6 +263,11 @@ export function scanEntries(entries, allowlist, markers, pinned = new Map(), { d
     }
     const source = data.toString('utf8');
     jsFiles.push(name);
+    // The speed probe is measuring code and never ships (docs/DEVELOPING.md, "Measuring speed"): its variables'
+    // prefix in a packaged script means a --speed-probe build got into the package.
+    if (source.includes('LIVEMD2TEX_SPEED_')) {
+      failures.push(`${name}: holds the speed probe (LIVEMD2TEX_SPEED_); package a build made without --speed-probe`);
+    }
     let fileHits;
     try {
       fileHits = scanJavaScript(source, name);

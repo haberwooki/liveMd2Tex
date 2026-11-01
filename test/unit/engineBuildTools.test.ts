@@ -115,6 +115,9 @@ describe('the engine build tools (engine/build/tools)', () => {
         { path: 'texk/web2c/config.log', text: configLog(':', ':', "PKG_CONFIG='pkg-config'\n") },
         { path: 'texk/web2c/w2c/c-auto.h', text: header(false) },
         { path: 'config.log', text: "  $ ./configure '--with-system-zlib=no' '--without-system-libpng'\nno lex here\n" },
+        // GCC's own "gcc -v" text, which every config.log holds: Ubuntu's GCC is configured --with-system-zlib,
+        // unquoted. Only the quoted form TeX Live writes for a folder's configure run is a library choice.
+        { path: 'libs/zlib/config.log', text: 'Configured with: ../src/configure -v --with-pkgversion=Ubuntu --with-system-zlib --enable-libphobos\n' },
         { path: 'logs/build.log', text: 'make[1]: Entering directory \'<root>/wasm/texk/web2c\'\n', log: true },
       ]), []);
     });

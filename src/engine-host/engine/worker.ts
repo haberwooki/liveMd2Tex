@@ -20,6 +20,7 @@ import { t1cUnpack } from './t1c';
 import { loadGlue, type EmscriptenModule } from './glue';
 import { lsR } from './lsR';
 import { damagedMessage, type ImageIndex } from './packageMeta';
+import * as speed from './speedProbe';
 
 interface FsNode {
   mode: number;
@@ -112,6 +113,7 @@ async function createInstance(setup: WorkerSetup, print: (line: string) => void)
     MKTEXTEX: '0',
     shell_escape: 'f',
     HOME: '/home/web_user',
+    ...speed.probeEnv(),
   };
   return factory({
     thisProgram: '/bin/busytex',
@@ -141,12 +143,13 @@ function mountImage(M: EmscriptenModule, image: SharedArrayBuffer, index: ImageI
   L.init();
   const data = new Uint8Array(image);
   const size = L.CHUNK_SIZE;
+  const slots = speed.lz4Slots(index.cacheSlots);
   const compressedData = {
     data,
     cachedOffset: index.cachedOffset,
-    cachedIndexes: new Array<number>(index.cacheSlots).fill(-1),
+    cachedIndexes: new Array<number>(slots).fill(-1),
     // This worker's own decompression buffers, never views on the shared image (build gate 1, G1E-01).
-    cachedChunks: Array.from({ length: index.cacheSlots }, () => new Uint8Array(size)),
+    cachedChunks: Array.from({ length: slots }, () => new Uint8Array(size)),
     offsets: index.chunkOffsets,
     sizes: index.chunkSizes,
     successes: index.chunkCompressed,
@@ -190,6 +193,9 @@ function mountImage(M: EmscriptenModule, image: SharedArrayBuffer, index: ImageI
   }
 }
 
+/** Speed probe, lazy restore: the last program's memory is not restored yet (see step() in compile()). */
+let heapDirty = false;
+
 /** Packed files this worker has unpacked, by path: each is unpacked once, when TeX first reads it. */
 const unpacked = new Map<string, Uint8Array>();
 /**
@@ -209,6 +215,7 @@ function packedStreamOps(M: EmscriptenModule, path: string, sha256: string, owne
   const original = (stream: { node: { size: number } }): Uint8Array => {
     let bytes = unpacked.get(path);
     if (bytes === undefined) {
+      const t1c0 = speed.PROBE ? performance.now() : 0;
       const packed = new Uint8Array(stream.node.size);
       L.stream_ops.read(stream, packed, 0, packed.length, 0);
       let restored: Uint8Array | null;
@@ -223,6 +230,9 @@ function packedStreamOps(M: EmscriptenModule, path: string, sha256: string, owne
       }
       bytes = restored;
       unpacked.set(path, bytes);
+      if (speed.PROBE) {
+        speed.noteT1c(performance.now() - t1c0);
+      }
     }
     return bytes;
   };
@@ -260,16 +270,22 @@ function damagedReport(): string {
 const mountedExtras = new Set<string>();
 /** Their files, relative to TEXMF_EXTRA: the list its ls-R holds. */
 const extraFiles = new Set<string>();
+/**
+ * The files kpathsea reads at the top of a tree in TEXMFDBS (TeX Live's db.c: ls-R, ls-r and the alias table). An
+ * image's own are neither listed nor kept: the worker writes the tree's ls-R itself, and an image's alias table
+ * would apply to lookups in every tree, the core's too.
+ */
+const DATABASE_FILES = ['/ls-R', '/ls-r', '/aliases'];
 
-/** Mounts the images not mounted yet, and writes the tree's ls-R again; false if every image was mounted already. */
-function mountExtras(M: EmscriptenModule, extras: ExtraImage[]): boolean {
+/** Mounts the images not mounted yet, and writes the tree's ls-R again. */
+function mountExtras(M: EmscriptenModule, extras: ExtraImage[]): void {
   let added = false;
   for (const extra of extras) {
     if (!mountedExtras.has(extra.key)) {
       mountImage(M, extra.image, extra.index, TEXMF_EXTRA, extra.id);
       mountedExtras.add(extra.key);
       for (const name of extra.index.names.split('\n')) {
-        if (name.length > 1 && name !== '/ls-R') {
+        if (name.length > 1 && !DATABASE_FILES.includes(name)) {
           extraFiles.add(name.slice(1));
         }
       }
@@ -280,22 +296,24 @@ function mountExtras(M: EmscriptenModule, extras: ExtraImage[]): boolean {
     writeExtrasLsR(M);
     stampFolders(M, TEXMF_EXTRA, extrasTime([...mountedExtras]));
   }
-  return added;
 }
 
 /**
  * Writes TEXMF_EXTRA/ls-R, kpathsea's file name database for every file mounted there (lsR.ts), in place of any
  * image's own: with two images, one image's ls-R would leave the other's files out. Our texmf.cnf lists the tree in
- * TEXMFDBS and TEXMFHOME marks it "!!", so kpathsea looks an add-on's file up in this list and never searches the
- * tree's folders on disk, whether it finds the file or not (with an add-on's thousands of folders, a search on disk
- * for each lookup made a compile up to a hundred times slower).
+ * TEXMFDBS, so kpathsea looks an add-on's files up in this list; TEXMFHOME marks the tree "!!", so kpathsea never
+ * searches its folders on disk, whether it finds the file or not (with an add-on's thousands of folders, a search
+ * on disk for each lookup made a compile up to a hundred times slower). Before the first image there is no ls-R:
+ * the "!!" alone keeps kpathsea off the empty tree, and an empty ls-R would make it warn "No usable entries in
+ * ls-R" in every run.
  */
 function writeExtrasLsR(M: EmscriptenModule): void {
-  const target = `${TEXMF_EXTRA}/ls-R`;
-  if (M.FS.analyzePath(target).exists) {
-    M.FS.unlink(target);
+  for (const name of DATABASE_FILES) {
+    if (M.FS.analyzePath(`${TEXMF_EXTRA}${name}`).exists) {
+      M.FS.unlink(`${TEXMF_EXTRA}${name}`);
+    }
   }
-  M.FS.writeFile(target, lsR(extraFiles));
+  M.FS.writeFile(`${TEXMF_EXTRA}/ls-R`, lsR(extraFiles));
 }
 
 /**
@@ -329,9 +347,7 @@ function stampFolders(M: EmscriptenModule, top: string, time: number): void {
 function mountStatic(M: EmscriptenModule, setup: WorkerSetup): void {
   mountImage(M, setup.image, setup.index);
   M.FS.mkdirTree(TEXMF_EXTRA);
-  if (!mountExtras(M, setup.extras ?? [])) {
-    writeExtrasLsR(M); // no image yet: an empty list, so the tree is never searched on disk
-  }
+  mountExtras(M, setup.extras ?? []);
   M.FS.mkdirTree(CNF_DIR);
   M.FS.writeFile(`${CNF_DIR}/texmf.cnf`, setup.cnfOverride);
   M.FS.writeFile(FONTS_CONF, setup.fontsConf);
@@ -455,6 +471,7 @@ async function prepare(setup: WorkerSetup): Promise<Prepared> {
   const M = await createInstance(setup, push);
   const t1 = performance.now();
   mountStatic(M, setup);
+  speed.install(M);
   const header = M.HEAPU8.slice(0, HEADER_BYTES);
   const t2 = performance.now();
   return { M, header, workerBootMs, instantiateMs: Math.round(t1 - t0), mountMs: Math.round(t2 - t1), readyAt: t2 };
@@ -502,6 +519,11 @@ function filesRead(fls: string, aux: string, job: CompileJob): string[] {
 async function compile(setup: WorkerSetup, message: WorkerJob): Promise<CompileResult> {
   const arrived = performance.now();
   const job = message.job;
+  const jobCpu0 = speed.threadCpuMs();
+  if (speed.PROBE) {
+    const file = job.files.find((f) => f.path === '.speed.json');
+    speed.applyJobSwitches(file ? new TextDecoder().decode(file.data) : null);
+  }
   const prepared = await preparing;
   const { M, header } = prepared;
   const warm = prepared.readyAt <= arrived;
@@ -522,11 +544,28 @@ async function compile(setup: WorkerSetup, message: WorkerJob): Promise<CompileR
   const steps: StepRecord[] = [];
   // One tool: callMain, then the memory is cleared and its first 64 MiB restored (BusyTeX's one-instance pattern,
   // after its busytex_pipeline.js, MIT).
+  const restoreHeap = (): number => {
+    const r0 = performance.now();
+    if (speed.restoreUpper()) {
+      M.HEAPU8.set(header);
+      M.HEAPU8.fill(0, HEADER_BYTES);
+    } else {
+      M.HEAPU8.fill(0);
+      M.HEAPU8.set(header);
+    }
+    return performance.now() - r0;
+  };
   const step = (argv: string[]): number => {
+    // A program always starts on restored memory: with the probe's lazy restore, the previous program's restore
+    // runs here. The flag lives at worker scope, so it would hold across jobs too.
+    const lazyMs = heapDirty ? restoreHeap() : 0;
+    heapDirty = false;
     push(`$ ${argv.join(' ')}`);
     if (M.FS.analyzePath(TEXMFLOG).exists) {
       M.FS.unlink(TEXMFLOG);
     }
+    const before = speed.snapshot();
+    const cpu0 = speed.threadCpuMs();
     const started = performance.now();
     let exitCode: number;
     try {
@@ -535,18 +574,30 @@ async function compile(setup: WorkerSetup, message: WorkerJob): Promise<CompileR
       push(`(the step stopped with ${String(err)})`);
       exitCode = -1;
     }
+    const ran = performance.now();
+    const cpu1 = speed.threadCpuMs();
     M._flush_streams?.();
     const texmflog = readText(M, TEXMFLOG);
     if (texmflog) {
       push(`[TEXMFLOG] ${texmflog}`);
     }
-    steps.push({ argv, exitCode, ms: Math.round(performance.now() - started), heapBytes: M.HEAPU8.length });
-    M.HEAPU8.fill(0);
-    M.HEAPU8.set(header);
+    const record: StepRecord = { argv, exitCode, ms: Math.round(performance.now() - started), heapBytes: M.HEAPU8.length };
+    // Speed probe: with the lazy restore the restore runs before the next program instead, so the last program
+    // of a job (whose worker then exits) skips it.
+    let restoreMs = lazyMs;
+    if (speed.restoreLazy()) {
+      heapDirty = true;
+    } else {
+      restoreMs += restoreHeap();
+    }
+    if (speed.PROBE) {
+      record.probe = { ...speed.delta(before), callMainMs: Math.round((ran - started) * 10) / 10, callMainCpuMs: Math.round((cpu1 - cpu0) * 10) / 10, restoreMs: Math.round(restoreMs * 10) / 10 };
+    }
+    steps.push(record);
     return exitCode;
   };
 
-  const synctex = `-synctex=${job.synctex ? 1 : 0}`;
+  const synctex = `-synctex=${job.synctex ? speed.synctexValue() : 0}`;
   const shell = job.forceShellEscape ? '-shell-escape' : '-no-shell-escape';
   // -file-line-error: errors read "./file.tex:12: message", which the extension's log parser maps to a file
   // and line (docs/DESIGN.md#live-behaviour).
@@ -658,6 +709,18 @@ async function compile(setup: WorkerSetup, message: WorkerJob): Promise<CompileR
     },
     stubs: stubReport(),
     fontCache: fontCache.length > 0 ? fontCache : undefined,
+    ...(speed.PROBE
+      ? {
+          probe: {
+            waitForPrepareMs: Math.round(Math.max(0, prepared.readyAt - arrived)),
+            mountProjectMs: Math.round((t2 - t1) * 10) / 10,
+            resultMs: Math.round((performance.now() - t3) * 10) / 10,
+            mountStaticMs: prepared.mountMs,
+            jobCpuMs: Math.round((speed.threadCpuMs() - jobCpu0) * 10) / 10,
+            ...speed.fileEntries(),
+          },
+        }
+      : {}),
   };
 }
 

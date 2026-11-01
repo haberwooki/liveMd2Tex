@@ -31,7 +31,7 @@ const words = (s) => (s ?? '').split(/\s+/).filter(Boolean);
 const SYSROOT = 'emsdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten';
 
 /**
- * Every input the engine's link may take, by part (the ids are those of engine/engine-notices.next.json's
+ * Every input the engine's link may take, by part (the ids are those of the engine notices manifest's
  * components, the parts THIRD_PARTY_NOTICES.md lists). Paths are relative to the build root; "*" stands for any
  * characters but "/". An archive is matched by its own path, whatever member the link takes from it.
  */

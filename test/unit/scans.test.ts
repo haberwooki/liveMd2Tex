@@ -215,6 +215,13 @@ describe('VSIX scan rules (scripts/vsix-scan.mjs)', () => {
     assert.match(failures[0], /extension\/dist\/extension\.js:1:.*child_process/);
   });
 
+  it('fails a packaged script that holds the speed probe', () => {
+    const entries = base();
+    entries.set('extension/dist/engine-worker.js', Buffer.from("var probe = process.env.LIVEMD2TEX_SPEED_PROBE === '1';\n"));
+    const { failures } = vsix.scanEntries(entries, [], markers);
+    assert.ok(failures.some((f) => /engine-worker\.js: holds the speed probe/.test(f)));
+  });
+
   it('never lets the allow-list allow child_process', () => {
     const entries = base();
     entries.set('extension/x.js', Buffer.from(fork));

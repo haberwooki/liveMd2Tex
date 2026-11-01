@@ -129,7 +129,8 @@ These rules hold for everyone who installs the extension.
   before the core. It keeps images by id, version and content, forgets images that were removed or updated,
   and a worker mounts exactly the images its job lists. TeX finds the images' files in a file list (kpathsea's
   ls-R) that the worker writes for the files it mounted, and never searches the tree's folders on disk, for a
-  file an image has or one no image has. The user's own package folder is still searched on disk.
+  file an image has or one no image has. File names in the images must match exactly, case included, as in the
+  core. The user's own package folder is still searched on disk.
   A Type 1 font file that pdfTeX cannot open counts as
   "not found" too, and so does a font that XeTeX cannot find by name. XeTeX finds an add-on's OpenType and
   TrueType fonts by name, because fontconfig's file names the add-ons' font folders.

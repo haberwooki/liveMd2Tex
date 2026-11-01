@@ -119,6 +119,8 @@ export interface StepRecord {
   ms: number;
   /** Size of the WebAssembly memory after the step. */
   heapBytes: number;
+  /** The speed probe's counters (src/engine-host/engine/speedProbe.ts); absent unless the probe is built in and on. */
+  probe?: Record<string, number>;
 }
 
 export interface CompileTimings {
@@ -176,6 +178,8 @@ export interface CompileResult {
   stubs: StubReport | null;
   /** Engine-internal: a fontconfig cache made by this compile; the engine host keeps it and removes it here. */
   fontCache?: { name: string; data: Uint8Array }[];
+  /** The speed probe's figures for the worker's own phases, ms (speedProbe.ts); absent unless it is built in and on. */
+  probe?: Record<string, number>;
 }
 
 /** A compile that produced nothing: `error` says why (the engine host and its worker both answer with it). */

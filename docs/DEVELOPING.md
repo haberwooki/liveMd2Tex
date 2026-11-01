@@ -126,7 +126,8 @@ pending, and `stage-engine` says it skipped. CI fetches the files before its tes
 - The main file may have spaces or accents in its name, or an upper-case `.TEX`. File names are case-sensitive
   in the preview on every system: `\input{Chapter1}` does not find `chapter1.tex`, even on Windows and macOS.
 - `engine/fonts.conf` gives XeTeX the bundle's OpenType and TrueType folders only; the first XeTeX run writes a
-  fontconfig cache that later compiles reuse.
+  fontconfig cache that later compiles are given. fontconfig does not accept it, though: every XeTeX run rescans
+  the folders and reads every OpenType and TrueType file (measured 2026-10-31; see "Measuring speed").
 - Engine tests can run under VS Code's own Node: set `ELECTRON_RUN_AS_NODE=1` and run
   `"%LOCALAPPDATA%\Programs\Microsoft VS Code\Code.exe" node_modules/mocha/bin/mocha.js --config .mocharc.engine.cjs`.
 - Results go to `../s1_runs/`, outside the repository. For a private document they hold numbers only. The
@@ -227,8 +228,11 @@ node scripts/engine-shakedown.mjs --b ~/engine-out --a busytex --images DATA_PAC
   its packages, or after a "not found" names one of its files, as the extension mounts it (`--extra always` mounts it
   for every compile, to measure its cost; `--extra never` leaves it out; `--host DIR` runs another checkout's engine
   host). It reports pages, error lines, font warnings, embedded fonts, SyncTeX, times and memory, and whether the
-  PDFs match; on B, `\write18` must reach our stub (its log says `runsystem(...)...executed`), and B may not warn
-  where A does not. A speed comparison of two builds measures with it. It runs under today's engine host, which does
+  PDFs match. On B, `\write18` must reach `system()`, which runs nothing: the log says `runsystem(...)...executed`,
+  the command's file does not appear, and the transcript says `system returned with code -1`. (Today's engine
+  answers the same, so the build's import checks, not this case, show that our stub is the one linked.) B may not
+  warn where A does not. A document that gets the add-on after a "not found" is compiled twice, and its time covers
+  both. A speed comparison of two builds measures with it. It runs under today's engine host, which does
   not yet give the engine our font list, so it does not test fonts that LaTeX looks up by name.
 - **Decisions, 2026-10-31.** Fonts by name go through our stand-in, with no fontconfig and no expat. The `-g1` glue
   ships. The collision report is on request only, and the builder checks collisions across the sets mounted together.
@@ -372,6 +376,71 @@ is open; the test window uses its own profile and does not touch yours. One exce
 installing an update in the background, it refuses to start any new window from the same installation until
 you restart VS Code. The launcher detects that state and says so. If the command line ever cannot run the
 tests, run them by hand with F5 (an Extension Development Host); from G0 they also run on CI.
+
+## Measuring speed
+
+The speed tools are in `test/speed/`: the pass rule (`compare.ts`) and the shape of the result files it reads
+(`samples.ts`), the reader of the benchmark's options and its start-load report (`benchArgs.ts`), shared helpers
+(`common.ts`, which holds the measuring lock), the benchmark's six documents (`docs.ts`), CPU profiles
+(`profile.ts`) and a data package unpacker (`unpackData.ts`). None of them knows the engine's file names. The
+benchmark itself, which drives the extension's compile route and writes the result files, and the focused
+experiments come with the engine's own build, which renames the engine's files they start; their commands are
+added here then. `compare.ts` reads result files only.
+
+- The probe (`src/engine-host/engine/speedProbe.ts`) is built in only by `--speed-probe`, which cannot be combined
+  with `--production`. Every other build bundles `speedProbeOff.ts` in its place, in every bundle and for any import
+  path that ends in `speedProbe`; the stand-in does nothing and reads no variable. `test/unit/speedProbe.test.ts`
+  fails if any built script in `dist/` holds the probe, and checks the stand-in's values; the VSIX scan refuses a
+  package whose scripts hold the text `LIVEMD2TEX_SPEED_`. By hand,
+  `node scripts/build.mjs && grep -c LIVEMD2TEX_SPEED dist/engine-worker.js` prints 0. Run `node scripts/build.mjs`
+  again before packaging or before the other tests.
+- In the measuring build the probe still does nothing unless the engine host's environment sets
+  `LIVEMD2TEX_SPEED_PROBE=1` (the benchmark sets it). Its switches (`LIVEMD2TEX_SPEED_RESTORE`, `_SYNCTEX`,
+  `_STACKLIMIT`, `_LZ4SLOTS`, `_FILES`, and a job's `.speed.json` file) are read only then, and a value that is not
+  on a switch's list is ignored. It also fixes the dates (`SOURCE_DATE_EPOCH`), so two runs give the same PDF bytes,
+  and reports the worker's own phases and its thread's CPU time in each step's `probe` record.
+- Compare in pairs: the same text compiled twice, A and B, one after the other, so a busy machine slows both alike.
+  Calibrate first with an A/A run of the same rows and kind, on the same engine, image and host flags as the test's
+  A side, and give that file to `compare.js --band`. A result file records each engine by the hash of its files and
+  each image by the hash of its index file, and the load at the start: the CPU use over two seconds, the free
+  memory, and what a calling script reports in `LIVEMD2TEX_SPEED_START_LOAD`, read at that moment (JSON: `wslLoad`,
+  WSL's one-minute load average; `windowsCpuPct`; `power`). A field of the wrong type stops the benchmark.
+- `compare.js --paired P.json --aim doc:mode,... --band CAL.json` judges a change aimed at a gain. An aimed row
+  passes with at least `--min-pairs` pairs (default 8; 16 to 20 for a gain under 10 %), an even number, B faster in a
+  clear majority (sign test, p at most 0.05), and a median change below minus the band, 3 d/√n, where d comes from
+  the calibration's row (10 % for a row it lacks, which the report names). Any other row fails when its wall median
+  is past the band and either the sign test says B is slower or the CPU median is past its band too. Every pair,
+  set-aside tries included, must give the same PDF, `.aux`, problems list and SyncTeX text (`--outputs-may-differ`
+  lifts this for an engine or data change, but a pair still fails if either side has no PDF, the page counts differ,
+  or B has more errors). A pair is noisy above 40 % machine CPU or below 1,000 MB of free memory, whatever the run
+  was told. `compare.js` also fails a missing CPU time (unless `--no-cpu`), a row with more than half its pairs
+  noisy, a run that started busy or reported no WSL load (`--no-wsl` on a machine without WSL), a two-host row whose
+  hosts started in one order only, and a calibration that is not A/A, pairs the other way, ran under another
+  runtime, engine, image or host flags than the run's A side, started busy, is noisy in more than half its pairs,
+  has a row with fewer than 10 pairs, or has a row that leans (its own sign test is clear either way). The report
+  gives each guard row's band as the slowdown that would pass unseen. The worker's CPU time is reported but is no
+  second witness: on a loaded laptop it grows with the load as wall time does. PASS is necessary, not sufficient. A
+  change gets one full rerun at most, of every row, with a fresh A/A calibration made in the same quiet window and
+  judged by the same rules; it passes only if the rerun passes every row; both runs are reported.
+- A change that only removes work, one of those named in `compare.ts`'s `REMOVES_WORK_TIMERS` (today the restore
+  between programs), is judged with `compare.js --paired P.json --removes-work restoreMs --band CAL.json`, with no
+  aimed row. The timer's entry lists every document and mode the change acts on (for `restoreMs`: all six
+  documents, quick and cold), and says whether the change moves work past the result. `--rows` may add rows, never
+  leave one out. Every row is a guard row, and every other check above applies; each listed row needs at least 16
+  pairs and a calibration row. The timer must be present on both sides (the benchmark writes a missing one as
+  `null`), lower on B in a clear majority of pairs in each listed row, and higher in none; and in each listed row the
+  wall median must show the timer's gain: at most minus that gain (as a share of A's wall time) plus the band, or the
+  work may have moved out of the timed code. When the entry says work moves past the result, the default-pause run
+  is given as `--paired` and a run made with `--pause 0` as `--pause0` (its calibration as `--pause0-band`), and both
+  must pass. The gain claimed is the timer's.
+- Unpaired mode (`compare.js A.json B.json [--a2 A2.json] [--allow 5] [--aim ...]`) is for a B that cannot run beside
+  A. It checks the same outputs, that every row of A and every aimed row is in both files, that no row is slower than
+  `--allow` %, and that each aimed row is faster by more than `--allow` and A's own drift. It has no sign test, no
+  noisy check and no start-load check, so pairs are better whenever B can run beside A.
+- One measurement at a time: the tools take `../speed_runs/.measuring.lock`. Do not measure while a WSL build runs:
+  `compare.js` fails a run that started at a WSL load above 1, however its pairs went. Results go to
+  `../speed_runs/` (outside the repository) or `--out`; the printed tables hold no absolute path. A table pasted into
+  a commit message goes through the marker hook.
 
 ## CI and the public history on GitHub
 
@@ -786,7 +855,10 @@ Tests:
   worker writes for every file it mounted there (`src/engine-host/engine/lsR.ts`): `engine/texmf-override.cnf`
   lists `/texmf-extra` in `TEXMFDBS`, and the worker's `TEXMFHOME` marks it `!!`, so no lookup searches its
   folders on disk (with the add-on's thousands of folders, that search made a compile up to a hundred times
-  slower). The user's package folder, also in `TEXMFHOME`, has no `ls-R` and is searched on disk.
+  slower). The `!!` alone keeps kpathsea off the tree; the worker writes no `ls-R` before the first image, since
+  an empty one makes kpathsea warn in every run. An image's own `ls-R`, `ls-r` and `aliases` at its top are not
+  kept (an alias table would apply to every tree). A lookup in `ls-R` is exact, so file names must match in case,
+  as in the core. The user's package folder, also in `TEXMFHOME`, has no `ls-R` and is searched on disk.
 - **"Add a package from a file"** takes a `.sty`, `.cls` (with their small files), a `.dtx` with its `.ins`, or a
   CTAN `.zip`. A `.ins` runs on the bundled engine (docstrip, in memory), as a job of the compile scheduler, so a
   live compile and the build never cancel each other. The result goes into the user's package folder under VS
