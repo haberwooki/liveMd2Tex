@@ -2,7 +2,8 @@
 // M4, M6, F2-S1, L2-01, L2-03 and L2-06): README.md and THIRD_PARTY_NOTICES.md give this version's tag as its source,
 // a package with the engine brings the engine's source archives, a data package the snapshot archives its
 // licences.json lists, and every file is checked before it is attached: its hash, a commit archive's files against
-// the commit's tree, TeXlyre's Makefile against the manifest, a data archive against the pinned package database.
+// the commit's tree, a data archive against the pinned package database; and the packaged engine against its build
+// record, which also says where our build scripts' source is.
 
 import * as assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
@@ -23,7 +24,7 @@ interface Lib {
   curlConfig(groups: Record<string, Source[]>, dir: string, bundlePins: unknown): string;
   gitList(groups: Record<string, Source[]>): string;
   treeDifferences(entries: Entry[], lsTree: string): string[];
-  makefileDifferences(entries: Entry[], makefile: { sha256: string; lines: Record<string, string> }): string[];
+  buildManifestDifferences(wasmSha256: string, record: unknown, pins: unknown, sources: { commit?: string }[], treeSha256: string): { problems: string[]; scriptsSource: { from: string; tag?: string; commit?: string; why?: string } };
   checkSources(groups: Record<string, Source[]>, dir: string, context?: unknown): { problems: string[]; notes: string[] };
 }
 
@@ -86,7 +87,7 @@ describe('the sources a release carries (scripts/release-sources.mjs)', () => {
     const main = new Map([
       ['extension/package.json', Buffer.from(JSON.stringify({ name: 'livemd2tex', version: '1.2.3' }))],
       ['extension/dist/extension.js', Buffer.from('')],
-      ['extension/dist/engine/busytex.wasm', Buffer.from('')],
+      ['extension/dist/engine/engine.wasm', Buffer.from('')],
       // vsce stores README.md under this name.
       ['extension/readme.md', readme],
     ]);
@@ -99,7 +100,9 @@ describe('the sources a release carries (scripts/release-sources.mjs)', () => {
     const groups = lib.releaseSources(new Map([['main.vsix', main], ['core.vsix', dataPackage(licences)]]), 'v1.2.3', notices, bundlePins);
     assert.deepEqual(Object.keys(groups), ['core-data', 'engine']);
     const byName = (a: string[], b: string[]) => (a[0] < b[0] ? -1 : 1);
-    assert.deepEqual(groups.engine.map((s) => [s.name, s.url, s.sha256]), notices.sources.map((s: Source) => [s.name, s.url, s.sha256]).sort(byName));
+    // The two archives; the third source, our build scripts, is the tag itself (buildManifestDifferences, below).
+    assert.deepEqual(groups.engine.map((s) => [s.name, s.url, s.sha256]), notices.sources.filter((s: Source) => s.url).map((s: Source) => [s.name, s.url, s.sha256]).sort(byName));
+    assert.equal(groups.engine.length, 2);
     assert.deepEqual(groups['core-data'].map((s) => [s.name, s.sha512, s.for]), [
       ['cm-super.source.tar.xz', 'cd', ['core.vsix: cm-super (source)']],
       ['cm-super.tar.xz', 'ab', ['core.vsix: cm-super (run)']],
@@ -130,12 +133,26 @@ describe('the sources a release carries (scripts/release-sources.mjs)', () => {
     assert.deepEqual(lib.treeDifferences(tar.readTar(tarOf({ 'a.c': 'int a;\n' })), tree), ['tools/run.bat: in the commit, not in the archive']);
   });
 
-  it("checks TeXlyre's Makefile against the manifest's hash and link lines (L2-01)", () => {
-    const makefile = 'one\nOBJ = a.o\nthree\n';
-    const entries = tar.readTar(tarOf({ Makefile: makefile }));
-    assert.deepEqual(lib.makefileDifferences(entries, { sha256: sha('sha256', makefile), lines: { 2: 'OBJ = a.o' } }), []);
-    assert.deepEqual(lib.makefileDifferences(entries, { sha256: '0'.repeat(64), lines: { 2: 'OBJ = b.o' } }), [`Makefile: SHA-256 ${sha('sha256', makefile)} is not the manifest's ${'0'.repeat(64)}`, "Makefile line 2 is not the manifest's copy"]);
-    assert.deepEqual(lib.makefileDifferences(tar.readTar(tarOf({ 'src/Makefile': '' })), { sha256: '', lines: {} }), ['the archive has no Makefile at its top']);
+  it('checks the packaged engine against its build record and pin, and names where our build scripts\' source is', () => {
+    const record = JSON.parse(readFileSync(path.join(root, 'engine', 'engine-build.json'), 'utf8'));
+    const pins = JSON.parse(readFileSync(path.join(root, 'engine', 'pins.json'), 'utf8'));
+    const wasm = record.outputs.wasm.sha256 as string;
+    const tree = record.build.scripts.treeSha256 as string;
+    const sources = [{ commit: record.inputs.texLive.commit }, { commit: record.inputs.emscripten.commit }];
+    // Today's files: the engine is the recorded and pinned one, built from the two archives' commits.
+    const same = lib.buildManifestDifferences(wasm, record, pins, sources, tree);
+    assert.deepEqual(same, { problems: [], scriptsSource: { from: 'tag' } });
+    // The scripts changed after the build without a rebuild: the engine release that built it is their source.
+    const changed = lib.buildManifestDifferences(wasm, record, pins, sources, '0'.repeat(64));
+    assert.deepEqual(changed.problems, []);
+    assert.equal(changed.scriptsSource.from, 'engine release');
+    assert.equal(changed.scriptsSource.commit, record.build.scripts.commit);
+    assert.match(changed.scriptsSource.why ?? '', /give the tree hash 0{64}, the build's was/);
+    // Another engine, another pin, or an archive of another commit: problems.
+    assert.match(lib.buildManifestDifferences('1'.repeat(64), record, pins, sources, tree).problems.join('\n'), /packaged engine\.wasm .* is not the one engine\/engine-build\.json records/);
+    const otherPin = { sources: [{ id: 'livemd2tex-engine', files: [{ name: 'engine.wasm', sha256: '2'.repeat(64) }] }] };
+    assert.match(lib.buildManifestDifferences(wasm, record, otherPin, sources, tree).problems.join('\n'), /is not the one engine\/pins\.json pins/);
+    assert.match(lib.buildManifestDifferences(wasm, record, pins, sources.slice(0, 1), tree).problems.join('\n'), /Emscripten's commit .* which no source archive/);
   });
 
   it('checks every download: its hash, a commit archive by its tree, a data archive against the pinned tlpdb', async () => {

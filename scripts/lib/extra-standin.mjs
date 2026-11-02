@@ -1,8 +1,8 @@
-// Development tool: the stand-in for the "Extra packages" add-on (livemd2tex-extra-data, docs/DESIGN.md#store-and-packaging and
-// 5.5) until B1 builds the real one on CI. It holds one package the interim image lacks, REVTeX 4.2 (class, .rtx
-// options, .sty helpers and .bst styles), taken unchanged from the pinned CTAN file revtex.tds.zip, so that a
-// corpus document (P2) can go from "revtex4-2.cls is not inside" to a PDF through the Install Extra Packages
-// route. Never published; tests and the throwaway profile only.
+// Development tool: a made-up stand-in for the "Extra packages" add-on (livemd2tex-extra-data,
+// docs/DESIGN.md#store-and-packaging) for the engine tests. test/engine/m6.test.ts writes one and changes its
+// manifest, to check that a data set built for another engine or TeX Live year is refused with one plain message.
+// It holds one package, REVTeX 4.2 (class, .rtx options, .sty helpers and .bst styles), taken unchanged from the
+// pinned CTAN file revtex.tds.zip. Never published; tests only. The VS Code tests install the real add-on.
 //
 // It ships the way every data extension must (build gate 2, G2E-02; the contract is DataManifest in
 // src/extension/engine/dataSets.ts): one image (data/extra.data with data/extra.index.json, built by
@@ -23,8 +23,8 @@ function pins(root) {
 
 /** The engine ABI the data must match: the SHA-256 of the pinned engine WebAssembly. */
 export function engineAbi(root) {
-  const tl = pins(root).sources.find((s) => s.id === 'texlyre-busytex');
-  return tl.files.find((f) => f.name === 'busytex.wasm').sha256;
+  const engine = pins(root).sources.find((s) => s.id === 'livemd2tex-engine');
+  return engine.files.find((f) => f.name === 'engine.wasm').sha256;
 }
 
 /** The stand-in's texmf files (texmf-relative path -> bytes), from the pinned REVTeX zip after its SHA-256 check. */
@@ -46,7 +46,8 @@ export function standinFiles(root) {
 
 /**
  * Writes the stand-in data extension into `target` (an empty folder): package.json, README.md, LICENSE.txt,
- * data/manifest.json, data/extra.data and data/extra.index.json. scripts/build-extra-standin.mjs packages it.
+ * data/manifest.json, data/extra.data and data/extra.index.json. The engine tests use it as a data set built for
+ * another engine or TeX Live year.
  */
 export function writeStandinFolder(root, target) {
   const files = standinFiles(root);
@@ -90,7 +91,7 @@ export function writeStandinFolder(root, target) {
   return { manifest, files: files.size };
 }
 
-/** The stand-in's manifest: the same shape as the interim core manifest's (format 1). */
+/** The stand-in's manifest: the same shape as a data set's manifest (format 1). */
 export function standinManifest(root) {
   const files = standinFiles(root);
   const index = buildPackageIndex([...files.keys()], (rel) => files.get(rel).toString('latin1'));

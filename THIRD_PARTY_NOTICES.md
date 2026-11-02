@@ -7,15 +7,17 @@ those files' terms (see "The data packages" below). The package's shape is in do
 
 ## This version and its source
 
-The extension as a whole is released under GPL-3.0-or-later (see `LICENSE`). Its `package.json` declares
-`GPL-3.0-or-later AND AGPL-3.0-only` because TeXlyre's BusyTeX build (its JavaScript glue and the engine
-WebAssembly) keeps its AGPL-3.0 terms inside the combined work. Copyright (C) 2026 the liveMd2Tex authors
-(`AUTHORS.md` in the repository says who they are).
+Our own code is GPL-3.0-or-later (see `LICENSE`), and `package.json` declares `GPL-3.0-or-later`. The TeX engine
+as a whole can be passed on under GPL-3.0, because one of its parts, xpdf, allows GPL-2.0 or GPL-3.0 and no later
+version. Each part of the engine keeps its own terms ("Inside the engine"). No program code under the AGPL ships.
+Some TeX packages in the Extra Packages add-on stay under the AGPL; they are files TeX reads, and the add-on ships
+their licence text ("The data packages"). Copyright (C) 2026 the liveMd2Tex authors (`AUTHORS.md` in the
+repository says who they are).
 
 The source code of each release is the tag of its version in this repository: for this version, the tag `v0.0.1`
 of https://github.com/haberwooki/liveMd2Tex. Each release is tagged `v<version>`, with the version in
 `package.json`, on the commit its packages are built from, and its page links the tag's tree. That tree holds the
-whole source, with our changes to the engine's glue in `engine/patches/`. The release workflow
+whole source, with the engine's build in `engine/build/`. The release workflow
 (`.github/workflows/release-sources.yml`) checks the tag against the package's version and its README, and
 attaches the sources of the engine and of the data packages' GPL files to the release ("The engine's source",
 "The data packages").
@@ -33,18 +35,19 @@ The build fills `dist/licenses/` with:
 - the licence file of every npm package bundled into a shipped file, found through esbuild's metafile
   (`dist/licenses/INDEX.txt` lists them);
 - the full texts of the licences, from `LICENSES/`: the GPL-3.0 (a copy of `LICENSE`); the GPL-2.0, LGPL-2.1,
-  LGPL-3.0, AGPL-3.0, Apache-2.0 and MIT texts from the SPDX licence list, v3.27.0; and the LPPL 1.3c as the LaTeX
+  LGPL-3.0, Apache-2.0 and MIT texts from the SPDX licence list, v3.27.0; and the LPPL 1.3c as the LaTeX
   Project publishes it (https://www.latex-project.org/lppl/lppl-1-3c.txt), since the LPPL allows only verbatim
   copies of itself and SPDX's copy has the version 1.3 appendix;
-- ICU's licence (`ICU.txt`, ICU's own LICENSE file from release 78.2) and MakeIndex's notice (`MakeIndex.txt`,
-  from TeX Live's sources), for the two built into the engine;
+- ICU's licence (`ICU.txt`, ICU's own LICENSE file from release 78.2), for the ICU built into the engine;
 - the CC0 1.0 Universal legal code (`CC0-1.0.txt`: Creative Commons' own plain text,
   https://creativecommons.org/publicdomain/zero/1.0/legalcode.txt, byte for byte, which is also SPDX's);
 - `dist/licenses/engine/`: the notice of every part of the engine that asks for one, each taken from that part's
   own source at the version the engine builds ("Inside the engine" below).
 
-The test copy adds `dist/data/fonts/LICENSE` (DejaVu) and `dist/data/licenses/` (TeX Live's and CTAN's licence
-notes and the LPPL, copied out of the image). A "Licences" command that shows them comes before the first release.
+`LICENSES/` also holds the AGPL-3.0 text and MakeIndex's notice (from TeX Live's sources), which only the data
+packages ship, for some of their TeX packages; nothing in the extension is under them. The test copy adds
+`dist/data/LICENSES/`: core-data's licence texts and its `INDEX`, which names each package's files ("In the test
+copy"). A "Licences" command that shows them comes before the first release.
 
 ## PDF.js
 
@@ -78,7 +81,7 @@ row's licence is the `license` field of the package's `package.json` and its `LI
 | linkify-it 6.1.0, mdurl 2.1.0, uc.micro 3.0.0, punycode.js 2.3.1 | | MIT | markdown-it's link and Unicode helpers | https://github.com/markdown-it |
 | entities | 8.1.0 | BSD-2-Clause | markdown-it's HTML entity tables | https://github.com/fb55/entities |
 | yaml | 2.9.1 | ISC | YAML front matter | https://github.com/eemeli/yaml |
-| isomorphic-git (only the read commands: resolveRef, readBlob, readCommit, currentBranch; the network commands are left out of the bundle) | 1.42.5 | MIT | the Git reader | https://github.com/isomorphic-git/isomorphic-git |
+| isomorphic-git (only the read commands: resolveRef, readBlob, readCommit, currentBranch, expandOid; the network commands are left out of the bundle) | 1.42.5 | MIT | the Git reader | https://github.com/isomorphic-git/isomorphic-git |
 | isomorphic-git's `path.join` code, copied by isomorphic-git from @zenfs/core (Copyright (c) James Prevett and other ZenFS contributors) | 1.42.5 | LGPL-3.0-or-later (`dist/licenses/LGPL-3.0.txt`) | the Git reader's path joining, inside `dist/extension.js` | https://github.com/zen-fs/core |
 | pako | 1.0.11 | MIT AND Zlib (`dist/licenses/pako.txt`: pako's MIT licence, then the zlib notice of Jean-loup Gailly and Mark Adler, as pako's `lib/zlib/` files state it) | isomorphic-git: zlib inflate of Git objects | https://github.com/nodeca/pako |
 | sha.js | 2.4.12 | MIT AND BSD-3-Clause | isomorphic-git: SHA-1 | https://github.com/browserify/sha.js |
@@ -91,53 +94,36 @@ rechecks every row before a release.
 
 ## The TeX engine (`dist/engine/`)
 
-The engine ships in the extension's own package, in `dist/engine/`: `busytex.wasm` (the engine WebAssembly) and
-`busytex.js` (its JavaScript glue, patched), both from TeXlyre's BusyTeX build 46ebb62, with our engine
-configuration (`texmf-override.cnf`, `fonts.conf`; GPL-3.0-or-later). The data packages carry no code, so the
-engine is never in them. `node scripts/vsix-scan.mjs --with-engine` builds the package with the engine; the
-plain package of the other scans leaves it out.
+The engine ships in the extension's own package, in `dist/engine/`: `engine.wasm` (the engine WebAssembly) and
+`engine.js` (its JavaScript glue), with our engine configuration (`texmf-override.cnf`; GPL-3.0-or-later). It
+holds pdfTeX, XeTeX, xdvipdfmx and bibtex8 with kpathsea and the libraries they need, and nothing else. This
+repository builds it (`engine/build/`) from TeX Live's source with Emscripten. `engine/pins.json` pins its release,
+`engine-6a30018-4` of this repository, by each file's address, size and SHA-256. That release also holds the
+build's record (`engine-build.json`), every notice below, a `NOTICE` that lists the parts, and the source ("The
+engine's source"). The data packages carry no code, so the engine is never in them. `node scripts/vsix-scan.mjs
+--with-engine` builds the package with the engine; the plain package of the other scans leaves it out.
 
-TeXlyre-BusyTeX: Copyright (c) 2026 Fares Abawi (TeXlyre), AGPL-3.0; based on BusyTeX by Vadim Kantorov, MIT.
-TeXlyre's NOTICE ships as `dist/licenses/engine/TeXlyre-BusyTeX-NOTICE.txt`. It reads:
-
-```
-TeXlyre-BusyTeX
-Copyright (c) 2026 [Fares Abawi](https://abawi.me)
-
-This project is based on BusyTeX (https://github.com/busytex/busytex)
-Original BusyTeX work is MIT licensed.
-
-Modifications (AGPL-3.0 licensed) include:
-- Fixes LuaHBTeX build (broken in upstream BusyTeX since TeXlive 2022)
-- Fixes to TeXlive 2026 build process
-- Adds SyncTeX detection
-- Adds TeXlive package and font hosting for download
-- Adds multilingual hyphenation formatting to all engines
-```
-
-Our changes to the glue. `dist/engine/busytex.js` is TeXlyre's `busytex.js` with our patches, which close every
-route out of the engine (no shell, no network fetch, no socket). Its first lines say that it was modified, by
-whom and on which date, keep TeXlyre's copyright and licence notice, release the modified file under the AGPL-3.0
-and name the patches (AGPL-3.0 section 5(a) and (b)). Each change is marked "PATCHED". The patches are
-`engine/patches/busytex-glue.mjs`, with the diff `engine/patches/busytex.js.diff`, at the release's tag. The
-patched glue ships as readable JavaScript, so the shipped file is its own source.
+The glue is Emscripten's own output, unchanged: Emscripten's runtime, written by `emcc` with the flags that
+`engine-build.json` records. Its source is Emscripten's `src/` at the pinned commit ("The engine's source"). It holds
+one `fetch` and four `XMLHttpRequest` lines that the engine never reaches: the `fetch` runs only outside Node, and
+the others serve lazily loaded files, which the engine never makes. The VSIX scan lists each of these lines as
+reviewed (`security/vsix-scan-allowlist.json`, pinned to the glue's SHA-256).
 
 ### Inside the engine
 
-Every archive and object that TeXlyre's Makefile links into `busytex.wasm` belongs to one row below: its link line
-(Makefile line 376) and the object lists it names (lines 77 to 86). `engine/engine-notices.json` holds a copy of
-those lines, and `test/unit/engineNotices.test.ts` checks every file they link against the rows, in both
-directions. The test reads the manifest's copy. It also checks that the manifest names the TeXlyre commit and
-release that `engine/pins.json` pins, so a new engine pin fails it until the manifest is updated. The release check
-(`scripts/release-sources.mjs`) compares the copy with the Makefile inside TeXlyre's archive at that commit, by the
-Makefile's SHA-256 and line by line. The versions are from TeX Live's `libs/*/version.ac` at tag texlive-2026.0 and
-TeXlyre's `versions.txt`. Each notice file is the part's own, copied from its source at that version
-(`engine/engine-notices.json` pins each one). `scripts/vsix-scan.mjs` fails a package with the engine that lacks
-one, or holds one with other bytes.
+Every input of the engine's link belongs to one row below. The build maps each input to its part
+(`engine/build/tools/link-report.mjs`, `LINK_PARTS`) and fails on an input that no part claims or that belongs to a
+dropped part. `engine/engine-build.json` records the map by part (`linkMap`). `test/unit/engineNotices.test.ts`
+checks that each row's links are its part's, and that every part of the recorded map is a row. The versions are
+from TeX Live's `libs/*/version.ac` at the pinned commit and from Emscripten's release. Each notice file is the
+part's own, copied from its source at that version (`engine/engine-notices.json` pins each one).
+`scripts/vsix-scan.mjs` fails a package with the engine that lacks one, or holds one with other bytes. The same
+files ship in the engine release, and its `NOTICE` is written from the same manifest
+(`node scripts/lib/engine-notices.mjs --release-notice`).
 
 Below the link line. A linked library can hold code by other authors under terms of their own.
 `scripts/engine-notice-search.mjs` helps a person find it; it is an aid to reading, not a proof. It searches the
-compiled sources of every linked library, in the four source archives below, for licence clauses that match its
+compiled sources of every linked library, in TeX Live's source archive below, for licence clauses that match its
 patterns: written out ("Permission is hereby granted", "Redistribution and use in source and binary forms"),
 stated by reference ("Released under", "licensed under", "See Copyright Notice in", SPDX lines), and public-domain
 dedications. What it guarantees is this: every clause that matches one of its patterns, on one line or across two
@@ -152,9 +138,9 @@ before "public domain" in the same sentence (the guard stops at "." and ";"). Th
 or why it is not compiled for the engine. What the search does not see is for a person to find: words that none
 of its patterns knows, a clause split over three lines or more, a holder more than 25 lines above its clause, a
 denial of a dedication in other words, and a second author's grant of the same kind with no copyright line of its
-own, which is checked against the first author's holder above it. So on every change of the engine pin a person
-reads the search's new hits and its rules before a release (docs/DEVELOPING.md). The search of 2026-10-26 found
-these, and their notices ship:
+own, which is checked against the first author's holder above it. So whenever the engine is built from new
+sources, a person reads the search's new hits and its rules before a release (docs/DEVELOPING.md). The search
+found these, and their notices ship (its run of 2026-11-01 on the pinned commit found no new hit):
 - pplib's SHA-2 code (`util/utilsha.c`, Aaron D. Gifford, BSD-3-Clause) and MD5 code (`util/utilmd5.c`, L. Peter
   Deutsch, Zlib-style);
 - the Mersenne Twister in xdvipdfmx (`mt19937ar.c`, Makoto Matsumoto and Takuji Nishimura, BSD-3-Clause);
@@ -162,154 +148,120 @@ these, and their notices ship:
   State University; MIT), and the PCF driver's `pcfutil.c` (The Open Group, X11 terms);
 - in HarfBuzz, `hb-ucd.cc` (Grigori Goronzy, ISC), the fasthash function in `hb-algs.hh` (Zilong Tan, MIT) and
   Elie Roux's copyright line in the BASE table, which HarfBuzz's COPYING does not list;
-- IBM's decNumber in MetaPost's `libmputil` (Copyright (c) IBM Corporation, the ICU License 1.8.1);
-- one more copyright line each in XeTeX (`XeTeX_web.h`, Peter Breitenlohner), in LuaTeX's `texluac.c` (Taco
-  Hoekwater, MIT), in SyncTeX's LuaTeX glue (Taco Hoekwater), in FontForge's `stemdb.c` (Alexey Kryukov) and in
-  fontconfig's `fcmatrix.c` (Tuomas J. Lukka);
-- Expat's per-file copyright lines, which name more contributors than its COPYING.
+- one more copyright line in XeTeX (`XeTeX_web.h`, Peter Breitenlohner).
 
-DynASM's notice (`dynasm/dasm_x86.h` and `dynasm.lua`, Mike Pall, MIT) was added from a review, not found by the
-search: DynASM's headers state their licence by reference, which the first search did not read. The search now
-reads them, and covers them by that notice. On wasm32, luaffi builds only TeX Live's stub `luaopen_ffi` (its
-`ffi.h` finds no supported architecture, so `ffi.c` compiles the stub), and none of luaffifb's own code or of
-DynASM's is in `busytex.wasm`: none of their strings is in it, and `scripts/vsix-scan.mjs` fails an engine that
-holds one. Their notices ship all the same.
+Two more notices come from other checks. XeTeX's image readers are under the GPL, not XeTeX's MIT terms
+(`XeTeX-image-notice.txt`; see the notes below). And some files of musl, the C library inside Emscripten, carry
+terms of their own; `musl-file-notices.txt` holds the header of each such file that the engine links. The build
+lists the linked members of `libc.a` from the link map and fails when one of them has a notice that the file does
+not hold (`link-report.mjs musl`).
 
 | Part | Version | Licence | Notices in the package |
 |---|---|---|---|
-| TeXlyre-BusyTeX build (busytex.c changes, kpse_remote.c, font_index.cpp, the JavaScript glue); Copyright (c) 2026 Fares Abawi (TeXlyre) | build 46ebb62 | AGPL-3.0-only | `dist/licenses/engine/TeXlyre-BusyTeX-NOTICE.txt`, `dist/licenses/AGPL-3.0.txt` |
-| BusyTeX (the original BusyTeX build, which TeXlyre-BusyTeX is based on); by Vadim Kantorov, who made 2,046 of its 2,069 contributions on GitHub (read 2026-10-26); its README states the MIT licence, and BusyTeX has no LICENSE file | main eb36aae (the commit its README was read at) | MIT | `dist/licenses/engine/BusyTeX-README-License.txt`, `dist/licenses/MIT.txt` |
 | pdfTeX | TeX Live 2026 | GPL-2.0-or-later | `dist/licenses/GPL-2.0.txt`, `dist/licenses/GPL-3.0.txt` |
-| XeTeX (and XeTeX_web.h's further copyright line, Peter Breitenlohner) | TeX Live 2026 | MIT/X11 | `dist/licenses/engine/XeTeX-COPYING.txt`, `dist/licenses/engine/XeTeX-web-notice.txt` |
-| LuaHBTeX (LuaTeX with HarfBuzz; the engine host runs it in ini mode only, and liveMd2Tex offers no LuaLaTeX) | TeX Live 2026 | GPL-2.0-or-later; its hyphenation code (lang/hyphen.c, lang/hnjalloc.c) is derived from LibHnj, under the GNU Library GPL version 2 or later, or the MPL: LGPL code inside a GPL program | `dist/licenses/engine/LuaTeX-notice.txt`, `dist/licenses/GPL-2.0.txt`, `dist/licenses/GPL-3.0.txt`, `dist/licenses/engine/LuaTeX-texluac-notice.txt`, `dist/licenses/LGPL-2.1.txt` |
-| MetaPost library (mplib), inside LuaHBTeX, with IBM's decNumber | TeX Live 2026 | LGPL-3.0-or-later (its source is public domain; the executables are under the LGPL); decNumber: Copyright (c) IBM Corporation, the ICU License 1.8.1 (in ICU.txt, 'ICU License - ICU 1.8.1 to ICU 57.1') | `dist/licenses/engine/MetaPost-notice.txt`, `dist/licenses/engine/MetaPost-lmplib-notice.txt`, `dist/licenses/LGPL-3.0.txt`, `dist/licenses/GPL-3.0.txt`, `dist/licenses/engine/MetaPost-decNumber-notice.txt`, `dist/licenses/ICU.txt` |
-| FontForge's code in LuaTeX (libff, LuaTeX's font loader; unilib), by George Williams, and in stemdb.c with Alexey Kryukov | TeX Live 2026 | BSD-3-Clause (George Williams) | `dist/licenses/engine/FontForge-LICENSE.txt`, `dist/licenses/engine/FontForge-unilib-notice.txt`, `dist/licenses/engine/FontForge-stemdb-notice.txt` |
-| luaharfbuzz | TeX Live 2026 | MIT | `dist/licenses/engine/luaharfbuzz-LICENSE.txt` |
-| LuaTeX's Lua libraries: LuaFileSystem, LPeg 1.0.1, LuaZip, lzlib, slnunicode, luamd5 | TeX Live 2026 | MIT; slnunicode: the Lua 5.0 licence (MIT) and Tcl's terms; luamd5 states none in TeX Live's copy | `dist/licenses/engine/LuaFileSystem-LICENSE.txt`, `dist/licenses/engine/LPeg-notice.txt`, `dist/licenses/engine/LuaZip-notice.txt`, `dist/licenses/engine/lzlib-README.txt`, `dist/licenses/engine/slnunicode-notice.txt`, `dist/licenses/MIT.txt` |
-| LuaSocket (compiled in; the engine host never uses it) | TeX Live 2026 | MIT | `dist/licenses/engine/luasocket-LICENSE.txt` |
-| luaffi: Facebook's luaffifb, which contains James R. McKaskill's luaffi. On wasm32 luaffi builds only TeX Live's stub luaopen_ffi, so neither luaffifb's own code nor DynASM (Mike Pall) is in busytex.wasm; their notices ship all the same | TeX Live 2026 | BSD-3-Clause (Copyright (c) 2015, Facebook, Inc.) AND MIT (Copyright (c) 2011 James R. McKaskill), as its LICENSE gives them; its PATENTS file is Facebook's 'Additional Grant of Patent Rights Version 2'; DynASM: MIT | `dist/licenses/engine/luaffi-LICENSE.txt`, `dist/licenses/engine/luaffi-PATENTS.txt`, `dist/licenses/engine/luaffi-dynasm-notice.txt` |
-| Lua | 5.3.6 | MIT | `dist/licenses/engine/Lua-notice.txt` |
+| XeTeX (and XeTeX_web.h's further copyright line, Peter Breitenlohner) | TeX Live 2026 | MIT/X11; its image readers (xetexdir/image/*.c, built by texk/web2c/xetexdir/am/xetex.am) are GPL-2.0-or-later, Copyright SIL International (Jonathan Kew), derived from dvipdfmx (Jin-Hwan Cho, Shunsaku Hirata, Mark A. Wicks) | `dist/licenses/engine/XeTeX-COPYING.txt`, `dist/licenses/engine/XeTeX-web-notice.txt`, `dist/licenses/GPL-2.0.txt`, `dist/licenses/engine/XeTeX-image-notice.txt` |
 | web2c's library and TeX's own code (TeX, e-TeX) | TeX Live 2026 | Knuth's terms and web2c's (permissive) | none needed |
 | libmd5 (L. Peter Deutsch, Aladdin Enterprises) | TeX Live 2026 | Zlib-style | `dist/licenses/engine/libmd5-notice.txt` |
-| SyncTeX (Jérôme Laurens; its LuaTeX glue by Taco Hoekwater) | TeX Live 2026 | MIT | `dist/licenses/engine/SyncTeX-notice.txt`, `dist/licenses/engine/SyncTeX-luatex-notice.txt` |
+| SyncTeX (Jérôme Laurens) | TeX Live 2026 | MIT | `dist/licenses/engine/SyncTeX-notice.txt` |
 | bibtex8 | TeX Live 2026 | GPL-1.0-or-later | `dist/licenses/GPL-2.0.txt`, `dist/licenses/GPL-3.0.txt` |
 | xdvipdfmx (dvipdfmx), with the Mersenne Twister (Makoto Matsumoto and Takuji Nishimura) | TeX Live 2026 | GPL-2.0-or-later; mt19937ar.c: BSD-3-Clause; the MD5, SHA-256, SHA-384/512 and ARC4 code in dpxcrypt.c comes from libgcrypt (LGPL-2.1-or-later, Free Software Foundation): LGPL code inside a GPL program | `dist/licenses/GPL-2.0.txt`, `dist/licenses/GPL-3.0.txt`, `dist/licenses/engine/xdvipdfmx-mt19937ar-notice.txt`, `dist/licenses/LGPL-2.1.txt` |
-| MakeIndex | TeX Live 2026 | MakeIndex Distribution Notice | `dist/licenses/MakeIndex.txt` |
-| kpathsea, with kpsewhich, kpsestat, kpseaccess and kpsereadlink | TeX Live 2026 | LGPL-2.1-or-later | `dist/licenses/LGPL-2.1.txt` |
+| kpathsea (the library only) | TeX Live 2026 | LGPL-2.1-or-later | `dist/licenses/LGPL-2.1.txt` |
 | HarfBuzz (with hb-subset), with Grigori Goronzy's hb-ucd.cc, Zilong Tan's fasthash, and Elie Roux's line in its BASE table | 12.3.2 | Old MIT; hb-ucd.cc: ISC; fasthash (in hb-algs.hh): MIT; its Unicode data tables: the Unicode License V3, in ICU.txt | `dist/licenses/engine/HarfBuzz-COPYING.txt`, `dist/licenses/engine/HarfBuzz-ucd-notice.txt`, `dist/licenses/engine/HarfBuzz-fasthash-notice.txt`, `dist/licenses/engine/HarfBuzz-base-notice.txt`, `dist/licenses/ICU.txt` |
 | Graphite2 | 1.3.14 | LGPL-2.1-or-later (or MPL-2.0 or GPL-2.0-or-later); the LGPL taken | `dist/licenses/engine/graphite2-COPYING.txt`, `dist/licenses/LGPL-2.1.txt` |
 | TECkit | 2.5.13 | LGPL-2.1-or-later (or CPL-0.5); the LGPL taken | `dist/licenses/engine/TECkit-LICENSING.txt`, `dist/licenses/LGPL-2.1.txt` |
 | FreeType, with its BDF and PCF drivers and its hash code (Francesco Zappa Nardelli; Computing Research Labs, New Mexico State University; The Open Group) | 2.14.1 | GPL-2.0-or-later: the GPL option of FreeType's dual licence (FTL or GPL-2.0-or-later), since the engine also holds GPL code; the BDF and PCF drivers and fthash: MIT, and pcfutil.c: The Open Group's X11 terms | `dist/licenses/engine/FreeType-LICENSE.txt`, `dist/licenses/engine/FreeType-FTL.txt`, `dist/licenses/GPL-2.0.txt`, `dist/licenses/engine/FreeType-bdf-notice.txt`, `dist/licenses/engine/FreeType-fthash-notice.txt`, `dist/licenses/engine/FreeType-pcf-notice.txt`, `dist/licenses/engine/FreeType-pcfutil-notice.txt` |
 | libpng | 1.6.55 | libpng-2.0 | `dist/licenses/engine/libpng-LICENSE.txt` |
 | zlib | 1.3.2 | Zlib | `dist/licenses/engine/zlib-LICENSE.txt` |
-| zziplib | 0.13.72 | LGPL-2.0-or-later (or MPL-1.1); the LGPL taken | `dist/licenses/engine/zziplib-README-COPYING.txt`, `dist/licenses/engine/zziplib-COPYING.LIB.txt` |
 | pplib (Paweł Jackowski), used by LuaTeX and XeTeX | 2.05.0 | pplib's own files state no licence: recorded as shipped as part of LuaTeX, under LuaTeX's terms (GPL-2.0-or-later). Two of its files state their authors' terms: util/utilsha.c (SHA-2, Aaron D. Gifford): BSD-3-Clause; util/utilmd5.c (MD5, L. Peter Deutsch, Aladdin Enterprises): Zlib-style | `dist/licenses/GPL-2.0.txt`, `dist/licenses/engine/pplib-utilsha-notice.txt`, `dist/licenses/engine/pplib-utilmd5-notice.txt` |
 | xpdf (its PDF reading code, used by pdfTeX) | 4.06 | GPL-2.0 or GPL-3.0 | `dist/licenses/engine/xpdf-README.txt`, `dist/licenses/GPL-2.0.txt`, `dist/licenses/GPL-3.0.txt` |
 | ICU (and its data file, icudt78l.dat) | 78.2 | Unicode-3.0 | `dist/licenses/ICU.txt` |
-| fontconfig (and fcmatrix.c's notice, Tuomas J. Lukka) | 2.13.96 (the tarball TeXlyre hosts) | HPND (MIT-style) | `dist/licenses/engine/fontconfig-COPYING.txt`, `dist/licenses/engine/fontconfig-fcmatrix-notice.txt` |
-| Expat (and each source file's copyright lines) | 2.5.0 | MIT | `dist/licenses/engine/expat-COPYING.txt`, `dist/licenses/engine/expat-file-notices.txt` |
-| libpaper; Copyright (C) Yves Arrouye, 1996 | TeX Live 2026 | GPL-2.0-only | none, because no release ships this engine: libpaper is linked into it (its paper table and PAPERSIZE are in busytex.wasm), and GPL-2.0-only does not combine with the AGPL-3.0 parts. Our own engine leaves libpaper out |
-| Emscripten's runtime (in busytex.js) and system libraries (in busytex.wasm) | 5.0.4 | MIT or NCSA | `dist/licenses/engine/Emscripten-LICENSE.txt` |
-| musl libc, inside Emscripten | Emscripten 5.0.4 | MIT | `dist/licenses/engine/musl-COPYRIGHT.txt` |
-| libc++, libc++abi and compiler-rt, inside Emscripten | Emscripten 5.0.4 | Apache-2.0 WITH LLVM-exception (no notice needed for compiled forms) | `dist/licenses/engine/LLVM-libcxx-LICENSE.txt`, `dist/licenses/Apache-2.0.txt` |
-| MiniLZ4, Emscripten's LZ4 decoder in busytex.js (Pierre Curto) |  | MIT | its notice is kept in dist/engine/busytex.js |
+| Emscripten's runtime (in engine.js) and system libraries (in engine.wasm) | 6.0.13 | MIT or NCSA | `dist/licenses/engine/Emscripten-LICENSE.txt` |
+| musl libc, inside Emscripten (libc.a also holds Emscripten's own C library code, under the Emscripten component's terms) | Emscripten 6.0.13 | MIT | `dist/licenses/engine/musl-COPYRIGHT.txt`, `dist/licenses/engine/musl-file-notices.txt` |
+| libc++, libc++abi and compiler-rt, inside Emscripten | Emscripten 6.0.13 | Apache-2.0 WITH LLVM-exception (no notice needed for compiled forms) | `dist/licenses/engine/LLVM-libcxx-LICENSE.txt`, `dist/licenses/Apache-2.0.txt` |
+| MiniLZ4, Emscripten's LZ4 decoder in engine.js (Pierre Curto) | Emscripten 6.0.13 | MIT | `dist/licenses/engine/MiniLZ4-notice.txt` |
+| BusyTeX (credit: the one-instance pattern, the multi-call idea, and a few lines copied into engine/build/dispatcher.c, each marked "from BusyTeX"); by Vadim Kantorov, who made 2,046 of its 2,069 contributions on GitHub (read 2026-10-26); its README states the MIT licence, and BusyTeX has no LICENSE file | main eb36aae (the commit its README was read at) | MIT | `dist/licenses/engine/BusyTeX-README-License.txt`, `dist/licenses/MIT.txt` |
+| liveMd2Tex's own engine code: engine/build/dispatcher.c, stubs.c, the fontconfig stand-in (fontlist/), the build script and tools | the commit that built the engine (engine-build.json, build.scripts) | GPL-3.0-or-later | `dist/licenses/GPL-3.0.txt` |
 
 Notes on the table:
 
-- **LuaHBTeX.** The engine host runs LuaHBTeX in ini mode only (`src/engine-host/engine/worker.ts`). liveMd2Tex
-  offers no LuaLaTeX.
-- **luaffi.** TeX Live's copy, at commit f26cc5ed05a1f784d1e694fe5b9cfc3ce992c03d, is Facebook's luaffifb. Its
-  `LICENSE` is "BSD License For luaffifb software, Copyright (c) 2015, Facebook, Inc.", which contains James R.
-  McKaskill's luaffi under the MIT licence ("Copyright (c) 2011 James R. McKaskill"). Its `PATENTS` file is
-  Facebook's "Additional Grant of Patent Rights Version 2": a patent licence for the software, which ends for
-  anyone who brings a patent assertion against Facebook, as the file words it. Both ship
-  (`luaffi-LICENSE.txt`, `luaffi-PATENTS.txt`). Facebook's own repository, now archived at
-  https://github.com/facebookarchive/luaffifb (master a1cb731b08c91643b0665935eb5622b3d621211b), still has both
-  files, the same bytes, last changed on 2015-09-16. In this build, the only code from luaffi's files in
-  `busytex.wasm` is TeX Live's stub `luaopen_ffi` (above); luaffifb's own code is in the source archive that each
-  release carries, not in the binary. Open: whether the patent grant raises a question for the GPL-3 and AGPL-3
-  parts. The FSF's licence list (https://www.gnu.org/licenses/license-list.html, as archived on 2026-10-17) has no
-  entry for this grant. Its nearest entry is WebM's, a Modified BSD licence with a separate patent grant, which it
-  calls GPL-compatible. The two grants end differently. WebM's ends for patent litigation "alleging that any of
-  these implementations of WebM or any code incorporated within any of these implementations of WebM" infringes
-  (https://www.webmproject.org/license/additional/). Facebook's ends for any patent assertion against Facebook or
-  its affiliates, for any arising from Facebook's software, products or services, and for any relating to
-  luaffifb, as `PATENTS` words it. LuaTeX, which is
-  GPL-2.0-or-later, ships this code in TeX Live. This is recorded for the maintainer to decide.
-- **FreeType** is dual-licensed: the FreeType License (FTL) or GPL-2.0-or-later. The FTL does not combine with the
-  GPL, and the engine holds GPL code, so FreeType is taken here under its GPL option. Its credit, as the FTL words
-  it, is kept anyway: Portions of this software are copyright © 2025 The FreeType Project (https://freetype.org).
-  All rights reserved. Its BDF and PCF drivers and its hash code are under their own MIT and X11 terms (above).
-- **libpaper** (Copyright (C) Yves Arrouye, 1996; "Use under the GPL version 2") is GPL-2.0-only, which does not
-  combine with the AGPL-3.0 parts. It is linked into this engine. Until 2026-10-31 these notices said it was not:
-  the check looked for strings (`PAPERCONF`, `/etc/papersize`) that TeX Live's libpaper never holds. The
-  WebAssembly holds libpaper's paper table (`halfexecutive`, `csheet` and the rest, which dvipdfmx's own table
-  lacks) and its variable `PAPERSIZE`, and not the four sizes dvipdfmx compiles in only without libpaper (`isob3`
-  to `isob6`). No release of liveMd2Tex ships this engine, and none will: our own engine, which replaces it,
-  leaves libpaper out and checks for these strings.
-- **pplib** (Paweł Jackowski). Its own files state no licence; it is recorded as shipped as part of LuaTeX, under
-  LuaTeX's terms (GPL-2.0-or-later). Two of its files state their authors' terms, and their notices ship:
-  `util/utilsha.c` (BSD-3-Clause) and `util/utilmd5.c` (Zlib-style). Debian records pplib as GPL-2+, and Fedora
-  covers it inside its LuaTeX packages as GPL-2.0-or-later.
-- **MetaPost's decNumber.** Its files say "This software is made available under the terms of the ICU License --
-  ICU 1.8.1 and later". That licence's text is in `dist/licenses/ICU.txt` ("ICU License - ICU 1.8.1 to ICU 57.1"),
-  and decNumber's own copyright lines are in `dist/licenses/engine/MetaPost-decNumber-notice.txt`.
-- **MakeIndex.** Its notice asks that "the entire modified work must be covered by a permission notice identical
-  to this permission notice", and it counts anything "usable only in conjunction with" a derived program as a
-  modified version. TeXlyre links MakeIndex into the same binary as GPL and AGPL code. Open: ask TeXlyre or TUG
-  for a reading of this before the first release. The notice is in full at the end of this file.
-- **MiniLZ4**, Emscripten's LZ4 decoder inside `busytex.js` (Copyright (c) 2012 Pierre Curto, MIT), keeps its
-  notice in that file.
+- **XeTeX** is under the MIT/X11 terms of its `COPYING`. Its image readers (`xetexdir/image/`: `bmpimage.c`,
+  `jpegimage.c`, `mfileio.c`, `numbers.c`, `pngimage.c`, which `texk/web2c/xetexdir/am/xetex.am:164-173` compiles
+  into XeTeX) are GPL-2.0-or-later, Copyright SIL International (Jonathan Kew), and derive from dvipdfmx (Jin-Hwan Cho,
+  Shunsaku Hirata, Mark A. Wicks). Both notices ship whole in `XeTeX-image-notice.txt`, from `jpegimage.c`.
+- **FreeType** is dual-licensed: the FreeType License (FTL) or GPL-2.0-or-later. The engine holds GPL code, and
+  the FTL does not combine with the GPL, so FreeType is taken here under its GPL option. Its credit, as the FTL
+  words it (`docs/FTL.TXT`, with the year of FreeType 2.14.1's own copyright lines, 1996-2025), is kept anyway:
+  Portions of this software are copyright © 2025 The FreeType Project (https://freetype.org). All rights
+  reserved. Its BDF and PCF drivers and its hash code are under their own MIT and X11 terms (above).
+- **pplib** (Paweł Jackowski) is the PDF reader that XeTeX uses for PDF images (`xetexdir/pdfimage.cpp:40-44`).
+  Its own files state no licence. TeX Live ships it as part of LuaTeX, so it is recorded under LuaTeX's terms,
+  GPL-2.0-or-later, as Debian records pplib (GPL-2+) and as Fedora covers it inside its LuaTeX packages
+  (the maintainer's decision, 2026-10-30). The engine holds no LuaTeX. Two of pplib's files state their authors'
+  terms, and their notices ship: `util/utilsha.c` (BSD-3-Clause) and `util/utilmd5.c` (Zlib-style).
+- **libpaper** is GPL-2.0-only (`libs/libpaper/libpaper-src/lib/paper.c:3-6` at the pinned commit: "Use under the
+  GPL version 2"), which does not combine with the extension's GPL-3.0-or-later code, so the engine leaves it out.
+  dvipdfmx is built without it: the build edits dvipdfmx's generated `config.h` and `Makefile`, as
+  `engine-build.json` records (`generatedEdits`). The build and the VSIX scan fail an engine that holds libpaper's
+  paper table (`halfexecutive`, `csheet` and the rest) or its variable `PAPERSIZE`, or that lacks the four sizes
+  dvipdfmx compiles in only without libpaper (`isob3` to `isob6`).
+- **MiniLZ4**, Emscripten's LZ4 decoder inside `engine.js`, is based on Pierre Curto's node-lz4
+  (`third_party/mini-lz4.js:2-7` at Emscripten's pinned commit; Copyright (c) 2012 Pierre Curto, MIT). The glue
+  keeps its notice, and the notice ships as `dist/licenses/engine/MiniLZ4-notice.txt` as well.
+- **dlmalloc**, Doug Lea's memory allocator, is one of Emscripten's system libraries in `engine.wasm`
+  (`libdlmalloc.a`). Doug Lea released it to the public domain (CC0; `system/lib/dlmalloc.c:52-54` at Emscripten's
+  pinned commit), so no notice is needed; it is named here for credit.
+- **Parts left out.** The engine holds no LuaTeX (and so none of its Lua libraries, MetaPost, FontForge's code,
+  luaffi or zziplib), no MakeIndex, no fontconfig or Expat (XeTeX finds fonts by name through our own stand-in,
+  `engine/build/fontlist/`), and no libpaper. The build fails on a link input from any of their folders
+  (`link-report.mjs`, `DROPPED`), and the build and the VSIX scan fail an engine that holds the strings of LuaTeX,
+  luaffi, MakeIndex or libpaper (`engine/build/tools/wasm-inspect.mjs`).
 
 ### The engine's source
 
-The engine's corresponding source is the following, as TeXlyre's Makefile (`URL_texlive`, `URL_expat`,
-`URL_fontconfig`, lines 8, 12 and 13), its `versions.txt` and its workflow `build-wasm.yml` name it. Each SHA-256
-is that of the archive as downloaded on 2026-10-26.
+The engine's corresponding source has three parts. The engine release `engine-6a30018-4` holds all three, and
+each release of liveMd2Tex that ships the engine carries them again:
 
 | What | Archive | SHA-256 |
 |---|---|---|
-| TeXlyre's build scripts and C files at commit 46ebb6216a5c1fe63dd1dc885831d1a8cef2dc86 | https://github.com/TeXlyre/texlyre-busytex-build/archive/46ebb6216a5c1fe63dd1dc885831d1a8cef2dc86.tar.gz | `b5356166679565d3f7dc00710cd37c687e1bbe886debbceb9ca30237fa86f8d4` |
-| TeX Live's source tree at commit f26cc5ed05a1f784d1e694fe5b9cfc3ce992c03d, the head of branch tags/texlive-2026.0, which TeXlyre's Makefile fetches | https://github.com/TeX-Live/texlive-source/archive/f26cc5ed05a1f784d1e694fe5b9cfc3ce992c03d.tar.gz | `34d0a84101893a26bf1a2805e7b545b40faa3da3c84b5ac6d15f35fb707ca697` |
-| Expat 2.5.0 | https://github.com/libexpat/libexpat/releases/download/R_2_5_0/expat-2.5.0.tar.gz | `6b902ab103843592be5e99504f846ec109c1abb692e85347587f237a4ffa1033` |
-| fontconfig 2.13.96, as TeXlyre hosts it | https://github.com/TeXlyre/texlyre-busytex-build/releases/download/fontconfig-2.13.96/fontconfig-2.13.96.tar.gz | `dbabc038d41cfc3f14da1b173ae103ba7cc678efb17e091b9e801c6286b3f684` |
+| TeX Live's source tree at commit 6a300188053b8f2ded89dbd52293732a706b9c0e, the head of `refs/heads/tags/texlive-2026.1` | https://github.com/TeX-Live/texlive-source/archive/6a300188053b8f2ded89dbd52293732a706b9c0e.tar.gz | `ab72044ed1abd9866d3e3899941cf5e66b0f22f889c749ce606d8c4cf571872b` |
+| Emscripten 6.0.13's source at commit e13ee988ce3d87a738dd8f3661d02223308c412a: the runtime in `engine.js` and the system libraries compiled into `engine.wasm` | https://github.com/emscripten-core/emscripten/archive/e13ee988ce3d87a738dd8f3661d02223308c412a.tar.gz | `0eb45cf55702db363e5dacd06fec69b63345ce6ffe61156c0e7fcbf3ae842d4e` |
+| Our build scripts, stubs, dispatcher and font stand-in: `engine/build/` and `engine/engine-build-pins.json` at commit 2594ca2e05764e77580ce19c7403d75fac1907ae of this repository | the engine release's `engine-build-scripts-2594ca2.tar.gz` | tree hash `00ccf30aca5c03a83edf9cb320ea769697d5c6356a5c6e556fd1ed5318e6eeb9` (SHA-256 over the files' SHA-256 and paths, as `engine-build.json` records it) |
 
-- TeXlyre's release of the binaries is `build_wasm_46ebb6216a5c1fe63dd1dc885831d1a8cef2dc86_31802832436_1`
-  (https://github.com/TeXlyre/texlyre-busytex-build/releases), built from commit
-  46ebb6216a5c1fe63dd1dc885831d1a8cef2dc86, whose tree is
-  https://github.com/TeXlyre/texlyre-busytex-build/tree/46ebb6216a5c1fe63dd1dc885831d1a8cef2dc86.
-- TeXlyre's Makefile fetches TeX Live's source from the branch `tags/texlive-2026.0` of TeX Live's source mirror.
-  The archive above is the branch's head, commit f26cc5ed05a1f784d1e694fe5b9cfc3ce992c03d, taken by its commit
-  because a branch can move. Its tree: https://github.com/TeX-Live/texlive-source/tree/f26cc5ed05a1f784d1e694fe5b9cfc3ce992c03d,
-  a copy of TeX Live's Subversion repository (https://tug.org/texlive/svn/).
-- The compiler is Emscripten 5.0.4 (https://github.com/emscripten-core/emscripten/tree/5.0.4), whose system
-  libraries (musl, libc++, libc++abi, compiler-rt) are compiled into the engine under their permissive licences.
-  It has a tree link here, not an archive with a SHA-256.
-- Our patches to the glue are `engine/patches/` at the release's tag (above).
+- TeX Live's branch `tags/texlive-2026.1` can move, so the archive is taken by its commit. Its tree:
+  https://github.com/TeX-Live/texlive-source/tree/6a300188053b8f2ded89dbd52293732a706b9c0e, a copy of TeX Live's
+  Subversion repository (https://tug.org/texlive/svn/).
+- The glue is Emscripten's output, whose source is Emscripten's `src/` at the commit above. The exact flags, the
+  lists of renamed and shared names, the toolchain and the output hashes are in `engine/engine-build.json` at the
+  release's tag (and in the engine release). Emscripten's compiler is installed from the emsdk archives that
+  `engine/engine-build-pins.json` pins.
+- The licence statement: our own code is GPL-3.0-or-later; the engine as a whole can be passed on under GPL-3.0,
+  and its parts keep their own terms ("This version and its source").
 
-Each release of liveMd2Tex that ships the engine carries a copy of the four archives, attached before the release
+Each release of liveMd2Tex that ships the engine carries a copy of the two archives, attached before the release
 is published (`.github/workflows/release-sources.yml`, run on the draft release). The workflow downloads them,
-checks each one's bytes against the SHA-256 above, checks the files of the two archives GitHub makes from a commit
-against that commit's tree, and checks TeXlyre's Makefile against the manifest. It then attaches them as
-`engine-sources-v<version>.tar`, with their list in `sources.json`. So the source stays available from
-liveMd2Tex's own releases, as GPL-3 and AGPL-3 section 6(d) ask; every GPL part of the engine is under "version 2
-or later", or GPL-2 or GPL-3 (xpdf), so section 6(d) of version 3 applies. GitHub makes the two `archive/` files
-on request, and it promises the same files for a commit, not the same bytes. If one comes back with other bytes
-but the commit's files, the workflow attaches it with its new SHA-256 and says so; if its files differ, the
-workflow stops.
+checks each one's bytes against the SHA-256 above and its files against its commit's tree, and checks that the
+packaged `engine.wasm` is the one that `engine-build.json` records and `engine/pins.json` pins, built from those
+two commits. If the tag's `engine/build/` and `engine/engine-build-pins.json` still give the build's tree hash,
+the tag itself holds the scripts' source; if not, the release names the engine release and the commit that built
+the engine. It then attaches the archives as `engine-sources-v<version>.tar`, with their list in `sources.json`.
+So the source stays available from liveMd2Tex's own releases, as GPL-3 section 6(d) asks; every GPL part of the
+engine is under "version 2 or later", or GPL-2 or GPL-3 (xpdf), so section 6(d) of version 3 applies. GitHub makes
+the two `archive/` files on request, and it promises the same files for a commit, not the same bytes. If one comes
+back with other bytes but the commit's files, the workflow attaches it with its new SHA-256 and says so; if its
+files differ, the workflow stops.
 
 ## In the test copy
 
-`node scripts/vsix-scan.mjs --test-copy` builds the development machine's test copy: the package with the engine,
-plus TeXlyre's interim TeX image and the DejaVu fonts in `dist/data/`, for a throwaway VS Code profile only. The
-store packages get these files from the data packages instead.
+`node scripts/vsix-scan.mjs --test-copy --data-package PATH` builds the development machine's test copy: the
+package with the engine, plus a core-data package's data in `dist/data/` and its licence texts in
+`dist/data/LICENSES/`, for a throwaway VS Code profile only. The store packages get these files from the data
+packages instead.
 
 | Part | Version | Licence | Where in the test copy | Source |
 |---|---|---|---|---|
-| TeX Live macro packages, classes and fonts in TeXlyre's `texlive-extra` image, unchanged | TeX Live 2026 | LPPL 1.3c and others, package by package (`dist/data/licenses/`: TeX Live's `LICENSE.TL`, `LICENSE.CTAN` and `lppl.tex`; `dist/licenses/LPPL-1.3c.txt`); B1's licence scan lists each package | `dist/data/texlive-extra.data` | https://ctan.org, https://tug.org/texlive/ |
-| DejaVu fonts (Sans, Serif, Sans Mono; 12 TrueType files) | 2.34 | Bitstream Vera licence with DejaVu's changes; public domain for the changes (`dist/data/fonts/LICENSE`) | `dist/data/fonts/` | https://dejavu-fonts.github.io, https://ctan.org/pkg/dejavu |
+| TeX Live's packages, classes and fonts of core-data, as that data package holds them ("The data packages") | TeX Live 2026 | each package's own; `dist/data/LICENSES/INDEX` names each package's licence files | `dist/data/` | https://ctan.org, https://tug.org/texlive/ |
 
-## The data packages (core-data, extra-data; B1, prepared, not yet built)
+## The data packages (core-data, extra-data; B1, built on a laptop, not yet released)
 
 TeX Live's packages, classes and fonts in the data packages are unchanged as TeX reads them. core-data stores
 most of its Type 1 fonts with their encryption removed, and the engine host restores each one to the original
@@ -330,8 +282,7 @@ Catalogue's "other-free", and TeX Live's own files. "collection" packages and th
   and `LICENSES/`, pinned in `engine/bundle-licences.json`: the LaTeX Project's LPPL texts, SPDX licence list
   v3.27.0, the GUST Font License from lm, CTAN's statement of Knuth's terms, MakeIndex's notice from TeX Live's
   sources; TeX Live's own `LICENSE.TL` and `LICENSE.CTAN` from texlive.infra) and each package's own licence files,
-  GUST font manifests, Apache-2.0 `NOTICE` files and statements of terms from its archives. core-data also ships
-  ICU's licence for the ICU data file it takes from the engine build.
+  GUST font manifests, Apache-2.0 `NOTICE` files and statements of terms from its archives.
 - **Changes to GPL fonts.** core-data's `LICENSES/CHANGES-GPL` lists each packed font under the GPL: its path,
   its original's SHA-256, the snapshot archive that holds the original unmodified, what was done and the date, as
   the GPL asks of a changed file.
@@ -351,16 +302,11 @@ Catalogue's "other-free", and TeX Live's own files. "collection" packages and th
 
 ## Test copies only (not in the store package)
 
-The test copy (`node scripts/vsix-scan.mjs --test-copy`) also carries TeXlyre's interim TeX image, unchanged, with
-the rows above, and two files derived from that image's own file list and package files:
-`dist/data/texlive-extra.index.json` and `dist/data/packages.json` (which package each file name belongs to, and
-which files each package loads; docs/DESIGN.md#architecture, #engine-and-data). Two CTAN packages are used only by
-tests and by the stand-in for the Extra Packages add-on, `out/vsix/livemd2tex-extra-data-0.0.1-standin.vsix`,
-which is never published:
+Two CTAN packages are used only by tests:
 
 | Part | Version | Licence | Used for | Source |
 |---|---|---|---|---|
-| REVTeX (class, `.rtx` options, helper `.sty` files, `.bst` styles), unchanged from `revtex.tds.zip` | 4.2f | LPPL 1.3c | the stand-in add-on; the corpus document P2 | https://ctan.org/pkg/revtex |
+| REVTeX (class, `.rtx` options, helper `.sty` files, `.bst` styles), unchanged from `revtex.tds.zip` | 4.2f | LPPL 1.3c | a made-up data set in the engine tests; the corpus document P2 | https://ctan.org/pkg/revtex |
 | tensor (`tensor.dtx`, `tensor.ins`), built by docstrip in a test | 2.2 (2023/07/18) | LPPL 1.3c or later | the `.dtx` and `.ins` test of "Add a package from a file" | https://ctan.org/pkg/tensor |
 
 Packages a user adds with "Add a package from a file" stay on the user's computer, under VS Code's global storage
@@ -368,11 +314,25 @@ for this extension (or in the project folder); the extension never distributes t
 
 ## Code that follows other projects' code
 
-- The engine host runs the TeX tools one after another in one WebAssembly instance, the way BusyTeX's
-  `busytex_pipeline.js` does (Vadim Kantorov, MIT; https://github.com/busytex/busytex): after each tool, the
-  memory is cleared and its first 64 MiB restored (`src/engine-host/engine/worker.ts`, which credits it). The code
-  is a short idiom, written anew; BusyTeX's MIT notice ships as
-  `dist/licenses/engine/BusyTeX-README-License.txt` with `dist/licenses/MIT.txt`.
+- **BusyTeX** (Vadim Kantorov, MIT; https://github.com/busytex/busytex). The engine is one program that holds
+  several TeX tools, chosen by name, as BusyTeX's is. Our dispatcher (`engine/build/dispatcher.c`) holds a few
+  lines copied from BusyTeX's `busytex.c` at commit eb36aae169f7d71e70760a84ef80156b33c0f820, each marked "from
+  BusyTeX" with its line numbers: the newline and flush after each tool (lines 39-41) and the shift of the
+  arguments, so that the chosen tool sees its own options (line 108). The engine host runs the tools one after
+  another in one WebAssembly instance, the way BusyTeX's `busytex_pipeline.js` does: after each tool, the memory is
+  cleared and its first 64 MiB restored (`src/engine-host/engine/worker.ts`, which credits it; the code is a short
+  idiom, written anew). BusyTeX's MIT notice ships as `dist/licenses/engine/BusyTeX-README-License.txt` with
+  `dist/licenses/MIT.txt`.
+- **fontconfig** (Keith Packard and others; https://www.freedesktop.org/software/fontconfig/release/). The data
+  builder's font list writer (`scripts/lib/font-list.mjs`) describes each font as fontconfig 2.13.96 does. Its
+  weight, width and slant tables follow fontconfig's `src/fcfreetype.c` (`weightConsts`, `widthConsts`,
+  `slantConsts`) and `src/fcweight.c` (`map`) entry by entry, so fontconfig's notice (its `COPYING`, a permissive
+  licence that asks for its notice to be kept) is kept beside it, in `scripts/lib/fontconfig-notice.txt`. The
+  script runs only when the data packages are built and is not in any package. The engine's stand-in for fontconfig
+  (`engine/build/fontlist/`) answers the ten fontconfig calls XeTeX makes; it is written anew, and nothing of
+  fontconfig is linked into the engine.
+- **TeXlyre.** Earlier development versions of liveMd2Tex ran TeXlyre's build of BusyTeX (Fares Abawi,
+  https://github.com/TeXlyre/texlyre-busytex-build). None of its code or files is in this version.
 
 ## Development tools (never shipped)
 
@@ -388,6 +348,10 @@ under its package's own licence) for their example and template documents. None 
 an artifact or shipped. The arXiv frame kept in the code, which would download arXiv papers under CC BY 4.0 or CC0
 1.0 and CTAN templates, is disabled until arXiv agrees.
 
+The engine's build (`engine/build/`) runs under Linux only, on GitHub's runner or under WSL, with Emscripten
+6.0.13 and the host tools that `engine/engine-build-pins.json` lists. None of them ships; only what the engine
+itself holds does ("Inside the engine").
+
 ## Test data from other projects (never shipped)
 
 | Part | Version | Licence | Used for | Source |
@@ -396,57 +360,3 @@ an artifact or shipped. The arXiv frame kept in the code, which would download a
 
 `scripts/run-integration.mjs --with-latex-workshop` installs LaTeX Workshop's VSIX (pinned by SHA-256, a
 development-only download kept outside the repository) into a throwaway test profile, and nowhere else.
-
-## MakeIndex's notice
-
-The engine contains MakeIndex in executable form. Its notice asks that such a copy carry the notice and say how to
-get the source. The engine is TeXlyre's build 46ebb62, which compiles TeX Live's source tree at tag texlive-2026.0
-(its Makefile's `URL_texlive`). MakeIndex's source is in that tree, in `texk/makeindexk`:
-https://github.com/TeX-Live/texlive-source/tree/tags/texlive-2026.0/texk/makeindexk (a copy of TeX Live's
-Subversion repository, https://tug.org/texlive/svn/), and in the TeX Live source archive that each release
-carries ("The engine's source"). The notice, as `texk/makeindexk/COPYING` gives it (also
-`dist/licenses/MakeIndex.txt`):
-
-```
-			MakeIndex Distribution Notice
-
-				11/11/1989
-
-	Copyright (C) 1989 by Chen & Harrison International Systems, Inc.  
-	Copyright (C) 1988 by Olivetti Research Center
-	Copyright (C) 1987 by Regents of the University of California
-
-	Author:	
-	  	Pehong Chen
-		Chen & Harrison International Systems, Inc.
-		Palo Alto, California
-	  	USA
-
-Permission is hereby granted to make and distribute original copies of
-this program provided that the copyright notice and this permission
-notice are preserved and provided that the recipient is not asked to
-waive or limit his right to redistribute copies as allowed by this
-permission notice and provided that anyone who receives an executable
-form of this program is granted access to a machine-readable form of
-the source code for this program at a cost not greater than reasonable
-reproduction, shipping, and handling costs.  Executable forms of this
-program distributed without the source code must be accompanied by a
-conspicuous copy of this permission notice and a statement that tells
-the recipient how to obtain the source code.
-                                                                       
-Permission is granted to distribute modified versions of all or part
-of this program under the conditions above with the additional
-requirement that the entire modified work must be covered by a
-permission notice identical to this permission notice.  Anything
-distributed with and usable only in conjunction with something derived
-from this program, whose useful purpose is to extend or adapt or add
-capabilities to this program, is to be considered a modified version
-of this program under the requirement above.  Ports of this program to
-other systems not supported in the distribution are also considered
-modified versions.  All modified versions should be reported back to
-the author.
-
-This program is distributed with no warranty of any sort.  No
-contributor accepts responsibility for the consequences of using this
-program or for whether it serves any particular purpose.
-```

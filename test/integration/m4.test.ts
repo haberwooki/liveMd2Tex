@@ -13,6 +13,7 @@ import { HELP_IDS } from '../../src/extension/diagnostics/errorHelp';
 import { vscodeFolderOps } from '../../src/extension/templates/newDocument';
 import { COMMAND_PREFIX, EXTENSION_ID } from '../../src/shared/identity';
 import { CORPUS_LIST } from '../support/prepareV0Workspace';
+import { missingInput } from '../support/missingData';
 import { activateExtension, engineStubArgs, ownAttempts, root, stubState } from './support';
 
 describe('M4: new documents, help for TeX errors, the walkthrough', function () {
@@ -23,7 +24,11 @@ describe('M4: new documents, help for TeX errors, the walkthrough', function () 
   before(async function () {
     ws = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? '';
     api = await activateExtension();
-    if (!ws || !existsSync(path.join(ws, CORPUS_LIST)) || !api.engineAvailable()) {
+    if (!ws || !existsSync(path.join(ws, CORPUS_LIST))) {
+      this.skip();
+    }
+    if (!api.engineAvailable()) {
+      missingInput('the staged engine and core data (node scripts/stage-engine.mjs --data)');
       this.skip();
     }
     api.setEngineExecArgv(engineStubArgs);

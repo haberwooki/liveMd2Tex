@@ -51,8 +51,6 @@ export interface ConversionResult {
   engine: EngineName;
   /** The XeTeX font set of the general templates; undefined on pdfLaTeX and with a preset's own preamble. */
   fontSet?: FontSetName;
-  /** Font files the engine's TeX data lacks, to be given to the compile as project files (DejaVu, until the data package carries it). */
-  fontFiles: string[];
   /** Characters pdfTeX cannot print as single characters that the Unicode table does not map. */
   unprintable: string[];
   /** Bibliography keys cited, in the order converted (the body, then the front matter, then an appendix). */
@@ -321,7 +319,6 @@ function convertOnce(text: string, options: ConvertOptions, preset: PresetMode |
     meta,
     engine,
     fontSet: fonts?.set,
-    fontFiles: fonts?.files ?? [],
     unprintable,
     citationKeys: [...writer.citationKeys],
     images,
@@ -444,7 +441,6 @@ function presetResult(
       abstract: front.abstract,
     },
     engine,
-    fontFiles: [],
     unprintable,
     citationKeys: [...writer.citationKeys],
     images,

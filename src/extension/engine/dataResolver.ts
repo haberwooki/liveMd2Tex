@@ -6,6 +6,7 @@
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { DISPLAY_NAME, EXTRA_DATA_NAME, PUBLISHER } from '../../shared/identity';
+import { filesBothHold } from '../../shared/packageIndex';
 import type { PackageContext } from '../compile/pipeline';
 import { UserPackages } from '../packages/userPackages';
 import { packageContext, readCoreData, readDataExtension } from './dataSets';
@@ -55,7 +56,7 @@ export class DataResolver implements vscode.Disposable {
         abi: core.manifest.abi,
         snapshot: core.manifest.snapshot,
       });
-      const overlap = 'problem' in found || !core.index ? [] : Object.keys(found.set.index.files).filter((f) => f in (core.index as { files: Record<string, string> }).files);
+      const overlap = 'problem' in found ? [] : filesBothHold(core.index, found.set.index);
       if ('problem' in found) {
         this.tell(found.problem);
       } else if (overlap.length > 0) {

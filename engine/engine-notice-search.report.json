@@ -1,8 +1,8 @@
 {
- "date": "2026-10-27",
+ "date": "2026-11-01",
  "folders": [
   {
-   "archive": "texlive-source-f26cc5e.tar.gz",
+   "archive": "texlive-source-6a30018.tar.gz",
    "path": "libs/harfbuzz/harfbuzz-src/src",
    "files": 423,
    "covered": 300,
@@ -1210,7 +1210,7 @@
    }
   },
   {
-   "archive": "texlive-source-f26cc5e.tar.gz",
+   "archive": "texlive-source-6a30018.tar.gz",
    "path": "libs/freetype2/freetype-src/src",
    "files": 386,
    "covered": 352,
@@ -2513,7 +2513,7 @@
    }
   },
   {
-   "archive": "texlive-source-f26cc5e.tar.gz",
+   "archive": "texlive-source-6a30018.tar.gz",
    "path": "libs/freetype2/freetype-src/include",
    "files": 102,
    "covered": 96,
@@ -2846,7 +2846,7 @@
    }
   },
   {
-   "archive": "texlive-source-f26cc5e.tar.gz",
+   "archive": "texlive-source-6a30018.tar.gz",
    "path": "libs/pplib/pplib-src/src",
    "files": 54,
    "covered": 0,
@@ -2872,7 +2872,7 @@
    }
   },
   {
-   "archive": "texlive-source-f26cc5e.tar.gz",
+   "archive": "texlive-source-6a30018.tar.gz",
    "path": "libs/zlib/zlib-src",
    "files": 78,
    "covered": 22,
@@ -3181,196 +3181,7 @@
    }
   },
   {
-   "archive": "texlive-source-f26cc5e.tar.gz",
-   "path": "libs/lua53/lua53-src/src",
-   "files": 61,
-   "covered": 60,
-   "ruled": [],
-   "hits": {
-    "lapi.c": [
-     "see-notice"
-    ],
-    "lapi.h": [
-     "see-notice"
-    ],
-    "lauxlib.c": [
-     "see-notice"
-    ],
-    "lauxlib.h": [
-     "see-notice"
-    ],
-    "lbaselib.c": [
-     "see-notice"
-    ],
-    "lbitlib.c": [
-     "see-notice"
-    ],
-    "lcode.c": [
-     "see-notice"
-    ],
-    "lcode.h": [
-     "see-notice"
-    ],
-    "lcorolib.c": [
-     "see-notice"
-    ],
-    "lctype.c": [
-     "see-notice"
-    ],
-    "lctype.h": [
-     "see-notice"
-    ],
-    "ldblib.c": [
-     "see-notice"
-    ],
-    "ldebug.c": [
-     "see-notice"
-    ],
-    "ldebug.h": [
-     "see-notice"
-    ],
-    "ldo.c": [
-     "see-notice"
-    ],
-    "ldo.h": [
-     "see-notice"
-    ],
-    "ldump.c": [
-     "see-notice"
-    ],
-    "lfunc.c": [
-     "see-notice"
-    ],
-    "lfunc.h": [
-     "see-notice"
-    ],
-    "lgc.c": [
-     "see-notice"
-    ],
-    "lgc.h": [
-     "see-notice"
-    ],
-    "linit.c": [
-     "see-notice"
-    ],
-    "liolib.c": [
-     "see-notice"
-    ],
-    "llex.c": [
-     "see-notice"
-    ],
-    "llex.h": [
-     "see-notice"
-    ],
-    "llimits.h": [
-     "see-notice"
-    ],
-    "lmathlib.c": [
-     "see-notice"
-    ],
-    "lmem.c": [
-     "see-notice"
-    ],
-    "lmem.h": [
-     "see-notice"
-    ],
-    "loadlib.c": [
-     "see-notice"
-    ],
-    "lobject.c": [
-     "see-notice"
-    ],
-    "lobject.h": [
-     "see-notice"
-    ],
-    "lopcodes.c": [
-     "see-notice"
-    ],
-    "lopcodes.h": [
-     "see-notice"
-    ],
-    "loslib.c": [
-     "see-notice"
-    ],
-    "lparser.c": [
-     "see-notice"
-    ],
-    "lparser.h": [
-     "see-notice"
-    ],
-    "lprefix.h": [
-     "see-notice"
-    ],
-    "lstate.c": [
-     "see-notice"
-    ],
-    "lstate.h": [
-     "see-notice"
-    ],
-    "lstring.c": [
-     "see-notice"
-    ],
-    "lstring.h": [
-     "see-notice"
-    ],
-    "lstrlib.c": [
-     "see-notice"
-    ],
-    "ltable.c": [
-     "see-notice"
-    ],
-    "ltable.h": [
-     "see-notice"
-    ],
-    "ltablib.c": [
-     "see-notice"
-    ],
-    "ltm.c": [
-     "see-notice"
-    ],
-    "ltm.h": [
-     "see-notice"
-    ],
-    "lua.c": [
-     "see-notice"
-    ],
-    "lua.h": [
-     "granted"
-    ],
-    "luac.c": [
-     "see-notice"
-    ],
-    "luaconf.h": [
-     "see-notice"
-    ],
-    "lualib.h": [
-     "see-notice"
-    ],
-    "lundump.c": [
-     "see-notice"
-    ],
-    "lundump.h": [
-     "see-notice"
-    ],
-    "lutf8lib.c": [
-     "see-notice"
-    ],
-    "lvm.c": [
-     "see-notice"
-    ],
-    "lvm.h": [
-     "see-notice"
-    ],
-    "lzio.c": [
-     "see-notice"
-    ],
-    "lzio.h": [
-     "see-notice"
-    ]
-   }
-  },
-  {
-   "archive": "texlive-source-f26cc5e.tar.gz",
+   "archive": "texlive-source-6a30018.tar.gz",
    "path": "libs/libpng/libpng-src",
    "files": 99,
    "covered": 41,
@@ -3761,19 +3572,7 @@
    }
   },
   {
-   "archive": "texlive-source-f26cc5e.tar.gz",
-   "path": "libs/zziplib/zziplib-src/zzip",
-   "files": 36,
-   "covered": 1,
-   "ruled": [],
-   "hits": {
-    "__dirent.h": [
-     "public-domain"
-    ]
-   }
-  },
-  {
-   "archive": "texlive-source-f26cc5e.tar.gz",
+   "archive": "texlive-source-6a30018.tar.gz",
    "path": "libs/teckit/TECkit-src/source",
    "files": 17,
    "covered": 0,
@@ -3781,7 +3580,7 @@
    "hits": {}
   },
   {
-   "archive": "texlive-source-f26cc5e.tar.gz",
+   "archive": "texlive-source-6a30018.tar.gz",
    "path": "libs/graphite2/graphite2-src/src",
    "files": 67,
    "covered": 0,
@@ -3789,7 +3588,7 @@
    "hits": {}
   },
   {
-   "archive": "texlive-source-f26cc5e.tar.gz",
+   "archive": "texlive-source-6a30018.tar.gz",
    "path": "libs/icu/icu-src/source/common",
    "files": 424,
    "covered": 423,
@@ -5077,7 +4876,7 @@
    }
   },
   {
-   "archive": "texlive-source-f26cc5e.tar.gz",
+   "archive": "texlive-source-6a30018.tar.gz",
    "path": "libs/icu/icu-src/source/stubdata",
    "files": 2,
    "covered": 2,
@@ -5092,7 +4891,7 @@
    }
   },
   {
-   "archive": "texlive-source-f26cc5e.tar.gz",
+   "archive": "texlive-source-6a30018.tar.gz",
    "path": "libs/xpdf/xpdf-src",
    "files": 198,
    "covered": 0,
@@ -5100,7 +4899,7 @@
    "hits": {}
   },
   {
-   "archive": "texlive-source-f26cc5e.tar.gz",
+   "archive": "texlive-source-6a30018.tar.gz",
    "path": "texk/kpathsea",
    "files": 125,
    "covered": 1,
@@ -5112,7 +4911,7 @@
    }
   },
   {
-   "archive": "texlive-source-f26cc5e.tar.gz",
+   "archive": "texlive-source-6a30018.tar.gz",
    "path": "texk/web2c/lib",
    "files": 19,
    "covered": 15,
@@ -5184,7 +4983,7 @@
    }
   },
   {
-   "archive": "texlive-source-f26cc5e.tar.gz",
+   "archive": "texlive-source-6a30018.tar.gz",
    "path": "texk/web2c/libmd5",
    "files": 3,
    "covered": 3,
@@ -5202,15 +5001,20 @@
    }
   },
   {
-   "archive": "texlive-source-f26cc5e.tar.gz",
+   "archive": "texlive-source-6a30018.tar.gz",
    "path": "texk/web2c/synctexdir",
    "files": 18,
-   "covered": 17,
+   "covered": 16,
    "ruled": [
     {
      "file": "synctex-common.h",
      "how": "covered",
      "why": "SyncTeX's MIT licence with no copyright line of the file's own; SyncTeX-notice.txt holds the licence"
+    },
+    {
+     "file": "synctex-luatex.h",
+     "how": "skip",
+     "why": "SyncTeX's LuaTeX header (Taco Hoekwater), which only LuaTeX's build includes (SYNCTEX_ENGINE_H in texk/web2c/luatexdir/am/luatex.am:70 and 76 and libluatex.am:29); pdfTeX and XeTeX include synctex-pdftex.h and synctex-xetex.h (synctexdir/am/synctex.am:208 and 238), and this engine holds no LuaTeX"
     }
    ],
    "hits": {
@@ -5271,483 +5075,7 @@
    }
   },
   {
-   "archive": "texlive-source-f26cc5e.tar.gz",
-   "path": "texk/web2c/mplibdir",
-   "files": 22,
-   "covered": 10,
-   "ruled": [
-    {
-     "file": "decContext.c",
-     "how": "notice",
-     "why": "LICENSES/engine/MetaPost-decNumber-notice.txt"
-    },
-    {
-     "file": "decContext.h",
-     "how": "notice",
-     "why": "LICENSES/engine/MetaPost-decNumber-notice.txt"
-    },
-    {
-     "file": "decNumber.c",
-     "how": "notice",
-     "why": "LICENSES/engine/MetaPost-decNumber-notice.txt"
-    },
-    {
-     "file": "decNumber.h",
-     "how": "notice",
-     "why": "LICENSES/engine/MetaPost-decNumber-notice.txt"
-    },
-    {
-     "file": "decNumberLocal.h",
-     "how": "notice",
-     "why": "LICENSES/engine/MetaPost-decNumber-notice.txt"
-    }
-   ],
-   "hits": {
-    "decContext.c": [
-     "icu-license"
-    ],
-    "decContext.h": [
-     "icu-license"
-    ],
-    "decNumber.c": [
-     "icu-license"
-    ],
-    "decNumber.h": [
-     "icu-license"
-    ],
-    "decNumberLocal.h": [
-     "icu-license"
-    ],
-    "mp.w": [
-     "public-domain"
-    ],
-    "mpmath.w": [
-     "public-domain"
-    ],
-    "mpmathbinary.w": [
-     "public-domain"
-    ],
-    "mpmathdecimal.w": [
-     "public-domain"
-    ],
-    "mpmathdouble.w": [
-     "public-domain"
-    ],
-    "mpmathinterval.w": [
-     "public-domain"
-    ],
-    "mpost.w": [
-     "public-domain"
-    ],
-    "mpstrings.w": [
-     "public-domain"
-    ],
-    "mpxout.w": [
-     "public-domain"
-    ],
-    "psout.w": [
-     "public-domain"
-    ]
-   }
-  },
-  {
-   "archive": "texlive-source-f26cc5e.tar.gz",
-   "path": "texk/web2c/luatexdir",
-   "files": 412,
-   "covered": 93,
-   "ruled": [
-    {
-     "file": "lang/hnjalloc.c",
-     "how": "covered",
-     "why": "LibHnj's code in LuaTeX's hyphenation, dual-licensed under the LGPL and the MPL, as these files say; it is part of LuaTeX (GPL-2.0-or-later), and the LGPL lets its code be used under the GPL (LGPL-2.1, section 3); the GPL's texts ship"
-    },
-    {
-     "file": "lang/hnjalloc.h",
-     "how": "covered",
-     "why": "LibHnj's code in LuaTeX's hyphenation, dual-licensed under the LGPL and the MPL, as these files say; it is part of LuaTeX (GPL-2.0-or-later), and the LGPL lets its code be used under the GPL (LGPL-2.1, section 3); the GPL's texts ship"
-    },
-    {
-     "file": "lang/hyphen.c",
-     "how": "covered",
-     "why": "LibHnj's code in LuaTeX's hyphenation, dual-licensed under the LGPL and the MPL, as these files say; it is part of LuaTeX (GPL-2.0-or-later), and the LGPL lets its code be used under the GPL (LGPL-2.1, section 3); the GPL's texts ship"
-    },
-    {
-     "file": "lang/hyphen.h",
-     "how": "covered",
-     "why": "LibHnj's code in LuaTeX's hyphenation, dual-licensed under the LGPL and the MPL, as these files say; it is part of LuaTeX (GPL-2.0-or-later), and the LGPL lets its code be used under the GPL (LGPL-2.1, section 3); the GPL's texts ship"
-    },
-    {
-     "file": "lua/texluajitc.c",
-     "how": "skip",
-     "why": "LuajitTeX's Lua compiler, not part of LuaHBTeX"
-    },
-    {
-     "file": "luaffi/msvc/stdbool.h",
-     "how": "skip",
-     "why": "luaffi's headers for Microsoft's compiler"
-    },
-    {
-     "file": "luaffi/msvc/stdint.h",
-     "how": "skip",
-     "why": "luaffi's headers for Microsoft's compiler"
-    },
-    {
-     "file": "luazlib/lgzip.c",
-     "how": "covered",
-     "why": "Tiago Dionizio's MIT notice, which states its author on an 'Author' line, not a copyright line; lzlib-README.txt holds it"
-    },
-    {
-     "file": "luazlib/lzlib.c",
-     "how": "covered",
-     "why": "Tiago Dionizio's MIT notice, which states its author on an 'Author' line, not a copyright line; lzlib-README.txt holds it"
-    },
-    {
-     "file": "slnunicode/slnudata.c",
-     "how": "notice",
-     "why": "LICENSES/engine/slnunicode-notice.txt"
-    },
-    {
-     "file": "slnunicode/slnunico.c",
-     "how": "notice",
-     "why": "LICENSES/engine/slnunicode-notice.txt"
-    }
-   ],
-   "hits": {
-    "lang/hnjalloc.c": [
-     "distributed-under",
-     "licensed-under"
-    ],
-    "lang/hnjalloc.h": [
-     "distributed-under",
-     "licensed-under"
-    ],
-    "lang/hyphen.c": [
-     "distributed-under",
-     "licensed-under"
-    ],
-    "lang/hyphen.h": [
-     "distributed-under",
-     "licensed-under"
-    ],
-    "lua/lauxlib_bridge.h": [
-     "see-notice"
-    ],
-    "lua/texluac.c": [
-     "granted",
-     "see-notice"
-    ],
-    "lua/texluajitc.c": [
-     "see-notice"
-    ],
-    "luaffi/call.c": [
-     "license-found-in",
-     "licensed-under"
-    ],
-    "luaffi/call_arm.h": [
-     "license-found-in",
-     "licensed-under"
-    ],
-    "luaffi/call_arm64.h": [
-     "license-found-in",
-     "licensed-under"
-    ],
-    "luaffi/call_x64.h": [
-     "license-found-in",
-     "licensed-under"
-    ],
-    "luaffi/call_x64win.h": [
-     "license-found-in",
-     "licensed-under"
-    ],
-    "luaffi/call_x86.h": [
-     "license-found-in",
-     "licensed-under"
-    ],
-    "luaffi/ctype.c": [
-     "license-found-in",
-     "licensed-under"
-    ],
-    "luaffi/dynasm/dasm_arm.h": [
-     "released-under"
-    ],
-    "luaffi/dynasm/dasm_arm64.h": [
-     "released-under"
-    ],
-    "luaffi/dynasm/dasm_mips.h": [
-     "released-under"
-    ],
-    "luaffi/dynasm/dasm_ppc.h": [
-     "released-under"
-    ],
-    "luaffi/dynasm/dasm_proto.h": [
-     "released-under"
-    ],
-    "luaffi/dynasm/dasm_x86.h": [
-     "released-under"
-    ],
-    "luaffi/ffi.c": [
-     "license-found-in",
-     "licensed-under"
-    ],
-    "luaffi/ffi.h": [
-     "license-found-in",
-     "licensed-under"
-    ],
-    "luaffi/msvc/stdbool.h": [
-     "granted",
-     "licensed-under"
-    ],
-    "luaffi/msvc/stdint.h": [
-     "boost",
-     "distributed-under"
-    ],
-    "luaffi/parser.c": [
-     "license-found-in",
-     "licensed-under"
-    ],
-    "luaffi/test.c": [
-     "license-found-in",
-     "licensed-under"
-    ],
-    "luafontloader/fontforge/fontforge/PfEd.h": [
-     "redistribution"
-    ],
-    "luafontloader/fontforge/fontforge/autohint.c": [
-     "redistribution"
-    ],
-    "luafontloader/fontforge/fontforge/baseviews.h": [
-     "redistribution"
-    ],
-    "luafontloader/fontforge/fontforge/clipnoui.c": [
-     "redistribution"
-    ],
-    "luafontloader/fontforge/fontforge/configure-pfaedit.h": [
-     "redistribution"
-    ],
-    "luafontloader/fontforge/fontforge/cvundoes.c": [
-     "redistribution"
-    ],
-    "luafontloader/fontforge/fontforge/dumppfa.c": [
-     "redistribution"
-    ],
-    "luafontloader/fontforge/fontforge/edgelist.h": [
-     "redistribution"
-    ],
-    "luafontloader/fontforge/fontforge/edgelist2.h": [
-     "redistribution"
-    ],
-    "luafontloader/fontforge/fontforge/encoding.c": [
-     "redistribution"
-    ],
-    "luafontloader/fontforge/fontforge/featurefile.c": [
-     "redistribution"
-    ],
-    "luafontloader/fontforge/fontforge/fontforgevw.h": [
-     "redistribution"
-    ],
-    "luafontloader/fontforge/fontforge/fontviewbase.c": [
-     "redistribution"
-    ],
-    "luafontloader/fontforge/fontforge/fvcomposit.c": [
-     "redistribution"
-    ],
-    "luafontloader/fontforge/fontforge/fvfonts.c": [
-     "redistribution"
-    ],
-    "luafontloader/fontforge/fontforge/lookups.c": [
-     "redistribution"
-    ],
-    "luafontloader/fontforge/fontforge/macbinary.c": [
-     "redistribution"
-    ],
-    "luafontloader/fontforge/fontforge/macenc.c": [
-     "redistribution"
-    ],
-    "luafontloader/fontforge/fontforge/mathconstants.c": [
-     "redistribution"
-    ],
-    "luafontloader/fontforge/fontforge/memory.c": [
-     "redistribution"
-    ],
-    "luafontloader/fontforge/fontforge/mm.c": [
-     "redistribution"
-    ],
-    "luafontloader/fontforge/fontforge/mm.h": [
-     "redistribution"
-    ],
-    "luafontloader/fontforge/fontforge/namelist.c": [
-     "redistribution"
-    ],
-    "luafontloader/fontforge/fontforge/noprefs.c": [
-     "redistribution"
-    ],
-    "luafontloader/fontforge/fontforge/nouiutil.c": [
-     "redistribution"
-    ],
-    "luafontloader/fontforge/fontforge/parsepfa.c": [
-     "redistribution"
-    ],
-    "luafontloader/fontforge/fontforge/parsettf.c": [
-     "redistribution"
-    ],
-    "luafontloader/fontforge/fontforge/parsettfatt.c": [
-     "redistribution"
-    ],
-    "luafontloader/fontforge/fontforge/pfaedit.h": [
-     "redistribution"
-    ],
-    "luafontloader/fontforge/fontforge/plugins.h": [
-     "redistribution"
-    ],
-    "luafontloader/fontforge/fontforge/psfont.h": [
-     "redistribution"
-    ],
-    "luafontloader/fontforge/fontforge/psread.c": [
-     "redistribution"
-    ],
-    "luafontloader/fontforge/fontforge/python.c": [
-     "redistribution"
-    ],
-    "luafontloader/fontforge/fontforge/scripting.h": [
-     "redistribution"
-    ],
-    "luafontloader/fontforge/fontforge/sd.h": [
-     "redistribution"
-    ],
-    "luafontloader/fontforge/fontforge/sfd1.c": [
-     "redistribution"
-    ],
-    "luafontloader/fontforge/fontforge/sfd1.h": [
-     "redistribution"
-    ],
-    "luafontloader/fontforge/fontforge/splinechar.c": [
-     "redistribution"
-    ],
-    "luafontloader/fontforge/fontforge/splinefill.c": [
-     "redistribution"
-    ],
-    "luafontloader/fontforge/fontforge/splinefont.c": [
-     "redistribution"
-    ],
-    "luafontloader/fontforge/fontforge/splinefont.h": [
-     "redistribution"
-    ],
-    "luafontloader/fontforge/fontforge/splineorder2.c": [
-     "redistribution"
-    ],
-    "luafontloader/fontforge/fontforge/splineoverlap.c": [
-     "redistribution"
-    ],
-    "luafontloader/fontforge/fontforge/splinerefigure.c": [
-     "redistribution"
-    ],
-    "luafontloader/fontforge/fontforge/splinesave.c": [
-     "redistribution"
-    ],
-    "luafontloader/fontforge/fontforge/splinesaveafm.c": [
-     "redistribution"
-    ],
-    "luafontloader/fontforge/fontforge/splinestroke.c": [
-     "redistribution"
-    ],
-    "luafontloader/fontforge/fontforge/splineutil.c": [
-     "redistribution"
-    ],
-    "luafontloader/fontforge/fontforge/splineutil2.c": [
-     "redistribution"
-    ],
-    "luafontloader/fontforge/fontforge/start.c": [
-     "redistribution"
-    ],
-    "luafontloader/fontforge/fontforge/stemdb.c": [
-     "redistribution"
-    ],
-    "luafontloader/fontforge/fontforge/stemdb.h": [
-     "redistribution"
-    ],
-    "luafontloader/fontforge/fontforge/tottf.c": [
-     "redistribution"
-    ],
-    "luafontloader/fontforge/fontforge/tottfgpos.c": [
-     "redistribution"
-    ],
-    "luafontloader/fontforge/fontforge/ttf.h": [
-     "redistribution"
-    ],
-    "luafontloader/fontforge/fontforge/ttfspecial.c": [
-     "redistribution"
-    ],
-    "luafontloader/fontforge/fontforge/uiinterface.h": [
-     "redistribution"
-    ],
-    "luafontloader/fontforge/fontforge/unicoderange.h": [
-     "redistribution"
-    ],
-    "luafontloader/fontforge/gutils/fsys.c": [
-     "redistribution"
-    ],
-    "luafontloader/fontforge/inc/basics.h": [
-     "redistribution"
-    ],
-    "luafontloader/fontforge/inc/gfile.h": [
-     "redistribution"
-    ],
-    "luafontloader/fontforge/inc/gimage.h": [
-     "redistribution"
-    ],
-    "luafontloader/fontforge/inc/intl.h": [
-     "redistribution"
-    ],
-    "luatex.c": [
-     "public-domain"
-    ],
-    "luazlib/lgzip.c": [
-     "granted"
-    ],
-    "luazlib/lzlib.c": [
-     "granted"
-    ],
-    "slnunicode/slnudata.c": [
-     "permission-to-use"
-    ],
-    "slnunicode/slnunico.c": [
-     "permission-to-use",
-     "see-notice"
-    ],
-    "unilib/char.c": [
-     "redistribution"
-    ],
-    "unilib/charset.h": [
-     "redistribution"
-    ],
-    "unilib/gwwiconv.c": [
-     "redistribution"
-    ],
-    "unilib/gwwiconv.h": [
-     "redistribution"
-    ],
-    "unilib/src/makeutype.c": [
-     "redistribution"
-    ],
-    "unilib/ucharmap.c": [
-     "redistribution"
-    ],
-    "unilib/unibasics.h": [
-     "redistribution"
-    ],
-    "unilib/usprintf.c": [
-     "redistribution"
-    ],
-    "unilib/ustring.c": [
-     "redistribution"
-    ],
-    "unilib/ustring.h": [
-     "redistribution"
-    ]
-   }
-  },
-  {
-   "archive": "texlive-source-f26cc5e.tar.gz",
+   "archive": "texlive-source-6a30018.tar.gz",
    "path": "texk/web2c/pdftexdir",
    "files": 44,
    "covered": 2,
@@ -5762,7 +5090,7 @@
    }
   },
   {
-   "archive": "texlive-source-f26cc5e.tar.gz",
+   "archive": "texlive-source-6a30018.tar.gz",
    "path": "texk/web2c/xetexdir",
    "files": 42,
    "covered": 26,
@@ -5882,7 +5210,7 @@
    }
   },
   {
-   "archive": "texlive-source-f26cc5e.tar.gz",
+   "archive": "texlive-source-6a30018.tar.gz",
    "path": "texk/dvipdfm-x",
    "files": 150,
    "covered": 0,
@@ -5908,327 +5236,9 @@
    }
   },
   {
-   "archive": "texlive-source-f26cc5e.tar.gz",
-   "path": "texk/makeindexk",
-   "files": 11,
-   "covered": 2,
-   "ruled": [],
-   "hits": {
-    "qsort.c": [
-     "public-domain"
-    ],
-    "qsort.h": [
-     "public-domain"
-    ]
-   }
-  },
-  {
-   "archive": "texlive-source-f26cc5e.tar.gz",
+   "archive": "texlive-source-6a30018.tar.gz",
    "path": "texk/bibtex-x",
    "files": 13,
-   "covered": 0,
-   "ruled": [],
-   "hits": {}
-  },
-  {
-   "archive": "fontconfig-2.13.96.tar.gz",
-   "path": "src",
-   "files": 42,
-   "covered": 39,
-   "ruled": [
-    {
-     "file": "fcweight.c",
-     "how": "covered",
-     "why": "fontconfig's own HPND text with no copyright line; fontconfig-COPYING.txt holds it"
-    },
-    {
-     "file": "fcwindows.h",
-     "how": "skip",
-     "why": "fontconfig's Windows header"
-    }
-   ],
-   "hits": {
-    "fcarch.c": [
-     "notice-appear",
-     "permission-to-use"
-    ],
-    "fcarch.h": [
-     "notice-appear",
-     "permission-to-use"
-    ],
-    "fcatomic.c": [
-     "notice-appear",
-     "permission-to-use"
-    ],
-    "fcatomic.h": [
-     "granted"
-    ],
-    "fccache.c": [
-     "notice-appear",
-     "permission-to-use"
-    ],
-    "fccfg.c": [
-     "notice-appear",
-     "permission-to-use"
-    ],
-    "fccharset.c": [
-     "notice-appear",
-     "permission-to-use"
-    ],
-    "fccompat.c": [
-     "notice-appear",
-     "permission-to-use"
-    ],
-    "fcdbg.c": [
-     "notice-appear",
-     "permission-to-use"
-    ],
-    "fcdefault.c": [
-     "notice-appear",
-     "permission-to-use"
-    ],
-    "fcdeprecate.h": [
-     "notice-appear",
-     "permission-to-use"
-    ],
-    "fcdir.c": [
-     "notice-appear",
-     "permission-to-use"
-    ],
-    "fcformat.c": [
-     "notice-appear",
-     "permission-to-use"
-    ],
-    "fcfoundry.h": [
-     "granted"
-    ],
-    "fcfreetype.c": [
-     "notice-appear",
-     "permission-to-use"
-    ],
-    "fcfs.c": [
-     "notice-appear",
-     "permission-to-use"
-    ],
-    "fcftint.h": [
-     "notice-appear",
-     "permission-to-use"
-    ],
-    "fchash.c": [
-     "notice-appear",
-     "permission-to-use"
-    ],
-    "fcinit.c": [
-     "notice-appear",
-     "permission-to-use"
-    ],
-    "fcint.h": [
-     "notice-appear",
-     "permission-to-use"
-    ],
-    "fclang.c": [
-     "notice-appear",
-     "permission-to-use"
-    ],
-    "fclist.c": [
-     "notice-appear",
-     "permission-to-use"
-    ],
-    "fcmatch.c": [
-     "notice-appear",
-     "permission-to-use"
-    ],
-    "fcmatrix.c": [
-     "notice-appear",
-     "permission-to-use"
-    ],
-    "fcmd5.h": [
-     "public-domain"
-    ],
-    "fcmutex.h": [
-     "granted"
-    ],
-    "fcname.c": [
-     "notice-appear",
-     "permission-to-use"
-    ],
-    "fcobjs.c": [
-     "notice-appear",
-     "permission-to-use"
-    ],
-    "fcobjs.h": [
-     "notice-appear",
-     "permission-to-use"
-    ],
-    "fcobjshash.gperf.h": [
-     "notice-appear",
-     "permission-to-use"
-    ],
-    "fcpat.c": [
-     "notice-appear",
-     "permission-to-use"
-    ],
-    "fcptrlist.c": [
-     "notice-appear",
-     "permission-to-use"
-    ],
-    "fcrange.c": [
-     "notice-appear",
-     "permission-to-use"
-    ],
-    "fcserialize.c": [
-     "notice-appear",
-     "permission-to-use"
-    ],
-    "fcstat.c": [
-     "notice-appear",
-     "permission-to-use"
-    ],
-    "fcstr.c": [
-     "notice-appear",
-     "permission-to-use"
-    ],
-    "fcweight.c": [
-     "notice-appear",
-     "permission-to-use"
-    ],
-    "fcwindows.h": [
-     "notice-appear",
-     "permission-to-use"
-    ],
-    "fcxml.c": [
-     "notice-appear",
-     "permission-to-use"
-    ],
-    "ftglue.c": [
-     "public-domain"
-    ],
-    "ftglue.h": [
-     "public-domain"
-    ]
-   }
-  },
-  {
-   "archive": "fontconfig-2.13.96.tar.gz",
-   "path": "fontconfig",
-   "files": 3,
-   "covered": 3,
-   "ruled": [],
-   "hits": {
-    "fcfreetype.h": [
-     "notice-appear",
-     "permission-to-use"
-    ],
-    "fcprivate.h": [
-     "notice-appear",
-     "permission-to-use"
-    ],
-    "fontconfig.h": [
-     "notice-appear",
-     "permission-to-use"
-    ]
-   }
-  },
-  {
-   "archive": "expat-2.5.0.tar.gz",
-   "path": "lib",
-   "files": 19,
-   "covered": 17,
-   "ruled": [
-    {
-     "file": "siphash.h",
-     "how": "covered",
-     "why": "William Ahern's SipHash, 'Licensed under the CC0 Public Domain Dedication license', which asks nothing of a copy"
-    },
-    {
-     "file": "winconfig.h",
-     "how": "skip",
-     "why": "Expat's Windows configuration, not compiled for this target"
-    }
-   ],
-   "hits": {
-    "ascii.h": [
-     "granted",
-     "licensed-under"
-    ],
-    "asciitab.h": [
-     "granted",
-     "licensed-under"
-    ],
-    "expat.h": [
-     "granted",
-     "licensed-under"
-    ],
-    "expat_external.h": [
-     "granted",
-     "licensed-under"
-    ],
-    "iasciitab.h": [
-     "granted",
-     "licensed-under"
-    ],
-    "internal.h": [
-     "granted",
-     "licensed-under"
-    ],
-    "latin1tab.h": [
-     "granted",
-     "licensed-under"
-    ],
-    "nametab.h": [
-     "granted",
-     "licensed-under"
-    ],
-    "siphash.h": [
-     "licensed-under",
-     "public-domain"
-    ],
-    "utf8tab.h": [
-     "granted",
-     "licensed-under"
-    ],
-    "winconfig.h": [
-     "granted",
-     "licensed-under"
-    ],
-    "xmlparse.c": [
-     "granted",
-     "licensed-under"
-    ],
-    "xmlrole.c": [
-     "granted",
-     "licensed-under"
-    ],
-    "xmlrole.h": [
-     "granted",
-     "licensed-under"
-    ],
-    "xmltok.c": [
-     "granted",
-     "licensed-under"
-    ],
-    "xmltok.h": [
-     "granted",
-     "licensed-under"
-    ],
-    "xmltok_impl.c": [
-     "granted",
-     "licensed-under"
-    ],
-    "xmltok_impl.h": [
-     "granted",
-     "licensed-under"
-    ],
-    "xmltok_ns.c": [
-     "granted",
-     "licensed-under"
-    ]
-   }
-  },
-  {
-   "archive": "texlyre-busytex-build-46ebb62.tar.gz",
-   "path": "",
-   "files": 4,
    "covered": 0,
    "ruled": [],
    "hits": {}

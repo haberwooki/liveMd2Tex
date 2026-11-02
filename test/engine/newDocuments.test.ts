@@ -3,9 +3,9 @@
 // extension typesets it: a LaTeX document through the compile pipeline with the preamble scan, a Markdown
 // document through the converter (with the folder config and the example preset for the preset paper) and the
 // Markdown route. Each typesets with no TeX error, no undefined reference or citation, no "Missing character"
-// line, and no spawn or connection. The journal classes are not in the core data: the scan names the class
-// before the compile, and with the class files from the pinned CTAN set (standing in for the add-on) the
-// document typesets.
+// line, and no spawn or connection. Each typesets with the core data alone, the add-on not installed: the journal
+// classes (REVTeX, IEEEtran, elsarticle) and every package the templates and the example preset load are in
+// core-data (engine/bundle-sets.json, "forOwnDocuments"), so the scan names nothing.
 // Results (numbers only) go to ../s1_runs/.
 
 import * as assert from 'node:assert/strict';
@@ -20,21 +20,12 @@ import { packageContext, readCoreData } from '../../src/extension/engine/dataSet
 import type { EngineService } from '../../src/extension/engine/engineService';
 import { TEMPLATES, templateFiles, type DocumentTemplate } from '../../src/extension/templates/catalog';
 import type { CompileResult } from '../../src/shared/engineJobs';
-import { EXTRA_DATA_NAME } from '../../src/shared/identity';
 import { root } from '../support/helpers';
 import { nodeFs } from '../support/nodeFs';
-import { haveCtanClasses, journalClassFiles, type JournalClass } from './classFiles';
 import { markdownEngineService, typesetMarkdown } from './markdownRoute';
 import { analyse, record, writeResults } from './support';
 
 const read = async (from: string) => new Uint8Array(readFileSync(path.join(root, ...from.split('/'))));
-
-/** What the scan lists for each journal template (the class, and the .bst its \bibliographystyle names), and its CTAN files. */
-const JOURNAL: Record<string, { missing: string[]; files: JournalClass }> = {
-  revtex: { missing: ['revtex4-2.cls'], files: 'revtex' }, // the class names its own .bst
-  ieeetran: { missing: ['IEEEtran.cls', 'IEEEtran.bst'], files: 'ieeetran' },
-  elsarticle: { missing: ['elsarticle.cls', 'elsarticle-num.bst'], files: 'elsarticle' },
-};
 
 /** The converter options the extension takes from a folder config and its preset (markdown/conversion.ts). */
 function folderOptions(folder: string, main: string): ConvertOptions {
@@ -81,6 +72,7 @@ describe('New document from template: each starting document typesets as the com
     service = s as EngineService;
     tmp = mkdtempSync(path.join(os.tmpdir(), 'livemd2tex-new-'));
     core = await readCoreData(path.join(root, 'dist', 'data'));
+    assert.ok(core, 'the staged core data');
   });
 
   after(async () => {
@@ -102,13 +94,6 @@ describe('New document from template: each starting document typesets as the com
     return folder;
   }
 
-  async function addClass(t: DocumentTemplate, folder: string): Promise<void> {
-    const journal = JOURNAL[t.id.replace(/^(tex|md)-/, '')];
-    for (const f of await journalClassFiles(journal.files, compile)) {
-      writeFileSync(path.join(folder, f.path), f.data);
-    }
-  }
-
   function assertClean(name: string, result: CompileResult, errors: string[], expectBibtex: boolean) {
     assert.ok(result.pdf, `${name}: no PDF (${result.error ?? ''})\n${result.log.split('\n').slice(-20).join('\n')}`);
     assert.deepEqual(errors, [], `${name}: TeX errors`);
@@ -120,33 +105,15 @@ describe('New document from template: each starting document typesets as the com
   }
 
   for (const t of TEMPLATES) {
-    it(`${t.id}: ${t.label}`, async function () {
-      if (t.extra && !haveCtanClasses()) {
-        this.skip(); // the journal classes come from the pinned CTAN set (npm run engine:assets)
-      }
+    it(`${t.id}: ${t.label}`, async () => {
+      assert.equal(t.extra ?? false, false, `${t.id}: a template that needs the add-on (none does)`);
       const folder = await materialize(t);
       const bib = t.files.some((f) => f.to.endsWith('.bib'));
+      // The core data alone: the extension's own documents never need the add-on.
+      const packages = packageContext(core as NonNullable<typeof core>, []);
 
       if (t.kind === 'tex') {
-        const packages = core ? packageContext(core, []) : undefined;
-        let prepared = await prepareCompile({ fs: nodeFs(folder), mainRel: t.main, engineSetting: 'pdflatex', packages });
-        const missing = prepared.packageScan?.missing ?? [];
-        if (t.extra) {
-          // What the user sees first: the scan names the class (and its .bst). It offers the add-on for each file
-          // the core manifest lists there; until B1 that list is the stand-in add-on's (REVTeX only), and the
-          // other files get the CTAN route.
-          const journal = JOURNAL[t.id.replace(/^tex-/, '')];
-          if (core) {
-            assert.deepEqual(missing.map((m) => m.file), journal.missing, `${t.id}: the scan's list`);
-            for (const m of missing) {
-              const listed = core.elsewhere.some((set) => set.id === EXTRA_DATA_NAME && m.file in set.files);
-              assert.equal(m.offer?.id, listed ? EXTRA_DATA_NAME : undefined, `${t.id}: the offer for ${m.file}`);
-            }
-            record(`M4-new-${t.id}-scan`, missing.map((m) => ({ file: m.file, offer: m.offer?.id ?? null })));
-          }
-          await addClass(t, folder);
-          prepared = await prepareCompile({ fs: nodeFs(folder), mainRel: t.main, engineSetting: 'pdflatex', packages });
-        }
+        const prepared = await prepareCompile({ fs: nodeFs(folder), mainRel: t.main, engineSetting: 'pdflatex', packages });
         assert.deepEqual(prepared.packageScan?.missing.map((m) => m.file) ?? [], [], `${t.id}: reported missing`);
         const result = await compile(prepared.job);
         const errors = diagnosticsFor(result, prepared).filter((d) => d.severity === 'error').map((d) => `${d.file}:${d.line}: ${d.message}`);
@@ -157,11 +124,8 @@ describe('New document from template: each starting document typesets as the com
         return;
       }
 
-      if (t.extra) {
-        await addClass(t, folder);
-      }
       const text = readFileSync(path.join(folder, t.main), 'utf8');
-      const typeset = await typesetMarkdown(service, nodeFs(folder), t.main, text, folderOptions(folder, t.main));
+      const typeset = await typesetMarkdown(service, nodeFs(folder), t.main, text, folderOptions(folder, t.main), packages);
       assert.deepEqual(typeset.conversion.diagnostics.filter((d) => d.kind === 'unsupported').map((d) => d.message), [], `${t.id}: unsupported constructs`);
       assert.deepEqual(typeset.missing, [], `${t.id}: Missing character lines`);
       const errors = typeset.diagnostics.filter((d) => d.severity === 'error').map((d) => `${d.file}:${d.line}: ${d.message}`);

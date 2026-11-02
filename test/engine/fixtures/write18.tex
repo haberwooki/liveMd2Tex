@@ -1,6 +1,10 @@
-% Fixture (CC0, written by the project): \write18 must not start anything (docs/DESIGN.md#rules).
+% Fixture (CC0, written by the project): \write18 must not start anything (docs/DESIGN.md#rules). The file TeX
+% writes itself shows that the test reads the engine's files back.
 \documentclass{article}
 \begin{document}
+\immediate\openout1=tex-wrote-this.txt
+\immediate\write1{written by TeX}
+\immediate\closeout1
 Before.
 \immediate\write18{echo shell-was-here > shell-was-here.txt}
 \immediate\write18{kpsewhich article.cls}

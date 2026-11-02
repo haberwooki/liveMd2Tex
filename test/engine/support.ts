@@ -5,36 +5,147 @@
 // error lines, to help find a failure.
 
 import * as assert from 'node:assert/strict';
-import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import * as os from 'node:os';
 import * as path from 'node:path';
+import type { PackageContext } from '../../src/extension/compile/pipeline';
+import { packageContext, readCoreData, readDataExtension } from '../../src/extension/engine/dataSets';
+import { bundledEngineAssets } from '../../src/extension/engine/engineService';
 import { EngineHost } from '../../src/extension/engineHostClient';
-import type { CompileJob, CompileResult, EngineAssetPaths, EngineInitInfo, ProjectFile } from '../../src/shared/engineJobs';
+import type { InstalledSet } from '../../src/extension/project/packageScan';
+import { imageKey, type CompileJob, type CompileResult, type DataImageRef, type EngineAssetPaths, type EngineInitInfo, type ProjectFile } from '../../src/shared/engineJobs';
 import type { EngineReady } from '../../src/shared/engineProtocol';
-import { root } from '../support/helpers';
+import { EXTRA_DATA_NAME } from '../../src/shared/identity';
+import { filesBothHold } from '../../src/shared/packageIndex';
+import { importScript, root } from '../support/helpers';
+import { missingInput } from '../support/missingData';
 
 export const assetsRoot = path.resolve(root, '..', 'engine_assets');
 const runsRoot = path.resolve(root, '..', 's1_runs');
 
-/** The pinned engine files, or null when they have not been fetched (the engine tests then skip). */
+/**
+ * The engine files: engine.js and engine.wasm of the pinned engine release (engine/pins.json, livemd2tex-engine, in
+ * ../engine_assets/<its folder>/), our texmf.cnf, and the core data in dist/data (scripts/stage-engine.mjs --data,
+ * as its manifest names the image and index). Null when any is missing: the engine tests then skip, on CI with one
+ * notice while the data packages are not pinned; once both are, a missing file fails them on CI (test/support/
+ * missingData.ts), so a CI run never passes by skipping.
+ */
 export function engineAssetPaths(): EngineAssetPaths | null {
-  const pins = JSON.parse(readFileSync(path.join(root, 'engine', 'pins.json'), 'utf8')) as {
-    sources: { id: string; folder: string; patchedGlue: { sha256: string } }[];
-  };
-  const tl = pins.sources.find((s) => s.id === 'texlyre-busytex');
-  if (!tl) {
-    return null;
+  const pins = JSON.parse(readFileSync(path.join(root, 'engine', 'pins.json'), 'utf8')) as { sources: { id: string; folder: string }[] };
+  const engine = pins.sources.find((s) => s.id === 'livemd2tex-engine');
+  const dir = engine ? path.join(assetsRoot, engine.folder) : '';
+  const dataDir = path.join(root, 'dist', 'data');
+  let image: { file?: string; index?: string } = {};
+  try {
+    image = (JSON.parse(readFileSync(path.join(dataDir, 'manifest.json'), 'utf8')) as { image?: { file?: string; index?: string } }).image ?? {};
+  } catch {
+    // no core data staged
   }
-  const dir = path.join(assetsRoot, tl.folder);
   const paths: EngineAssetPaths = {
-    // The glue these pins name, in its own folder (scripts/lib/derived-glue.mjs), never another worktree's.
-    glue: path.join(assetsRoot, 'derived', tl.patchedGlue.sha256.slice(0, 16), 'busytex.patched.js'),
-    wasm: path.join(dir, 'busytex.wasm'),
-    data: path.join(dir, 'texlive-extra.data'),
-    loader: path.join(dir, 'texlive-extra.js'),
+    glue: path.join(dir, 'engine.js'),
+    wasm: path.join(dir, 'engine.wasm'),
+    data: path.join(dataDir, image.file ?? 'missing.data'),
+    index: path.join(dataDir, image.index ?? 'missing.index.json'),
     cnfOverride: path.join(root, 'engine', 'texmf-override.cnf'),
-    fontsConf: path.join(root, 'engine', 'fonts.conf'),
   };
-  return Object.values(paths).every((p) => existsSync(p)) ? paths : null;
+  const missing = Object.values(paths).filter((p) => !existsSync(p));
+  if (missing.length === 0 && engine) {
+    return paths;
+  }
+  missingInput(missing.map((p) => path.relative(path.resolve(root, '..'), p)).join(', ') || 'the livemd2tex-engine pin');
+  return null;
+}
+
+/**
+ * Whether the staged engine and core data are there (dist/engine, dist/data: scripts/stage-engine.mjs --data). A
+ * test without them skips, on CI with one notice while the data packages are not pinned; once both are, that is a
+ * failure on CI (test/support/missingData.ts).
+ */
+export function stagedEngine(ctx: Mocha.Context): boolean {
+  if (bundledEngineAssets(root)) {
+    return true;
+  }
+  missingInput('the staged engine and core data (node scripts/stage-engine.mjs --data)');
+  ctx.skip();
+  return false;
+}
+
+let addOn: Promise<{ set: InstalledSet; image: DataImageRef } | null> | null = null;
+
+/**
+ * The Extra Packages add-on for the engine tests: the extra-data package that LIVEMD2TEX_EXTRA_DATA names, built by
+ * the data builder for this engine, read as the extension reads an installed add-on. An unpacked package folder (the
+ * builder's <out>/extra-data/) is read in place; a .vsix is unpacked once into a temporary folder, about 300 MB,
+ * removed when the test process ends. Null without the variable or the staged core data. Documents whose packages
+ * are in the add-on (memoir, biblatex, mwe and the rest) typeset only with it, as for a user who installed it
+ * (needAddOn).
+ */
+export function extraAddOn(): Promise<{ set: InstalledSet; image: DataImageRef } | null> {
+  addOn ??= (async () => {
+    const file = process.env.LIVEMD2TEX_EXTRA_DATA;
+    const core = await readCoreData(path.join(root, 'dist', 'data'));
+    if (!file || !core) {
+      return null;
+    }
+    let folder = file;
+    if (!statSync(file).isDirectory()) {
+      const { readZip } = await importScript<{ readZip(zip: Buffer): Map<string, Buffer> }>('scripts/lib/zip.mjs');
+      folder = mkdtempSync(path.join(os.tmpdir(), 'livemd2tex-extra-'));
+      const made = folder;
+      process.once('exit', () => rmSync(made, { recursive: true, force: true }));
+      for (const [name, bytes] of readZip(readFileSync(file))) {
+        if (name.startsWith('extension/') && !name.endsWith('/')) {
+          const out = path.join(folder, ...name.slice('extension/'.length).split('/'));
+          mkdirSync(path.dirname(out), { recursive: true });
+          writeFileSync(out, bytes);
+        }
+      }
+    }
+    const extra = await readDataExtension(folder, EXTRA_DATA_NAME, { texLive: core.manifest.texLive, abi: core.manifest.abi });
+    assert.ok('image' in extra, `${path.basename(file)}: ${'problem' in extra ? extra.problem : ''}`);
+    // The extension uses an add-on only when it shares no file name with the core (dataResolver.ts): so do the tests.
+    const shared = filesBothHold(core.index, extra.set.index);
+    assert.deepEqual(shared.slice(0, 5), [], `${path.basename(file)}: the extension would not use this add-on, which holds ${shared.length} of the core's file names`);
+    return extra;
+  })();
+  return addOn;
+}
+
+/**
+ * The add-on, for a test that needs it: a test without it skips, on CI with the notice while the data packages are
+ * not pinned; once both are, that is a failure on CI (test/support/missingData.ts).
+ */
+export async function needAddOn(ctx: Mocha.Context): Promise<{ set: InstalledSet; image: DataImageRef }> {
+  const extra = await extraAddOn();
+  if (extra) {
+    return extra;
+  }
+  missingInput('the Extra Packages add-on (LIVEMD2TEX_EXTRA_DATA, an extra-data package built for this engine)');
+  ctx.skip();
+  throw new Error('skipped');
+}
+
+/**
+ * The extension's package context with the core data and, when the tests have it (extraAddOn), the add-on
+ * installed: a document's preamble scan then mounts the add-on when it needs one of its packages, as the extension
+ * does. Undefined without the staged core data.
+ */
+export async function testPackages(): Promise<PackageContext | undefined> {
+  const core = await readCoreData(path.join(root, 'dist', 'data'));
+  if (!core) {
+    return undefined;
+  }
+  const extra = await extraAddOn();
+  return packageContext(core, extra ? [extra] : []);
+}
+
+/**
+ * A job with the add-on's image mounted, when the tests have the add-on: for the documents of the public corpus,
+ * which a user would compile with it installed (memoir, mwe, biblatex are in it).
+ */
+export async function withAddOn(partial: Omit<CompileJob, 'id'>): Promise<Omit<CompileJob, 'id'>> {
+  const extra = await extraAddOn();
+  return extra ? { ...partial, dataImages: [extra.image], knownImages: [imageKey(extra.image)] } : partial;
 }
 
 export interface SharedEngine {
@@ -51,7 +162,7 @@ export function sharedEngine(): Promise<SharedEngine> {
   shared ??= (async () => {
     const assets = engineAssetPaths();
     if (!assets) {
-      throw new Error('engine assets missing; run node scripts/engine-assets.mjs and node scripts/engine-patch.mjs');
+      throw new Error('engine assets missing; run node scripts/engine-assets.mjs and node scripts/stage-engine.mjs --data --data-package FILE');
     }
     const t0 = performance.now();
     const host = new EngineHost({

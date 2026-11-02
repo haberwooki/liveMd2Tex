@@ -70,7 +70,6 @@ describe('dialect: CommonMark and GFM basics', () => {
     assert.match(r.latex, /\\\(\\alpha\\\) \\textrightarrow\{\} \\\(\\beta\\\) \\\(\\leq\\\) \\checkmark\{\}, m\\textsuperscript\{-1\}, H\\textsubscript\{2\}O and Dvořák/);
     assert.deepEqual(r.unprintable, []);
     assert.equal(r.engine, 'pdflatex');
-    assert.deepEqual(r.fontFiles, []);
   });
 
   it('takes XeTeX for characters pdfLaTeX cannot print: Latin Modern for accented names, DejaVu for the rest', () => {
@@ -78,7 +77,6 @@ describe('dialect: CommonMark and GFM basics', () => {
     const names = convertMarkdown('Thanks to Jonas Kazlauskas and Dovilė Žemaitė.');
     assert.equal(names.engine, 'xelatex');
     assert.equal(names.fontSet, 'latin-modern');
-    assert.deepEqual(names.fontFiles, []);
     assert.match(names.latex, /\\usepackage\{fontspec\}\n\\usepackage\{unicode-math\}\n\\setmathfont\{latinmodern-math\.otf\}/);
     assert.doesNotMatch(names.latex, /fontenc|lmodern|amssymb|setmainfont/);
     assert.match(names.latex, /Dovilė Žemaitė/);
@@ -89,7 +87,6 @@ describe('dialect: CommonMark and GFM basics', () => {
     const notes = convertMarkdown('Done ✓ 😀 and $α → 𝒩$.\n\n```\n┌─┐ 𝒯\n```\n');
     assert.equal(notes.engine, 'xelatex');
     assert.equal(notes.fontSet, 'dejavu');
-    assert.ok(notes.fontFiles.includes('DejaVuSerif.ttf') && notes.fontFiles.length === 12);
     assert.match(notes.latex, /\\setmainfont\{DejaVuSerif\}/);
     assert.match(notes.latex, /\\XeTeXcharclass"2713=/);
     assert.match(notes.latex, /\\XeTeXcharclass"1F600=/);

@@ -106,9 +106,8 @@ async function main(): Promise<void> {
   if (!core?.index) {
     throw new Error(`no core-data in ${coreDir}`);
   }
-  const manifest = core.manifest as typeof core.manifest & { image: { file: string; index?: string }; snapshot?: string };
-  // The image's index: named in the manifest (B1), else beside the image under its name (the interim data).
-  const imageIndex = manifest.image.index ?? manifest.image.file.replace(/\.data$/i, '.index.json');
+  const manifest = core.manifest as typeof core.manifest & { image: { file: string; index: string }; snapshot?: string };
+  const imageIndex = manifest.image.index;
   const extra = await readDataExtension(path.join(data, 'extra-data'), EXTRA_DATA_NAME, { texLive: manifest.texLive, abi: manifest.abi, snapshot: manifest.snapshot });
   if ('problem' in extra) {
     throw new Error(`extra-data: ${extra.problem}`);
@@ -127,12 +126,11 @@ async function main(): Promise<void> {
     const s = new EngineService({
       modulePath: path.join(root, 'dist', 'engine-host.js'),
       assets: () => ({
-        glue: path.join(engineDir, 'busytex.js'),
-        wasm: path.join(engineDir, 'busytex.wasm'),
+        glue: path.join(engineDir, 'engine.js'),
+        wasm: path.join(engineDir, 'engine.wasm'),
         cnfOverride: path.join(engineDir, 'texmf-override.cnf'),
-        fontsConf: path.join(engineDir, 'fonts.conf'),
         data: path.join(coreDir, manifest.image.file),
-        loader: path.join(coreDir, imageIndex),
+        index: path.join(coreDir, imageIndex),
       }),
       idleMinutes: () => 0,
       log: () => undefined,

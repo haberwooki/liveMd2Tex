@@ -3,12 +3,13 @@ Written by the project (GPL-3.0-or-later, as the rest of the repository). -->
 
 # When a package is missing
 
-The extension carries the LaTeX packages that most documents use. Many journal classes and less common
-packages come with the free **Extra Packages** add-on, from the same store.
+The extension carries the LaTeX packages that most documents use, the classes of its starting documents among
+them. Many other classes and less common packages come with the free **Extra Packages** add-on, from the same
+store.
 
-1. Click **Make a Physical Review paper** on the left, and choose a folder.
-2. Before it compiles, the extension checks what the document loads. The Problems panel names the missing
-   class, `revtex4-2.cls`, and says where to get it. A notification says the same.
+Before a document compiles, the extension checks what it loads. When the document loads something the extension
+does not carry, for example `\documentclass{memoir}`, the Problems panel names the missing file, `memoir.cls`,
+and says where to get it. A notification says the same.
 
 There are three ways to get a missing package:
 

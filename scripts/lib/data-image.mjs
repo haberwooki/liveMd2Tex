@@ -1,7 +1,7 @@
 // The image of a data set (build gate 2, G2E-02; B1; docs/DESIGN.md#store-and-packaging, #engine-and-data): a few
-// large files, not a tree of thousands. The layout is Emscripten's file_packager LZ4 package, the same as TeXlyre's
-// texlive-extra image that S1 loads unchanged: one byte blob (`.data`), and an index (`.index.json`, the JSON that
-// scripts/stage-engine.mjs extracts from TeXlyre's loader) with the file list and the chunk table. The engine host
+// large files, not a tree of thousands. The layout is Emscripten's file_packager LZ4 package: one byte blob
+// (`.data`), and an index (`.index.json`, file_packager's metadata as JSON) with the file list and the chunk table.
+// The engine host
 // reads both with fs and mounts the image in each compile worker with the same code as the core image
 // (src/engine-host/engine/worker.ts, mountImage): a data extension's under /texmf-extra, which kpathsea searches
 // after the user's package folder and before the core, through the ls-R the worker writes for it; the core's at the

@@ -54,8 +54,9 @@ to WebAssembly), the optional native packages of `@vscode/vsce` (signing, keyrin
 (canvas) are left out, and no package install script runs. The integration tests use the installed VS Code
 with a throwaway profile under the system temp folder (`--user-data-dir`, `--extensions-dir`), deleted after
 the run; `.vscode-test.mjs` refuses to download a VS Code build. The engine work adds the pinned engine files
-in `../engine_assets/` (about 380 MB: the TeXlyre engine and image, 366 MB, and the CTAN set, 13.6 MB) until
-the data packages are built on CI (docs/DESIGN.md#rules), and small result files in `../s1_runs/`.
+in `../engine_assets/` (about 40.6 MB: our engine, 27.0 MB, and the CTAN set, 13.6 MB) and small result files in
+`../s1_runs/`. The engine tests also need a core-data package and the Extra Packages add-on built for the pinned
+engine (about 131.6 MB and 235.1 MB, outside the repository) until the data packages are pinned ("The TeX engine").
 
 ## The rules the checks enforce
 
@@ -66,7 +67,9 @@ the data packages are built on CI (docs/DESIGN.md#rules), and small result files
   `EventSource` anywhere in `src/`, the webview included; no `require()`, `process.binding` or
   `getBuiltinModule`; no `eval`, `Function` constructor or `Worker` from source text; and no VS Code API that
   starts a program for the extension: `workspace.findFiles` and `findTextInFiles` (they run ripgrep), tasks,
-  `ShellExecution`, `ProcessExecution` and `window.createTerminal`.
+  `ShellExecution`, `ProcessExecution` and `window.createTerminal`; and no lazy or preloaded file in the engine
+  (`createLazyFile`, `createPreloadedFile`, `preloadFile`), which would make Emscripten's glue read a URL, under
+  Node from the real disk.
 - Stubs (`test/stubs/`): the process stub makes `spawn`, `spawnSync`, `exec`, `execSync`, `execFile`,
   `execFileSync` and any fork except the engine host throw; the network stub makes every socket, server, DNS
   lookup, HTTP(S) request, `fetch` and `WebSocket` throw. Both record each attempt. Unit tests run with them
@@ -81,11 +84,30 @@ the data packages are built on CI (docs/DESIGN.md#rules), and small result files
   with `eval`, `process.binding`). `child_process` is allowed only in `dist/fork.js`; any other hit must be on
   `security/vsix-scan-allowlist.json` with its file, line and reason. The scan also fails on native files,
   source maps, `node_modules` and private markers in the package, and on a missing licence text (the notices,
-  `dist/licenses/`, ICU's licence and MakeIndex's notice wherever the engine is, and in a test copy the TeX Live
-  and DejaVu licences). The test copy's patched engine glue
-  must match the SHA-256 pinned in `engine/pins.json`. Limits of the scan: it reads names as written, so a
-  name built at run time (`globalThis['fe' + 'tch']`) or a `Worker` class reached through `require(...)` inside
-  an expression is not seen. No shipped file uses either today (a text search finds none).
+  `dist/licenses/`, and wherever the engine is, the notice of every part of it; in a test copy, core-data's
+  `LICENSES/INDEX`) or one that is not the pinned bytes. A data image (the `.data` file a data manifest names) is
+  read file by file through its index, not as compressed bytes, in which a marker can turn up by chance or be split
+  by the compression (`scanImage`): every path; text files as text; binary files (fonts, formats after their gzip
+  compression is undone, pictures, archives) for the path-like markers only. In TeX Live's own files, the files
+  the data manifest's package index lists for the pinned snapshot's packages, the name-like markers (kind
+  "word") are left out: TeX packages hold people's names by coincidence, and a list of the files where they
+  occur would narrow the names down. Every other marker is searched there, and every marker in every file the
+  index does not list, the files the data builder writes itself among them (`ls-R`, the font list, the formats).
+  The engine is found by its content: every file that is WebAssembly must be the engine or one of pdf.js's three
+  decoders, a script that is Emscripten's glue must be the engine's `engine.js`, and nothing of the engine's build
+  ships, under `engine/build/` or by one of its file names anywhere (`engineByContent`). Wherever the engine is,
+  the scan also checks it: `engine.wasm` and `engine.js` are the files `engine/pins.json` pins, and the wasm is
+  the one `engine/engine-build.json` records
+  (`pinnedEngine`); `engine/engine-notices.json` names the commits and the scripts' tree hash that record names
+  (`noticesForEngine`), so the notices describe this engine; the engine holds none of the strings of libpaper,
+  MakeIndex, LuaTeX, luaffi or remote fetching, and does hold dvipdfmx's own paper sizes (`engineStrings`, the
+  build's own list); every import of the wasm, resolved through the glue, is on the build record's list and none is
+  denied (a shell, a socket, the network, dynamic loading), the record shows Emscripten's raw-socket and host
+  file system settings off, and the glue's watched names appear only in the comments
+  `engine/build/glue-allow.json` reviews (`engineImports`); and the record's memory layout keeps the stack and
+  the static data inside the 64 MiB the worker restores (`engineHeader`). Limits of the scan: it reads names as
+  written, so a name built at run time (`globalThis['fe' + 'tch']`) or a `Worker` class reached through
+  `require(...)` inside an expression is not seen. No shipped file uses either today (a text search finds none).
 - Private-marker scan (`scripts/marker-scan.mjs`): run by the pre-commit and commit-msg hooks, on its own,
   and over the whole history before the repository is published. The markers are not in the repository in any
   form: they come from a git-ignored `.private-markers.json` (in the repository folder or the folder above it)
@@ -93,30 +115,53 @@ the data packages are built on CI (docs/DESIGN.md#rules), and small result files
   It also decodes what a file may hide a marker in, and searches the result: escapes, HTML entities, character
   codes, base64, base32, hex, percent encoding, UTF-16 and ROT13, plus a marker written backwards or split up.
 
-## The TeX engine (S1)
+## The TeX engine
 
-The engine is TeXlyre's BusyTeX build (pdfTeX, XeTeX, LuaHBTeX in ini mode, bibtex8, xdvipdfmx, makeindex,
-kpathsea; TeX Live 2026) run by our own driver in `src/engine-host/engine/`. Its files are not in this
-repository: `engine/pins.json` names each one with its URL, size and SHA-256 (the TeXlyre release, and a small
-CTAN set: corpus samples, the publisher classes, DejaVu).
+The engine is our own build of TeX Live's programs: pdfTeX, XeTeX, xdvipdfmx and bibtex8 on kpathsea (TeX Live
+2026), in one `engine.wasm` with its glue `engine.js`. This repository builds it (`engine/build/`, below), and our
+own driver in `src/engine-host/engine/` runs it. Its files are not in the repository: `engine/pins.json` names each
+one with its address in the engine release, its size and SHA-256 (`livemd2tex-engine`, release `engine-6a30018-4`),
+beside a small CTAN set (corpus samples, the publisher classes, DejaVu). The release was published on 2026-11-02
+(the pin's `published`) as an immutable release, so its files cannot change; `npm run engine:assets` downloads them
+anonymously and checks each one.
 
 ```sh
-npm run engine:assets   # fetch and check every pinned file into ../engine_assets/ (about 380 MB; never inside the repo)
-npm run engine:patch    # apply engine/patches/busytex-glue.mjs to the glue, into ../engine_assets/derived/<hash>/
-npm run test:engine     # the S1 gate: fixtures, public corpus P1-P8, the engine-host design, any private tests
+npm run engine:assets   # fetch and check every pinned file into ../engine_assets/ (about 40.6 MB; never inside the repo)
+npm run test:engine     # the engine tests: fixtures, the public corpus P1-P8, the engine-host design, any private tests
 ```
 
-On a fresh clone, run the first two commands before the tests. Without the engine files every engine test is
-pending, and `stage-engine` says it skipped. CI fetches the files before its tests.
+The engine tests also need TeX's files: a core-data package and the Extra Packages add-on built for the pinned
+engine (their manifests' `abi` is its SHA-256). Until the data packages are pinned, set `LIVEMD2TEX_CORE_DATA` to
+the core-data package and `LIVEMD2TEX_EXTRA_DATA` to the add-on, and, for the bundle tests,
+`LIVEMD2TEX_BUNDLE_OUT` to the builder's output folder. The builder makes both packages on a laptop from a
+downloaded copy of the pinned snapshot (`node scripts/build-bundle.mjs --local DIR`, "The data sets" below). Point
+the two variables at its unpacked folders, `<out>/core-data` and `<out>/extra-data`: `stage-engine` then
+hard-links the core data into `dist/data`, and the tests read the add-on where it is (a `.vsix` works too, but is
+unpacked on every run, about 0.5 GB). The tests mount the add-on for the documents that need it, as for a user who
+installed it. Without the files every engine test is pending, and `stage-engine` says it skipped. On CI
+(`CI=true`) the same holds, with one notice, only while `engine/pins.json` does not pin both data packages
+(`test/support/missingData.ts`, `scripts/lib/data-pins.mjs`); once both are pinned, a missing engine, core data
+or add-on fails the engine tests on CI, so a CI run never passes by skipping.
 
-- The glue patches (reviewable diff: `engine/patches/busytex.js.diff`) close every route out of the engine:
-  `\write18` and `os.execute` get "no shell", kpathsea never fetches a missing file from the network, and
-  every socket fails with "permission denied". `engine/texmf-override.cnf` turns shell escape and all `mktex*`
-  font generation off; every LuaTeX call passes `--nosocket`.
-- The engine host compiles the WebAssembly module once, reads the image (342 MB, LZ4) with `fs` into a
+- Every route out of the engine is closed inside it. `system()` and `popen()` are our stubs
+  (`engine/build/stubs.c`), which start nothing, so `\write18` and `\input|` run nothing. The engine imports no
+  function for a socket, the network or dynamic loading (the build's import check and the VSIX scan). The glue is
+  Emscripten's own; its few web-request lines are never reached under Node, and the scan lists each as reviewed.
+  `engine/texmf-override.cnf` turns shell escape and all `mktex*` font generation off, and every call passes
+  `-no-shell-escape`.
+- The engine host sets the engine's environment. A tool or a test may set only three variables over it
+  (`ENV_OVERRIDES` in `src/engine-host/engine/layout.ts`): `LIVEMD2TEX_FONT_LIST_CHECK`, which turns on the font
+  list's collision report, and `SOURCE_DATE_EPOCH` and `FORCE_SOURCE_DATE`, the fixed dates a comparison of two
+  runs needs. The engine host and each worker refuse any other variable (`checkEnvOverrides`), so shell escape,
+  the search paths and the `mktex*` switches cannot be set this way. The extension sets none.
+- The engine host compiles the WebAssembly module once, reads the core image (LZ4) with `fs` into a
   `SharedArrayBuffer`, and runs each compile in a `worker_thread` (one at a time); cancel terminates the worker.
   Each worker unpacks the image into its own buffers. The next compile starts only after the cancelled worker
   has exited. A cancel names its job, and the engine host ignores a cancel for any other job.
+- The tools run one after another in one WebAssembly instance (BusyTeX's pattern). After each tool the worker
+  restores the first 64 MiB of memory; the build keeps the stack and the static data inside them, and `prepare()`
+  refuses an engine whose memory is not that size. The workers run with a 16 MiB stack, so TeX's own limit stops
+  a runaway macro before V8 does.
 - Only the files that changed since a project's last compile cross to the engine host. The engine host keeps
   each project's files (the last 8 projects, at most 256 MB together; a document with no preview and no editor
   tab is dropped). After a restart, or after its project was dropped, it asks for the whole project once.
@@ -125,19 +170,18 @@ pending, and `stage-engine` says it skipped. CI fetches the files before its tes
   "Open LaTeX preview" for a Markdown file), which tries again and always answers with a pop-up.
 - The main file may have spaces or accents in its name, or an upper-case `.TEX`. File names are case-sensitive
   in the preview on every system: `\input{Chapter1}` does not find `chapter1.tex`, even on Windows and macOS.
-- `engine/fonts.conf` gives XeTeX the bundle's OpenType and TrueType folders only; the first XeTeX run writes a
-  fontconfig cache that later compiles are given. fontconfig does not accept it, though: every XeTeX run rescans
-  the folders and reads every OpenType and TrueType file (measured 2026-10-31; see "Measuring speed").
+- XeTeX finds fonts by name through the font list, not fontconfig: the worker joins the lists of the images it
+  mounts (`fonts/xetex-fonts.tsv` in each) into `/engine/fonts.list`, which the engine's stand-in reads
+  (docs/DESIGN.md#engine-and-data). Nothing is scanned and no font cache is written.
 - Engine tests can run under VS Code's own Node: set `ELECTRON_RUN_AS_NODE=1` and run
   `"%LOCALAPPDATA%\Programs\Microsoft VS Code\Code.exe" node_modules/mocha/bin/mocha.js --config .mocharc.engine.cjs`.
 - Results go to `../s1_runs/`, outside the repository. For a private document they hold numbers only. The
   tests fail when the engine host's peak memory reaches 1.5 GB, or a cancel takes a second or more.
 
-### The TeX engine: our own build (not yet shipped)
+### The TeX engine: our own build
 
-`engine/build/` builds the engine that is to replace TeXlyre's: one `engine.wasm` and its glue `engine.js`, with
-pdfTeX, XeTeX, xdvipdfmx and bibtex8 on kpathsea, from TeX Live's source at commit `6a300188` with Emscripten
-6.0.13. `engine/engine-build-pins.json` pins every input by address, size and SHA-256. It runs under Linux, Ubuntu
+`engine/build/` builds the engine: one `engine.wasm` and its glue `engine.js`, with pdfTeX, XeTeX, xdvipdfmx and
+bibtex8 on kpathsea, from TeX Live's source at commit `6a300188` with Emscripten 6.0.13. `engine/engine-build-pins.json` pins every input by address, size and SHA-256. It runs under Linux, Ubuntu
 26.04 (WSL2, or GitHub's `ubuntu-26.04` runner), never under Windows itself.
 
 ```sh
@@ -145,8 +189,9 @@ bash engine/build/build.sh --fetch --root ~/engine-build --out ~/engine-out   # 
 node engine/build/tools/run.mjs ~/engine-out [--thai-font Loma.otf]          # the smoke test (31 cases)
 node engine/build/tools/wasm-inspect.mjs ~/engine-out --check                # the safety checks (also run by the build)
 node scripts/engine-compare.mjs CI_OUT WSL_OUT                               # two builds: prints "match" or what differs
-node scripts/engine-shakedown.mjs --b ~/engine-out --a busytex --images DATA_PACKAGES_DIR --work WORK_DIR \
-  --corpus CORPUS_DIR --reference CORPUS_REFERENCE_JSON   # real LaTeX, A and B paired
+node scripts/engine-shakedown.mjs --b ~/engine-out --a OTHER_ENGINE_DIR --images DATA_PACKAGES_DIR --work WORK_DIR \
+  --corpus CORPUS_DIR --reference CORPUS_REFERENCE_JSON   # real LaTeX, A and B paired (--a busytex: the earlier
+                                                          # engine, with --host of a checkout that still pins it)
 ```
 
 - **Host tools** (Ubuntu package names; `engine-build-pins.json`, `hostTools`): `build-essential python3 xz-utils
@@ -209,31 +254,41 @@ node scripts/engine-shakedown.mjs --b ~/engine-out --a busytex --images DATA_PAC
   archive of our build scripts at the commit (`engine/build/`, the pins and `LICENSE`, whose files must give the
   manifest's tree hash); it fails if the tag or a release of it exists; and it makes the draft
   `engine-<TeX Live short commit>-<n>`: the engine, its manifest and logs, the licence texts and notice files of
-  `engine/engine-notices.next.json` (musl's 6.0.13 `COPYRIGHT` taken from Emscripten's archive while
-  `LICENSES/engine` holds today's engine's copy), a generated `NOTICE`, the two source archives, our scripts'
-  archive, and notes with the source directions (`scripts/engine-release.mjs`); then it counts the draft's files.
-  The owner publishes it with "Set as the latest release" unticked (the extension's releases are the latest), and
-  `engine/engine-build.json` is committed from the draft's own copy. Nothing is added later.
+  `engine/engine-notices.json`, a generated `NOTICE`, the two source archives, our scripts' archive, and notes
+  with the source directions (`scripts/engine-release.mjs`); then it counts the draft's files. The owner publishes
+  it with "Set as the latest release" unticked (the extension's releases are the latest). While the engine release
+  is the repository's only published release, GitHub shows it as "Latest" even with the box unticked; the first
+  extension release, published as the latest, takes the mark. Then
+  `engine/engine-build.json` is committed from the draft's own copy. Nothing is added later. `engine/pins.json`
+  then pins the release (`livemd2tex-engine`: each file's address, size and SHA-256, the tag and the commit), and
+  the data packages are built again for its `abi`. Once the owner has published the release, the next commit sets
+  the pin's `published` to the date of publication and rewords its `note`; until then `scripts/engine-assets.mjs`
+  refuses to download the release's files, and every CI job stops at its first step.
 - **The font check** (`engine/build/tools/font-check.mjs`) compares the font list our fontconfig stand-in reads with
-  a native `fc-scan` of fontconfig 2.13.96 (check 1), and every font name through today's engine and the new one
-  (check 2). It builds the list as the host will: each data set's list with its own `fontOrder` rules, joined core
+  a native `fc-scan` of fontconfig 2.13.96 (check 1), and every font name through the earlier engine (run with
+  `--old-host`, a worktree of a commit that still pins it) and ours (check 2). It builds the list as the host will: each data set's list with its own `fontOrder` rules, joined core
   first; a name two sets share, a rule that does not hold and a rule that decides nothing fail it. `--evidence`
   leaves each rule out once and records the requests that then differ. `FcInit`'s collision report is printed only
   when `LIVEMD2TEX_FONT_LIST_CHECK` is set, which the builder and the font check do and the host never does.
 - **The LaTeX shake-down** (`scripts/engine-shakedown.mjs`) runs real LaTeX through the extension's engine host
   (build `dist/` and `out/` first): it makes `pdflatex.fmt` and `xelatex.fmt` with each engine given as a folder,
-  puts them into a copy of the core image, and compiles the corpus and its own cases (XeLaTeX with OpenType fonts and
-  bibtex8; `\write18` and `\input|` with shell escape forced) on A and B in turn. Each job is prepared by the
-  extension's own compile pipeline, so the add-on image is mounted only for a document whose preamble needs one of
-  its packages, or after a "not found" names one of its files, as the extension mounts it (`--extra always` mounts it
-  for every compile, to measure its cost; `--extra never` leaves it out; `--host DIR` runs another checkout's engine
-  host). It reports pages, error lines, font warnings, embedded fonts, SyncTeX, times and memory, and whether the
-  PDFs match. On B, `\write18` must reach `system()`, which runs nothing: the log says `runsystem(...)...executed`,
-  the command's file does not appear, and the transcript says `system returned with code -1`. (Today's engine
-  answers the same, so the build's import checks, not this case, show that our stub is the one linked.) B may not
-  warn where A does not. A document that gets the add-on after a "not found" is compiled twice, and its time covers
-  both. A speed comparison of two builds measures with it. It runs under today's engine host, which does
-  not yet give the engine our font list, so it does not test fonts that LaTeX looks up by name.
+  puts them into a copy of the core image, and compiles the corpus and its own cases (XeLaTeX with OpenType fonts by
+  file name and bibtex8, X1; the speed benchmark's XeLaTeX document with fonts by family name, X4; `\write18` and
+  `\input|` with shell escape forced) on A and B in turn. The dates are fixed: every format build and compile of an
+  engine folder gets `SOURCE_DATE_EPOCH` (`--epoch`, default 1700000000) and `FORCE_SOURCE_DATE=1` through the
+  host's override of the engine's environment, and a PDF that does not carry that date fails the run (a host
+  without the override leaves the real date in). So A's and B's PDFs must be the same bytes, and a difference fails
+  the run; every PDF is kept in `<work>/pdf/`. `--b-epoch N` gives B other dates, a control that must fail. Each
+  job is prepared by the extension's own compile pipeline, so the add-on image is mounted only for a document whose
+  preamble needs one of its packages, or after a "not found" names one of its files, as the extension mounts it
+  (`--extra always` mounts it for every compile, to measure its cost; `--extra never` leaves it out; `--host DIR`
+  runs another checkout's engine host). It reports pages, error lines, font warnings, embedded fonts, SyncTeX, times
+  and memory. On B, `\write18` must reach `system()`, which runs nothing: the log says `runsystem(...)...executed`,
+  the command's file does not appear, and the transcript says `system returned with code -1`. (The earlier
+  engine, TeXlyre's build, answers the same, so the build's import checks, not this case, show that our stub is the
+  one linked.) B may not warn where A does not. A document that gets the add-on after a "not found" is compiled
+  twice, and its time covers both. A speed comparison of two builds measures with it. The engine host gives the
+  engine the font list of the images it mounts, so the shake-down also covers fonts that LaTeX looks up by name.
 - **Decisions, 2026-10-31.** Fonts by name go through our stand-in, with no fontconfig and no expat. The `-g1` glue
   ships. The collision report is on request only, and the builder checks collisions across the sets mounted together.
   CI runs on `ubuntu-26.04`.
@@ -245,14 +300,54 @@ node scripts/engine-shakedown.mjs --b ~/engine-out --a busytex --images DATA_PAC
   The cost accepted: those 21 to 29 ms on a short paper's first compile after each host start, and an engine about
   1.6 MB larger. `-sTEXTDECODER=2` keeps `-Oz`'s text decoding (at `-O3` Emscripten's default decodes short strings in
   JavaScript, which gives other characters for invalid UTF-8). The engine releases `engine-6a30018-1` and `-2` were
-  `-Oz` drafts, never published. Another level may replace `-O3` at the yearly TeX Live rebuild, if it builds in
-  its own root, passes the build's checks and the font check, measures with the shake-down paired against the
-  shipped level with every PDF the same, passes the recursion case with the workers' stack, and passes its own gate.
+  `-Oz` drafts, and `-3` an `-O3` draft with a false notice line; none was published. Another level may replace
+  `-O3` at the yearly TeX Live rebuild, if it builds in its own root, passes the build's checks and the font
+  check, measures with the shake-down paired against the shipped level with every PDF the same, passes the
+  recursion case with the workers' stack, and passes its own gate.
 - **Runtimes.** The smoke test runs under Node 22 and 24, and under VS Code's own runtime (`Code.exe` with
   `ELECTRON_RUN_AS_NODE=1`; on 2026-10-31 Electron 43.7.7 with Node 24.21.0 and V8 15.0). The engine's workers need a
   larger stack than Node's default: with `resourceLimits: { stackSizeMb: 16 }` TeX's own `expand_depth` stops a
   runaway macro. What a worker with Node's default 4 MB does first depends on the level (the `-Oz` pdfTeX met V8's
-  `RangeError` first); the smoke test records it.
+  `RangeError` first); the smoke test records it. At the shipped level, `-O3`, the engine tests' recursion fixture
+  fails without the 16 MiB (pdfLaTeX's second run, XeLaTeX's first), so it guards the setting.
+- **Decisions, 2026-10-30 and 2026-10-31** (the maintainer's, on the plan for this engine):
+  - LuaTeX is left out (2026-10-31). Adding it back would take a new build with its parts, the LuaTeX data
+    packages and their format, and their notices again.
+  - No code comes from TeXlyre's build. BusyTeX's MIT code is a reference, and a line copied from it is marked
+    "from BusyTeX" and carries its notice.
+  - Indexes are out of scope: the engine holds no MakeIndex.
+  - One file holds the four programs. The lists of renamed and shared names that this needs are computed by the
+    build, not kept by hand.
+  - ICU's data is compiled in whole.
+  - `system()` and `popen()` can never start a shell: our stubs replace Emscripten's.
+  - Emscripten 6.0.13, pinned with its emsdk archives and its Node; it moves on purpose, once or twice a year.
+  - No patch to the generated glue. Its web-request lines are reviewed entries of the scan's allow-list.
+  - The files are `engine.wasm`, `engine.js` and `/bin/engine`.
+  - The engine lives in a release of this repository, and immutable releases are on (2026-10-31). A release holds
+    everything from its first publication: the engine, its record and logs, the licence texts and notices,
+    `NOTICE`, the source directions, and TeX Live's and Emscripten's source archives (Emscripten's attached,
+    2026-10-31).
+  - Two builds, the CI build and a WSL build of the same public commit, must give the same bytes before a release.
+  - The engine reaches public `main` before the first extension release that ships it; nothing is released from
+    `main` until then, and if that release's checks fail, `main` goes back to the earlier engine by a new sync.
+  - Before that release, the new engine's compile times and memory are compared with the earlier engine's. A
+    compile more than 25 % slower, or a document's peak memory more than 10 % higher, holds the release for a fix
+    (2026-10-31). Speed work goes on separately.
+  - The licence statement and `package.json`'s `GPL-3.0-or-later` (README.md, "Licence").
+- **Each year.** TeX Live's new year comes each March: move `engine/engine-build-pins.json` to the new branch's
+  commit, build under WSL, fix what moved (configure's answers, a library's flags; the renamed and shared names are
+  computed again), build on CI, compare, release, pin the release, build the data packages again, and run the font
+  check and the shake-down against the previous engine. Run the notice search on the new archives ("When the
+  engine is rebuilt", under "Licences, notices and releases"). Emscripten moves once a year on purpose. The
+  libraries that read users' files (libpng, FreeType, HarfBuzz, zlib, xpdf) can need a security fix: watch TeX
+  Live's branch and their advisories, and rebuild from a newer commit of the branch when one matters.
+- **Until both data packages are pinned** (core-data and the Extra Packages add-on), CI has no TeX data for the
+  engine. The engine tests skip there with one notice that says so, the VSIX scans step scans the plain package and
+  leaves the test copy out with the same notice, and the VS Code integration tests that compile skip with the same
+  notice, because the extension finds no engine data (Restricted Mode's two compiling cases among them). Once both
+  are pinned, the engine tests and the integration tests that compile fail on CI without their inputs, and the test
+  copy is scanned. Every job must pass in between. The engine release must be published before the repository's
+  `main` pins it: `scripts/engine-assets.mjs` cannot download a draft's files, and says so.
 
 ## Version 0: compile on save (V0)
 
@@ -283,11 +378,11 @@ node scripts/engine-shakedown.mjs --b ~/engine-out --a busytex --images DATA_PAC
 - The engine host starts on the first compile and stops after `livemd2tex.engineIdleMinutes`.
 
 The engine and data are not in the normal package yet (the data packages come with B1 and G0). For a
-development machine:
+development machine, with a core-data package built for the pinned engine ("The TeX engine"):
 
 ```sh
-node scripts/stage-engine.mjs --data       # put the engine, TeXlyre's image and the DejaVu fonts into dist/ (hard links), for F5 and the tests
-node scripts/vsix-scan.mjs --test-copy     # build, stage, package and scan the test copy (about 270 MB) into out/vsix/
+node scripts/stage-engine.mjs --data --data-package PATH   # put the engine and the core data into dist/ (hard links), for F5 and the tests
+node scripts/vsix-scan.mjs --test-copy --data-package PATH # build, stage, package and scan the test copy into out/vsix/
 ```
 
 The test copy goes into a throwaway VS Code profile only (`code --user-data-dir DIR --extensions-dir DIR
@@ -641,8 +736,7 @@ writes the title, authors, affiliations, abstract and keywords the way that clas
 the class loads or forbids, and picks its bibliography style (`src/converter/classes.ts`). Starting documents
 for each are in `templates/markdown/` (CC0); "New document from template" offers those for REVTeX, IEEEtran,
 elsarticle and report (M4, below). CTAN's llncs has no sample paper that compiles, so its starting document is
-our own. acmart's fonts (Libertine, newtx, Inconsolata) are not yet in the engine image, so acmart falls back to
-Computer Modern until the data packages carry them.
+our own. acmart's fonts (Libertine, newtx, Inconsolata) are in core-data.
 
 Tests:
 
@@ -685,9 +779,7 @@ Modern Math lacks come from DejaVu Math TeX Gyre. The table of which font has wh
 (`test/engine/fontCoverage.test.ts`; `UPDATE_FONT_COVERAGE=1` rewrites it). A character that no shipped font
 has is shown as `[U+XXXX]`, with a notice on each line where it stands.
 
-Until the data packages carry DejaVu (B1), its files come from the pinned CTAN set. `stage-engine.mjs` puts them
-in `dist/data/fonts/`, and the compile hands them to XeTeX as project files
-(`src/extension/engine/interimFonts.ts`).
+DejaVu is in core-data, so XeTeX finds it by name through the font list (docs/DESIGN.md#engine-and-data).
 
 Citations: natbib by default; with `biblatex: true`, biblatex with `backend=bibtex8`, since Biber is not in the
 engine. Each unsupported construct gives one plain warning on its first line in the Problems panel, whether the
@@ -859,11 +951,10 @@ Tests:
   also names the package and the data set that has it. The CTAN address is in the text; for a single missing
   package the notification also has a button for its CTAN page, which VS Code opens only after its own link
   prompt.
-- **Package indexes.** Each data set has one: file name to package, and the files each package loads. Until B1
-  builds the real `manifest.json`, `scripts/stage-engine.mjs` builds `dist/data/packages.json` from TeXlyre's
-  interim image (its own `.sty` and `.cls` files, read with `scripts/lib/image-files.mjs`), and the core manifest
-  lists what the Extra Packages add-on holds. The core's own dependencies are left to B1's closure test, and a
-  project's class or package is not followed (they load some packages only for some options).
+- **Package indexes.** Each data set has one: file name to package, and the files each package loads. The
+  builder writes it into the set's `data/manifest.json`, and the core manifest also lists what the Extra Packages
+  add-on holds (`elsewhere`). The core's own dependencies are left to B1's closure test, and a project's class or
+  package is not followed (they load some packages only for some options).
 - **"Install Extra Packages"** opens VS Code's Extensions view on `haberwooki.livemd2tex-extra-data`; the user
   installs it there and the extension downloads nothing. The resolver (`src/extension/engine/dataResolver.ts`)
   finds the add-on with `extensions.getExtension` (it is never a dependency) and accepts it only when its TeX
@@ -898,19 +989,23 @@ Tests:
   glossaries-extra's `record`, `\makeglossaries`), each with what to do instead. "Report a missing package"
   opens the issue tracker through VS Code's link prompt.
 
-The Extra Packages add-on does not exist yet; `node scripts/build-extra-standin.mjs` builds a test stand-in that
-holds REVTeX 4.2 as one data image (`out/vsix/livemd2tex-extra-data-0.0.1-standin.vsix`). Tests: `test/unit/m6.test.ts`;
-`test/engine/m6.test.ts` (the scan finds nothing missing in the corpus; P2 without REVTeX through the stand-in
-add-on and through the CTAN ZIP; tensor from its `.dtx` and `.ins`); `test/integration/m6.test.ts` (the same in
-VS Code, with the stand-in installed from its VSIX into the throwaway profile, and the compile command's answer:
+The Extra Packages add-on is not published yet. The builder makes it (extra-data), and the tests use that build
+(`LIVEMD2TEX_EXTRA_DATA`): the engine tests read it, and `scripts/run-integration.mjs` hands its `.vsix` to the VS
+Code tests, which install it into the throwaway profile as a user would. Tests:
+`test/unit/m6.test.ts`; `test/engine/m6.test.ts` (the scan finds nothing missing in the corpus with the add-on
+installed; P7 without it: the scan names its package and TeX's "not found" its class, each with the add-on; with
+the add-on, P7 reaches a PDF; P2 through the CTAN ZIP; tensor from its `.dtx` and `.ins`); `test/integration/m6.test.ts` (the same in
+VS Code, with the add-on installed from its VSIX into the throwaway profile, and the compile command's answer:
 its own compile, never an older one that was still running); `test/engine/gate2.test.ts` (a file
 an image's package loads indirectly, the mount after "not found", a package build beside a live compile, the
 user's files in the change sets).
 
-## The data sets: core-data and extra-data (B1, prepared, not yet run)
+## The data sets: core-data and extra-data (B1, built on a laptop, not yet released)
 
-`scripts/build-bundle.mjs` builds the two data sets from TeX Live itself, on GitHub only (`.github/workflows/bundle.yml`,
-run by hand). Nothing of it runs on a development machine except its tests, on tiny made-up archives.
+`scripts/build-bundle.mjs` builds the two data sets from TeX Live itself, on GitHub (`.github/workflows/bundle.yml`,
+run by hand). On a development machine it runs on a downloaded copy of the pinned snapshot (`--local DIR`), to
+build the data the engine tests need until the data packages are pinned; its unit tests use tiny made-up
+archives.
 
 - **One pin, checked against TeX Live's signature.** `engine/bundle-pins.json` names a dated snapshot of TeX
   Live's package repository and the SHA-256 of its package database, `texlive.tlpdb`. Every package archive is
@@ -940,6 +1035,13 @@ run by hand). Nothing of it runs on a development machine except its tests, on t
   holds authblk, `was`, which holds upgreek, and `frankenstein`, and the publisher classes `fbithesis` and
   `tugboat-plain` (below). A set's `exclude` leaves a package out on purpose, with its reason (today `ltxmisc`:
   one of its files forbids selling it). The report lists both.
+  - **No file name in both sets.** The extension does not use an add-on whose package index holds a file name the
+    core's holds: mounted, it is searched before the core and would change the core's file for every document
+    (`filesBothHold`, `src/shared/packageIndex.ts`). The builder stops on such a name, with the same rule
+    (`scripts/lib/package-index.mjs`'s `filesBothHold`; a unit test keeps the two equal). extra-data leaves out
+    for this reason the LaTeX development release (`latex-base-dev` and its seven siblings, read only by the `-dev`
+    formats, which the extension never builds) and `mmap` (its `t1.cmap` and `ot1.cmap` are cmap's names).
+    The engine tests apply the same rule when they mount the add-on.
 - **Our own tools, no other program.** The builder unpacks the `.tar.xz` archives with its own xz decoder and
   tar reader (`scripts/lib/xz.mjs`, `tar.mjs`), writes `ls-R`, `language.dat` and its siblings, `fmtutil.cnf`,
   `updmap.cfg`, `pdftex.map` and `kanjix.map` the way tlmgr and updmap do (`scripts/lib/texmf-config.mjs`), and
@@ -949,7 +1051,7 @@ run by hand). Nothing of it runs on a development machine except its tests, on t
   lists them as run files (koma-script lists its whole tree), and the report lists the packages they came from. A
   program file among the rest (`.jar`, `.whl`, `.py`, `.pl`, `.exe`, `.dll`, `.so`, a shell script, or Lua outside
   `tex/`) stops the build. Such a package is left out with its reason (today `jupynotex` and `prettytok`, which
-  hold Python scripts). The engine build's own support files come from its pinned image and are not scanned.
+  hold Python scripts).
 - **The engine checks the result.** In the extension's own engine host it builds `pdflatex.fmt` and
   `xelatex.fmt` in initex mode, and measures what the hyphenation patterns add to them. The closure test then
   loads, alone in a minimal document, every class and every `.sty` directly in a package's own `tex/latex`
@@ -991,8 +1093,6 @@ run by hand). Nothing of it runs on a development machine except its tests, on t
     kastrup's and plweb's files say "see the source file", so their `.dtx` (and plweb's `.ins`) ship in their
     LICENSES folders; menu, fancynum, colorprofiles, beamertheme-metropolis, tucv, apa6e, correctmathalign,
     docutils and dvips get the texts their READMEs name.
-  - core-data's files from the engine build's image need texts too (`engineFiles`): ICU's licence for
-    `icudt78l.dat`, ICU's data, and TeX Live's for its own files. A file no rule matches stops the build.
   - **GPL change notices: decided by the maintainer, 2026-10-26.** The GPL fonts stay packed, with a notice per
     file. `LICENSES/CHANGES-GPL` in core-data lists every packed font under the GPL, by its own terms (above): its
     path, its package, its original's SHA-256, the snapshot archive that holds the original unmodified (its URL),
@@ -1049,8 +1149,17 @@ run by hand). Nothing of it runs on a development machine except its tests, on t
   CI `bundleCorpus.test.ts`.
 - **Fonts in the add-on.** Some fonts live only in extra-data (bookman, charter, utopia and more). A Type 1 file
   that pdfTeX cannot open, and a font that XeTeX cannot find by name, each get plain help. When the add-on holds
-  the file, the message names it, and an installed add-on is mounted for the next compile. `engine/fonts.conf`
-  names the add-ons' OpenType and TrueType folders, so XeTeX finds an add-on's font by name.
+  the file, the message names it, and an installed add-on is mounted for the next compile.
+- **Font lists.** Each set's image holds `fonts/xetex-fonts.tsv`, the list of its OpenType and TrueType faces that
+  the engine's stand-in for fontconfig reads (`scripts/lib/font-list.mjs` writes it as fontconfig 2.13.96 would
+  describe each face). XeTeX keeps the first face it meets for a name, so where two of a set's files share a name,
+  the set's `fontOrder` rule in `engine/bundle-sets.json` says which file comes first, and why. The builder stops
+  on a shared name with no rule, on a name the two sets share, and on a rule that does not hold or decides nothing.
+  It also stops on a font of a kind the font check has not compared with fontconfig: a variable font, a collection
+  (`.ttc`, `.otc`) or a web font (`.woff`, `.woff2`); such a font must be left out of the set first. A file the
+  list writer cannot read, or one with no outlines, is left out of the list as fontconfig leaves it out, and the
+  build's report and log name each one. The worker joins the lists of the images it mounts, core first
+  (docs/DESIGN.md#engine-and-data).
 - **One build for both sets.** The core's font maps name the add-on's fonts. So the extension accepts an add-on
   only from the same TeX Live snapshot as its core, and says so in plain words otherwise.
 - **The workflow.** `pin`, then `fetch` (the archive cache is saved even when the fetch fails), `build` (the
@@ -1065,16 +1174,13 @@ run by hand). Nothing of it runs on a development machine except its tests, on t
   then the build's packages. It compiles the public corpus again, and the page counts must match
   (`test/engine/bundleCorpus.test.ts`, `scripts/bundle-reference.mjs`). Why its Perl is allowed is under
   "CI and the public history on GitHub".
-- **Afterwards.** Once `dist/data` holds core-data, `node scripts/clean-interim-data.mjs --yes` deletes the interim
-  image and the pinned CTAN files from a development machine (without `--yes` it only lists them). Every
-  core-data build still needs the engine build's image, for its own support files; the workflow fetches it again.
 - **Still open.** Our own copy of the snapshot after the first build, and the measured minutes.
 
 Tests: `test/unit/xz.test.ts`, `tar.test.ts`, `tlpdb.test.ts`, `bundle.test.ts` (the whole build without the engine,
 on a made-up snapshot: the signed pin, the licence lists, the licence texts and their INDEX, the report on an error,
-the closure targets and the program guard), `dataImage.test.ts`, `cleanup.test.ts`, `workflows.test.ts` (the jobs and their order), `m6.test.ts`
-(an add-on from another snapshot); `test/engine/bundleEngine.test.ts` (the formats, the patterns' cost and the
-closure test on the engine, with the interim image standing in for the new tree).
+the closure targets and the program guard), `dataImage.test.ts`, `fontLists.test.ts` (the font lists and their
+rules), `workflows.test.ts` (the jobs and their order), `m6.test.ts` (an add-on from another snapshot);
+`test/engine/bundleEngine.test.ts` (the formats, the patterns' cost and the closure test on the engine).
 
 ## How many documents compile (M5, prepared, not yet run)
 
@@ -1233,38 +1339,36 @@ domain under CC0 1.0 (`CC0-1.0`), because "New document from template" and the p
 users' own folders, so that a paper or thesis written from them carries no conditions. Each folder has a
 `LICENSE.md` notice, each file with a comment form carries the line `SPDX-License-Identifier: CC0-1.0`, and the
 legal text is `LICENSES/CC0-1.0.txt` (in the package, `dist/licenses/CC0-1.0.txt`). The command writes these files
-as they are and adds no header of the extension's. `package.json` keeps `GPL-3.0-or-later AND AGPL-3.0-only`: it
-names the terms of the extension as a whole, and the CC0 files carry their own notice, as the bundled MIT and
-Apache-2.0 parts do. The VSIX scan fails a package whose starting documents lack the notices, the legal text or an
+as they are and adds no header of the extension's. `package.json` keeps `GPL-3.0-or-later`, our own code's terms,
+and the CC0 files carry their own notice, as the bundled MIT and Apache-2.0 parts do. The VSIX scan fails a package whose starting documents lack the notices, the legal text or an
 SPDX line, or name the GPL (`cc0Headers` and `missingNotices` in `scripts/vsix-scan.mjs`). The test fixtures
 marked CC0 (`test/fixtures/`, `test/corpus/`, `test/converter/`) are not shipped.
 
 ## Licences, notices and releases
 
-The licence gates (2026-10-26) checked every part by others that a package ships. What they set up:
+The licence gates (2026-10-26) checked every part by others that a package ships, and the engine's notices were
+written again for our own engine (2026-10-31). What they set up:
 
 - **The engine's notices.** `engine/engine-notices.json` lists the parts of the engine, each with its version,
-  licence, the files TeXlyre's Makefile links for it, and its notice files. It also holds a copy of the Makefile's
-  link line (line 376) and of the object lists it names (lines 77 to 86). The notice files are in
-  `LICENSES/engine/`, each copied from that part's own source and pinned by SHA-256 in the manifest. The build
-  copies them to `dist/licenses/engine/`. THIRD_PARTY_NOTICES.md's "Inside the engine" table is the output of
-  `node scripts/lib/engine-notices.mjs`.
-  - `test/unit/engineNotices.test.ts` checks that every file on the manifest's copy of the link lines belongs to a
-    part, and the reverse; that every notice file is present at its pinned bytes; that the table in
-    THIRD_PARTY_NOTICES.md is the manifest's; and that the VSIX scan requires every notice file wherever
-    `dist/engine/busytex.wasm` ships. It reads the manifest's copy of the Makefile lines, not the Makefile: it
-    also checks that the manifest names the TeXlyre commit and release that `engine/pins.json` pins, so a new pin
-    fails the test until the manifest is updated. The release check compares the copy with the Makefile inside
-    TeXlyre's archive at that commit (its SHA-256, and line by line).
+  licence, the link inputs that belong to it (`links`) and its notice files. `build` names TeX Live's and
+  Emscripten's commits, the commit and tree hash of our build scripts, and the build record
+  (`engine/engine-build.json`). The notice files are in `LICENSES/engine/`, each copied from that part's own source
+  and pinned by SHA-256 in the manifest (`files`). The build copies them to `dist/licenses/engine/`, and the engine
+  release ships the same files. THIRD_PARTY_NOTICES.md's "Inside the engine" table is the output of
+  `node scripts/lib/engine-notices.mjs`, and the release's `NOTICE` the output of its `--release-notice`.
+  - `test/unit/engineNotices.test.ts` checks that each part's `links` are the patterns the build's link check gives
+    it (`LINK_PARTS` in `engine/build/tools/link-report.mjs`), that every part of the link map
+    `engine/engine-build.json` records is a part of the manifest, and that the map passed. The build itself fails on
+    a link input no part claims. The test also checks that every notice file is present at its pinned bytes, that
+    `LICENSES/engine/` holds nothing else, that the table in THIRD_PARTY_NOTICES.md is the manifest's, that the
+    manifest names the commits and the scripts' tree hash of `engine-build.json`, and that the VSIX scan requires
+    every notice file wherever `dist/engine/engine.wasm` ships.
   - The VSIX scan fails a package whose engine notices or licence texts are missing, or are not the pinned bytes
-    (`missingNotices`, `wrongNotices`). Its libpaper check (`PAPERCONF`, `/etc/papersize`) cannot see TeX Live's
-    libpaper, which holds neither string: the pinned build does link libpaper (GPL-2.0-only, which may not ship
-    with the AGPL-3.0 parts; THIRD_PARTY_NOTICES.md), so no release ships this engine. Our own engine replaces it
-    and its check (`engine/build/tools/wasm-inspect.mjs`) looks for libpaper's paper table and `PAPERSIZE` instead.
+    (`missingNotices`, `wrongNotices`).
 - **Below the link line.** A linked library can hold code by other authors under terms of their own, which the
-  link-line test cannot see. `node scripts/engine-notice-search.mjs --archives DIR` helps a person find it; it is
-  an aid to reading, not a proof. It reads the four source archives (by their names in the manifest's `sources`)
-  and searches each linked library's compiled sources for licence clauses that match its patterns (`clauses`, each
+  link check cannot see. `node scripts/engine-notice-search.mjs --archives DIR` helps a person find it; it is
+  an aid to reading, not a proof. It reads the source archives (by their names in the manifest's `sources`) and
+  searches each linked library's compiled sources for licence clauses that match its patterns (`clauses`, each
   with an id): written out, stated by reference ("Released under", "licensed under", "See Copyright Notice in",
   SPDX lines) and public-domain dedications. The patterns are generous; the rules do the sorting.
   - What it guarantees: every clause that matches a pattern, on one line or across two adjacent lines, is either
@@ -1277,85 +1381,73 @@ The licence gates (2026-10-26) checked every part by others that a package ships
   - Each own licence lists the clause kinds it may cover (`clauses`). A clause is covered when a licence of its kind
     has its words on the clause's own line (or, for a named licence, in the clause's paragraph) and the notices name
     every holder on the copyright lines up to 25 lines above the clause; a holder written only as "the authors" names
-    nobody. A line that holds two kinds
-    of clause needs both covered.
+    nobody. A line that holds two kinds of clause needs both covered.
   - An own licence marked `reference` (a pointer to a notice that ships) needs no holder of its own; one marked
     `anyHolder` (a licence that asks for no list of holders in a copy, such as FreeType's under its GPL option, or a
     public-domain dedication) covers any holder and says why. These two hold only when their words start on the
     clause's own line. Words may be a phrase (`text`) or a pattern (`pattern`); `unless` rules a licence out when it
     matches the clause's lines: the public-domain dedication's catches "not", "n't", "no longer", "never" and "no"
     up to 40 characters before "public domain" in the same sentence (it stops at "." and ";"). Own licences can be
-    limited to some files (`files`), as luaffi's and DynASM's are.
+    limited to some files (`files`).
   - Every other file needs a rule in the manifest's `search`: the notice that ships for it, why the shipped notices
     cover it, or why it is not compiled for the engine. A file with no rule, and a rule that names no file, fail the
-    search.
-  - The run of 2026-10-27 is recorded in `engine/engine-notice-search.report.json` (each folder's files with hits,
-    by clause kind, and the rules used). It found the notices that THIRD_PARTY_NOTICES.md lists under "Below the link
-    line". DynASM's notice was added from a review, not by the search: DynASM's headers state their licence by
-    reference, which the first version of the search did not read. It reads them now.
-- **When the engine pin changes.** Read the new Makefile's link line; update the manifest's `build`, `makefile`
-  (its URL, SHA-256 and lines), `sources`, versions and notice files; run the table again. The unit test fails until
-  the manifest names the new pin. Then download the new source archives and run
-  `node scripts/engine-notice-search.mjs --archives DIR --since engine/engine-notice-search.report.json`: it lists
-  the files whose hits are new or changed, by folder, file and clause kinds (not by archive, whose name changes with
-  the pin). A person reads each of them and each problem, writes the rules and
-  notices, and records the run with `--report engine/engine-notice-search.report.json`. No release ships a new
-  engine pin before this is done.
-- **The notice in the patched glue.** `engine/patches/busytex-glue.mjs` holds `notice`: the original (TeXlyre's
-  release, copyright and licence), the date of the last change to the patches, who changed it, where the patches
-  are, and the SHA-256 of the patches (`patchesSha256`). `scripts/engine-patch.mjs` writes the notice at the head of
-  the patched glue and of `engine/patches/busytex.js.diff` (AGPL-3.0 section 5(a) and (b)); `patchesSha256` is not
-  written into the glue, so it changes neither the glue nor its pin. It is there for the unit test, which fails when
-  the patches change until `date` and `patchesSha256` follow. Only then does the glue change: run
-  `scripts/engine-patch.mjs` and pin the new glue's SHA-256 in `engine/pins.json`.
-- **The derived glue is keyed by its hash.** `engine-patch` writes the glue into
-  `../engine_assets/derived/<first 16 digits of its SHA-256>/` (`scripts/lib/derived-glue.mjs`). `stage-engine`,
-  the engine tests and the bundle builder read only the folder of the hash `engine/pins.json` pins. So worktrees
-  with different patches share the one assets folder without overwriting each other's glue.
+    search. A part that is not searched says why (`notSearched`: Emscripten's libraries, whose notices are
+    Emscripten's, musl's and LLVM's; our own code; BusyTeX's few lines in our dispatcher).
+  - The run of 2026-11-01, on TeX Live's archive at the pinned commit, is recorded in
+    `engine/engine-notice-search.report.json` (each folder's files with hits, by clause kind, and the rules used).
+    It found no new hit since the run of 2026-10-27, and one problem, which a new rule settles: SyncTeX's LuaTeX
+    header, which only LuaTeX's build compiles. The notices it found are those THIRD_PARTY_NOTICES.md lists in
+    "Inside the engine", in the paragraph that starts "Below the link line".
+- **When the engine is rebuilt** from new sources (a new TeX Live commit, a new Emscripten):
+  - Update the manifest's `build`, `sources` (each archive's address and SHA-256), versions and notice files, and
+    run the table again. The unit test fails until the manifest names the new build record's commits and tree hash.
+  - Download the new source archives (the engine release holds them) and run
+    `node scripts/engine-notice-search.mjs --archives DIR --since engine/engine-notice-search.report.json`. It lists
+    the files whose hits are new or changed, by folder, file and clause kinds (not by archive, whose name changes
+    with the commit). A person reads each of them and each problem, writes the rules and notices, and records the
+    run with `--report engine/engine-notice-search.report.json`.
+  - The build checks the linked musl files' notices itself (`link-report.mjs musl`); a new linked file with terms
+    of its own stops it until `LICENSES/engine/musl-file-notices.txt` holds its header.
+  - No release ships a rebuilt engine before this is done.
 - **This version's source.** README.md (Licence) and THIRD_PARTY_NOTICES.md name the tag of the version as its
   source: "for this version, the tag `v<version>` of https://github.com/haberwooki/liveMd2Tex", with the version of
   `package.json`. They name the tag and do not link its tree, which opens only once the release has made the tag;
   each release's page links it. `test/unit/releaseSources.test.ts` fails when the version changes and they do not.
   The repository must be public before any package is published, so that this address works.
 - **Releases, in this order.** The sources are attached before any package reaches a store.
-  0. If the engine pin changed since the last release, the notice search's new hits have been read and ruled
-     ("When the engine pin changes", above), and its report is recorded.
+  0. If the engine was rebuilt since the last release, the notice search's new hits have been read and ruled
+     ("When the engine is rebuilt", above), and its report is recorded.
   1. Push the tag `v<version>` on the commit the packages are built from.
   2. Make a draft release on GitHub for that tag, with the packages (`.vsix`) as its files. Its notes give the
      source: the tag's tree, https://github.com/haberwooki/liveMd2Tex/tree/v<version>.
   3. Run `.github/workflows/release-sources.yml` by hand with the tag. It runs `scripts/release-sources.mjs`,
      which checks the tag against the extension's version and README, and lists the sources each package needs:
-     for a package with the engine, the four archives of `engine/engine-notices.json`; for a data package, the
-     snapshot archives its `licences.json` lists, each under the pinned snapshot's mirrors. curl downloads them,
-     git lists the trees of the two commits GitHub's archives are made from (fetched with `--filter=blob:none`, so
-     only the trees come down), and the script checks each archive:
-     its SHA-256 or SHA-512, a data archive's SHA-512 against the pinned package database, a commit archive's files
-     against its commit, and TeXlyre's Makefile against the manifest. The workflow then attaches one tar file per
-     group (`engine-sources-<tag>.tar`, `core-data-sources-<tag>.tar`, `extra-data-sources-<tag>.tar`) and the list,
-     `sources.json`, to the draft.
-     On the first real run, confirm that `gh release download` and `gh release upload` find the draft by its tag:
-     GitHub's look-up by tag does not return drafts, and gh's way around that has not been tried here.
+     for a package with the engine, the two archives of `engine/engine-notices.json`; for a data package, the
+     snapshot archives its `licences.json` lists, each under the pinned snapshot's mirrors. For the engine it also
+     checks that the packaged `engine.wasm` is the one `engine-build.json` records and `engine/pins.json` pins,
+     built from the two archives' commits, and says where our build scripts' source is: the tag itself if its
+     `engine/build/` and `engine/engine-build-pins.json` still give the build's tree hash, otherwise the engine
+     release and its commit (`buildManifestDifferences`). curl downloads the archives, git lists the trees of the
+     two commits GitHub's archives are made from (fetched with `--filter=blob:none`, so only the trees come down),
+     and the script checks each archive: its SHA-256 or SHA-512, a data archive's SHA-512 against the pinned package
+     database, and a commit archive's files against its commit. The workflow then attaches one tar file per group
+     (`engine-sources-<tag>.tar`, `core-data-sources-<tag>.tar`, `extra-data-sources-<tag>.tar`) and the list,
+     `sources.json`, to the draft. On the first real run, confirm that `gh release download` and
+     `gh release upload` find the draft by its tag: GitHub's look-up by tag does not return drafts, and gh's way
+     around that has not been tried here.
   4. Only when that run has passed: publish the release.
   5. Only then: upload the packages to the VS Code Marketplace and Open VSX.
 
-  GitHub makes the `archive/` files of TeXlyre's and TeX Live's commits on request, and promises the same files
+  GitHub makes the `archive/` files of TeX Live's and Emscripten's commits on request, and promises the same files
   for a commit, not the same bytes. An archive with other bytes but the commit's files is attached with its new
   SHA-256 and a note; one whose files differ stops the run. Never make an archive by hand with a new hash.
-- **A fixed copy of the engine's sources (the maintainer's decision).** The reviewers suggest attaching the four
-  archives once, now, to a permanent release of this repository (for example `engine-sources-46ebb62`), so later
-  releases need not ask GitHub to make them again. That release is permanent, so whether to make it is the
-  maintainer's decision; none is made yet. If it is made: run the workflow's steps for the four archives into it,
-  then give each source in `engine/engine-notices.json` a `mirror` (the release file's address).
-  `scripts/release-sources.mjs` uses `mirror` before the upstream address, and still checks the same hashes.
+- **A fixed copy of the engine's sources.** The engine release holds TeX Live's and Emscripten's archives from its
+  first publication, checked against their commits' trees. Once it is published, each source in
+  `engine/engine-notices.json` can get a `mirror` (the release file's address); `scripts/release-sources.mjs` uses
+  `mirror` before the upstream address, and still checks the same hashes.
 - **pplib's licence (the maintainer's decision, 2026-10-30).** pplib states no licence of its own. It stays
   recorded under LuaTeX's terms, GPL-2.0-or-later, as Debian and Fedora record it, and no question goes upstream.
 - **Open.**
-  - A "Licences" command that shows the notices inside VS Code, before the first release (GPL-3 and AGPL-3
-    section 5(d)).
-  - MakeIndex's notice asks that a modified work carry an identical notice; TeXlyre links MakeIndex into one binary
-    with GPL and AGPL code. Ask TeXlyre or TUG for a reading before the first release.
-  - luaffi is Facebook's luaffifb, with Facebook's "Additional Grant of Patent Rights Version 2" (`PATENTS`). The
-    FSF's licence list has no entry for it; whether it raises a question for the GPL-3 and AGPL-3 parts is the
-    maintainer's to decide (THIRD_PARTY_NOTICES.md, the notes under "Inside the engine").
+  - A "Licences" command that shows the notices inside VS Code, before the first release (GPL-3 section 5(d)).
   - A first bundle run on the new repository, to check `LICENSES/INDEX`, `CHANGES-GPL` and the archives in
     `licences.json` against real packages.

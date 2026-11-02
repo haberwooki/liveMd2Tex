@@ -36,8 +36,11 @@ export function licenceOf(pkg, reviews = {}) {
  * (and TeX Live's own files, which have no Catalogue entry); a group's "licences" narrows it further. A set's
  * "exclude" (name: reason) leaves a package out on purpose, listed with its reason; in core-data, any other
  * package that is not free stops the build. core-data's "toExtra" (name: reason) leaves a package out of core-data,
- * also as a dependency, and gives it to extra-data. "licenceReviews" give the licences of "collection" packages.
- * @returns {{ core: Set<string>, extra: Set<string>, missing: string[], dropped: { package: string, set: string, reason: string }[], problems: string[], moved: { package: string, reason: string, inExtra: boolean }[] }}
+ * also as a dependency, and gives it to extra-data. core-data's "forOwnDocuments" (name: reason) names the packages
+ * the extension's own templates and example presets load, which core-data must hold so that they compile without
+ * the add-on: each is selected for core-data, and one that does not end there is a problem. "licenceReviews" give
+ * the licences of "collection" packages.
+ * @returns {{ core: Set<string>, extra: Set<string>, missing: string[], dropped: { package: string, set: string, reason: string }[], problems: string[], moved: { package: string, reason: string, inExtra: boolean }[], ownDocuments: { package: string, reason: string, inCore: boolean }[] }}
  */
 export function selectSets(db, sets) {
   const missing = [];
@@ -47,7 +50,8 @@ export function selectSets(db, sets) {
   const classOf = (pkg) => licenceClass({ ...pkg, license: licenceOf(pkg, reviews) });
   // toExtra (name: reason): left out of core-data, also as a dependency, and given to extra-data instead.
   const toExtra = sets['core-data'].toExtra ?? {};
-  const coreSpec = sets['core-data'];
+  const forOwn = sets['core-data'].forOwnDocuments ?? {};
+  const coreSpec = { ...sets['core-data'], packages: [...(sets['core-data'].packages ?? []), ...Object.keys(forOwn)] };
   const coreExcludeNames = Array.isArray(coreSpec.exclude) ? coreSpec.exclude : Object.keys(coreSpec.exclude ?? {});
   const coreSel = resolveSelection(db, { ...coreSpec, exclude: [...coreExcludeNames, ...Object.keys(toExtra)] });
   missing.push(...coreSel.missing.map((m) => `core-data: ${m}`));
@@ -109,7 +113,11 @@ export function selectSets(db, sets) {
     }
   }
   const moved = Object.entries(toExtra).map(([name, reason]) => ({ package: name, reason, inExtra: extra.has(name) }));
-  return { core, extra, missing, dropped, problems, moved };
+  const ownDocuments = Object.entries(forOwn).map(([name, reason]) => ({ package: name, reason, inCore: core.has(name) }));
+  for (const o of ownDocuments.filter((x) => !x.inCore)) {
+    problems.push(`core-data: ${o.package}, which the extension's own documents load (${o.reason}), is not in core-data`);
+  }
+  return { core, extra, missing, dropped, problems, moved, ownDocuments };
 }
 
 /** The SHA-512 of a buffer, as tlpdb's containerchecksum writes it. */
@@ -307,20 +315,17 @@ export function overlap(a, b) {
 }
 
 /**
- * The core image's files, by absolute path in the worker without the leading "/": the engine's own support files
- * (from the pinned engine build, outside the TeX tree), the TeX tree under texlive/texmf-dist, the generated
- * files, the formats when built, and one ls-R for the whole tree.
+ * The core image's files, by absolute path in the worker without the leading "/": the TeX tree under
+ * texlive/texmf-dist, the generated files, the formats when built, and one ls-R for the whole tree. The engine needs
+ * no other file of its own (the engine host writes the program file and the font list).
  *
  * The worker's TEXMFVAR (texmf-var, with the generated files and the formats) lies inside TEXMFDIST. kpathsea then
  * answers a search of TEXMFVAR from TEXMFDIST's ls-R alone, so that ls-R must list texmf-var too. Without it, the
  * generated language.dat was invisible and TeX Live's default one, which names every language, was read instead
  * (the second CI build).
  */
-export function coreImageFiles(coreFiles, generated, engineFiles, formats = new Map()) {
+export function coreImageFiles(coreFiles, generated, formats = new Map()) {
   const out = new Map();
-  for (const [p, b] of engineFiles) {
-    out.set(p, b);
-  }
   const tree = new Map([...coreFiles, ...generated, ...formats]);
   for (const [rel, b] of tree) {
     out.set(`${CORE_ROOT}/${rel}`, b);
@@ -383,21 +388,6 @@ export const licenceGroup = (licences) => (licences.some((l) => /^lppl1\.3[a-c]?
 export function extraImageFiles(extraFiles) {
   const out = new Map(extraFiles);
   out.set('ls-R', Buffer.from(lsR([...extraFiles.keys()])));
-  return out;
-}
-
-/**
- * The files of the pinned engine build's image that are not part of the TeX tree: /bin/busytex, /etc/passwd,
- * fontconfig's file, the ICU data XeTeX needs, /texlive/texmf.cnf and the like. The TeX tree itself, its
- * texmf.cnf included, comes from the TeX Live snapshot.
- */
-export function engineSupportFiles(imageFiles) {
-  const out = new Map();
-  for (const [p, b] of imageFiles) {
-    if (!p.startsWith(`${CORE_ROOT}/`)) {
-      out.set(p, b);
-    }
-  }
   return out;
 }
 

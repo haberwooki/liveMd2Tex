@@ -1,12 +1,30 @@
 // Shared helpers for the unit tests (compiled to out/test/support/helpers.js).
 
-import { existsSync, rmdirSync, unlinkSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmdirSync, rmSync, unlinkSync } from 'node:fs';
+import * as os from 'node:os';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { STUB_STATE_KEY, type StubReport } from '../../src/shared/engineProtocol';
 
 /** The repository root (out/test/support -> root). */
 export const root = path.resolve(__dirname, '..', '..', '..');
+
+const tempFolders: string[] = [];
+
+/**
+ * A new folder under the system's temp folder (its name starts with `prefix`), removed with everything in it when
+ * the test process exits, so a test run leaves no folder behind.
+ */
+export function tempFolder(prefix: string): string {
+  const dir = mkdtempSync(path.join(os.tmpdir(), prefix));
+  if (tempFolders.length === 0) {
+    process.once('exit', () => {
+      for (const d of tempFolders) rmSync(d, { recursive: true, force: true });
+    });
+  }
+  tempFolders.push(dir);
+  return dir;
+}
 
 /**
  * Removes a folder link a test made: a Windows junction is removed as a folder, a symbolic link elsewhere (Linux,

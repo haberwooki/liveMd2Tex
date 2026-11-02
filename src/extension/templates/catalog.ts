@@ -1,7 +1,8 @@
 // The starting documents of "New document from template" (docs/DESIGN.md#help-for-new-users, #presets): LaTeX
-// documents for the classes the engine carries (article, report, beamer) and for journal classes that come with
-// the Extra Packages add-on, and Markdown documents for the converter's templates, its class templates and the
-// example preset. The starting documents (templates/) and the example preset (examples/presets/) are written
+// documents for the standard classes (article, report, beamer) and three journal classes (REVTeX, IEEEtran,
+// elsarticle), and Markdown documents for the converter's templates, its class templates and the example preset.
+// Every one compiles with the core data alone (test/engine/newDocuments.test.ts); the packages they need that are
+// not in TeX Live's basic collections are in core-data's "forOwnDocuments" (engine/bundle-sets.json). The starting documents (templates/) and the example preset (examples/presets/) are written
 // for this project and dedicated to the public domain (CC0 1.0), because they are copied into the user's own
 // folders; each file with a comment form says so in an SPDX line (templates/LICENSE.md,
 // examples/presets/LICENSE.md; docs/DESIGN.md#store-and-packaging). Both ship inside the extension. Pure: no
@@ -24,7 +25,7 @@ export interface DocumentTemplate {
   files: TemplateFile[];
   /** The file opened when the folder is made. */
   main: string;
-  /** The class comes with the Extra Packages add-on, not with the extension. */
+  /** The document needs the Extra Packages add-on (its detail must say so). None does today. */
   extra?: boolean;
   /** A folder config (.latexpreview.json) to write beside the files. */
   config?: Record<string, unknown>;
@@ -70,15 +71,15 @@ export const TEMPLATES: readonly DocumentTemplate[] = [
   tex('article', 'LaTeX article', 'One column, title, abstract, sections, an equation, a table and a bibliography', 'article'),
   tex('report', 'LaTeX report or thesis', 'Chapters and a table of contents', 'report'),
   tex('beamer', 'LaTeX slides (Beamer)', 'A title page and three slides', 'slides'),
-  tex('revtex', 'LaTeX: Physical Review (REVTeX 4.2)', 'Needs the Extra Packages add-on', 'revtex-paper', true),
-  tex('ieeetran', 'LaTeX: IEEE journal (IEEEtran)', 'Needs the Extra Packages add-on', 'ieee-paper', true),
-  tex('elsarticle', 'LaTeX: Elsevier (elsarticle)', 'Needs the Extra Packages add-on', 'elsevier-paper', true),
+  tex('revtex', 'LaTeX: Physical Review (REVTeX 4.2)', 'Two columns, abstract, sections and a bibliography', 'revtex-paper'),
+  tex('ieeetran', 'LaTeX: IEEE journal (IEEEtran)', 'Abstract, keywords, sections and a bibliography', 'ieee-paper'),
+  tex('elsarticle', 'LaTeX: Elsevier (elsarticle)', 'Abstract, keywords, sections and a bibliography', 'elsevier-paper'),
   md('article', 'Markdown article', 'Typeset with the default article template; citations, cross-references, a table', 'article'),
   md('notes', 'Markdown notes', 'Typeset with XeTeX and DejaVu: Unicode, symbols and code print as written', 'notes'),
   md('report', 'Markdown report (report class)', 'Level-1 headings are chapters', 'report'),
-  md('revtex', 'Markdown: Physical Review (REVTeX 4.2)', 'Needs the Extra Packages add-on', 'revtex-paper', true),
-  md('ieeetran', 'Markdown: IEEE journal (IEEEtran)', 'Needs the Extra Packages add-on', 'ieee-paper', true),
-  md('elsarticle', 'Markdown: Elsevier (elsarticle)', 'Needs the Extra Packages add-on', 'elsevier-paper', true),
+  md('revtex', 'Markdown: Physical Review (REVTeX 4.2)', 'Authors, affiliations, abstract and keywords from the front matter', 'revtex-paper'),
+  md('ieeetran', 'Markdown: IEEE journal (IEEEtran)', 'Authors, affiliations, abstract and keywords from the front matter', 'ieee-paper'),
+  md('elsarticle', 'Markdown: Elsevier (elsarticle)', 'Authors, affiliations, abstract and keywords from the front matter', 'elsevier-paper'),
   {
     id: 'md-preset-paper',
     label: 'Markdown paper with the example preset',

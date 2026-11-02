@@ -56,6 +56,17 @@ export function readmeFiles(year, packed, gplChanges = false) {
     : `The TeX files are TeX Live ${year}'s packages, unchanged; data/licences.json lists each package with its licence and its CTAN page; LICENSES/ holds the licence texts, and LICENSES/INDEX names each package's.`;
 }
 
+/**
+ * The README's sentence on what liveMd2Tex changed: TeX Live's licence (LICENSE.TL, "Guidelines for
+ * redistribution") asks a changed distribution to say so, and to send questions to the one who changed it.
+ * `project` is liveMd2Tex's repository address; `core`: the core data, which also holds the configuration files and
+ * the formats; `packed`: whether its Type 1 fonts are stored packed.
+ */
+export function changesNote(project, core, packed) {
+  const written = core ? 'configuration files, formats, a file index (ls-R) and a font list' : 'a file index (ls-R) and a font list';
+  return `liveMd2Tex builds this package from TeX Live with changes of its own: it holds a selection of TeX Live's packages, without their documentation, sources and scripts, with ${written} that liveMd2Tex writes${packed ? ', and with the Type 1 fonts stored as described above' : ''}. Please report problems with it to liveMd2Tex (${project}), not to TeX Live.`;
+}
+
 /** A list item: "- " and the text, its later lines indented under the text. */
 const item = (text) => wrap(`- ${text}`, '  ').replace(/^ {2}/, '');
 
@@ -172,11 +183,12 @@ export async function packageDataSet(root, dir, set, version, vsixPath, fonts = 
     repository: identity.repository,
   };
   writeFileSync(path.join(dir, 'package.json'), `${JSON.stringify(pkg, null, 2)}\n`);
+  const project = String(identity.repository?.url ?? identity.repository).replace(/\.git$/, '');
   writeFileSync(
     path.join(dir, 'README.md'),
-    `# ${pkg.displayName}\n\n${pkg.description}\n\nA data-only extension: it holds no code. liveMd2Tex reads its data/manifest.json and mounts its one data image. ${readmeFiles(version.slice(0, 4), packed, fonts?.gplChanges === true)}\n`,
+    `# ${pkg.displayName}\n\n${pkg.description}\n\nA data-only extension: it holds no code. liveMd2Tex reads its data/manifest.json and mounts its one data image. ${readmeFiles(version.slice(0, 4), packed, fonts?.gplChanges === true)}\n\n${changesNote(project, set === 'core-data', packed)}\n`,
   );
-  const releases = `${String(identity.repository?.url ?? identity.repository).replace(/\.git$/, '')}/releases`;
+  const releases = `${project}/releases`;
   writeFileSync(path.join(dir, 'LICENSE.txt'), licenceFile(fonts, { ...snapshot, releases }));
   const vsce = await import('@vscode/vsce');
   await vsce.createVSIX({ cwd: dir, packagePath: vsixPath, dependencies: false, allowMissingRepository: true });

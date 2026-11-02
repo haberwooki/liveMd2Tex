@@ -13,6 +13,7 @@ import type { TestApi } from '../../src/extension/extension';
 import { COMMAND_PREFIX } from '../../src/shared/identity';
 import type { CorpusProject } from '../support/corpusProjects';
 import { CORPUS_LIST } from '../support/prepareV0Workspace';
+import { missingInput } from '../support/missingData';
 import { activateExtension, engineStubArgs } from './support';
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -25,7 +26,11 @@ describe('M2-B: several root documents in one folder', function () {
   before(async function () {
     const ws = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
     api = await activateExtension();
-    if (!ws || !existsSync(path.join(ws, CORPUS_LIST)) || !api.engineAvailable()) {
+    if (!ws || !existsSync(path.join(ws, CORPUS_LIST))) {
+      this.skip();
+    }
+    if (!api.engineAvailable()) {
+      missingInput('the staged engine and core data (node scripts/stage-engine.mjs --data)');
       this.skip();
     }
     const projects = JSON.parse(readFileSync(path.join(ws as string, CORPUS_LIST), 'utf8')) as CorpusProject[];

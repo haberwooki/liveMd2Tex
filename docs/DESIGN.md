@@ -81,12 +81,17 @@ These rules hold for everyone who installs the extension.
 
 ## Engine and data
 
-- **Engine.** TeXlyre's BusyTeX build (pdfTeX, XeTeX, bibtex8, xdvipdfmx, makeindex, kpathsea, and LuaHBTeX,
-  run in ini mode only; TeX Live 2026), driven by our own code. It ships in the extension's own package
-  (`dist/engine/`), since data extensions carry no code. The JavaScript glue is patched so that no route out
-  remains: no shell, no network fetch for a missing file, no socket. Shell escape and font generation are off.
+- **Engine.** Our own build of TeX Live's programs: pdfTeX, XeTeX, xdvipdfmx and bibtex8 on kpathsea (TeX Live
+  2026), in one WebAssembly file that `engine/build/` builds from TeX Live's source with Emscripten, driven by our
+  own code. It ships in the extension's own package (`dist/engine/`), since data extensions carry no code. The
+  JavaScript glue is Emscripten's own; its web-request code is never reached under Node, and the scan lists each
+  such line as reviewed. No route out remains: `system()` and `popen()` are our stubs, which start nothing; the
+  engine imports nothing for a shell, a socket, the network or dynamic loading, which the build and the scan check;
+  shell escape and font generation are off.
 - **Pinned inputs.** Every engine and data file is named in `engine/pins.json` with its address, size and
-  SHA-256, and checked before use. The patched glue is pinned too.
+  SHA-256, and checked before use. The engine's files come from its release in this repository, and
+  `engine/engine-build.json` records how they were built. Two builds of the same commit, one on GitHub and one on
+  a developer's machine, must give the same bytes before a release.
 - **Data sets.** The core data ships with the extension. More packages come from data extensions, today the
   optional Extra Packages add-on. Every data set has `data/manifest.json` (format 1; `DataManifest` in
   `src/extension/engine/dataSets.ts` is the contract): the TeX Live year, the engine build it was made for (the
@@ -132,8 +137,12 @@ These rules hold for everyone who installs the extension.
   file an image has or one no image has. File names in the images must match exactly, case included, as in the
   core. The user's own package folder is still searched on disk.
   A Type 1 font file that pdfTeX cannot open counts as
-  "not found" too, and so does a font that XeTeX cannot find by name. XeTeX finds an add-on's OpenType and
-  TrueType fonts by name, because fontconfig's file names the add-ons' font folders.
+  "not found" too, and so does a font that XeTeX cannot find by name.
+- **Fonts by name.** XeTeX finds OpenType and TrueType fonts by name through a font list instead of fontconfig.
+  Each data set's image holds its list (`fonts/xetex-fonts.tsv`: for each face, its file, its names, and its
+  weight, width and slant), which the builder writes with the set's `fontOrder` rules for faces that share a name.
+  The worker joins the lists of the images it mounts, core first, into the one file that the engine's stand-in for
+  fontconfig reads. So an add-on's fonts are found by name once it is mounted.
 - **Package help.** Before each compile a preamble scan lists every file the document needs that no installed
   set has, in one message with the fix. It includes the dependencies of packages it knows, but not yet those of
   a package in a data set that is not installed, until that set's manifest lists them. The fix: install the add-on, add a package from a file
@@ -219,8 +228,9 @@ These rules hold for everyone who installs the extension.
   source maps, no `node_modules` (dependencies are bundled). Every file is scanned before release.
 - **Data extensions** carry no code. The Extra Packages add-on is never a dependency: the user installs it from
   the same store through VS Code's Extensions view.
-- **Licences.** The extension is GPL-3.0-or-later; TeXlyre's BusyTeX build (its JavaScript glue and the engine
-  WebAssembly) keeps its AGPL-3.0 terms inside the combined work. Every bundled package's licence text ships in
+- **Licences.** Our own code is GPL-3.0-or-later. The engine as a whole can be passed on under GPL-3.0, and its
+  parts keep their own terms. No program code under the AGPL ships, but some TeX packages in the add-on stay
+  under the AGPL. Every bundled package's licence text ships in
   `dist/licenses/`, and so does the notice of every part linked into the engine (`dist/licenses/engine/`,
   pinned in `engine/engine-notices.json`). `THIRD_PARTY_NOTICES.md` lists the parts by others. Each release
   is tagged `v<version>`, README.md and the notices name that tag as the source, and the release carries
@@ -230,9 +240,8 @@ These rules hold for everyone who installs the extension.
   (`examples/presets/`) are dedicated to the public domain (CC0 1.0), so a paper, thesis or preset built from
   them carries no conditions. Each folder has a `LICENSE.md` notice, each file with a comment form an SPDX
   `CC0-1.0` line, and the CC0 legal text ships in `dist/licenses/`. "New document from template" writes the files
-  as they are, with no header of the extension's. `package.json`'s expression stays
-  `GPL-3.0-or-later AND AGPL-3.0-only`, the terms of the extension as a whole; the VSIX scan checks the notices,
-  the legal text and the SPDX lines.
+  as they are, with no header of the extension's. `package.json`'s expression is `GPL-3.0-or-later`, our own
+  code's terms; the VSIX scan checks the notices, the legal text and the SPDX lines.
 - **Releases** are built on CI from pinned inputs, so anyone can check them.
 - **The public history** is made from scanned trees, never from the development history: one commit per sync
   (`scripts/public-sync.mjs`) with a message written for it, after the private-marker scan and the 8-word check,
@@ -259,8 +268,8 @@ These rules hold for everyone who installs the extension.
 ## Help for new users
 
 - **New document from template** (`src/extension/templates/`) makes a new folder with a starting document:
-  LaTeX for the classes the core data carries (article, report, beamer) and for three journal classes that
-  come with the Extra Packages add-on, Markdown for the converter's templates, and a Markdown paper with the
+  LaTeX for the standard classes (article, report, beamer) and three journal classes (REVTeX, IEEEtran,
+  elsarticle), all in the core data, Markdown for the converter's templates, and a Markdown paper with the
   example preset and its folder config. Nothing is overwritten, by construction: the folder gets a free name, a
   parent folder that cannot be listed or a folder that is already there is refused, and each file is created only
   when it does not exist; two runs at once take turns (`templates/place.ts`). A Markdown document asks to be typeset in its front matter. The
@@ -284,7 +293,10 @@ These rules hold for everyone who installs the extension.
   the converter, the scans, the manifest checks.
 - **Engine tests** run the real engine in the engine host with its stubs: a public corpus of sample documents
   (page counts and missing-package lists are compared with a recorded baseline), cancel races, change sets,
-  data images, package builds.
+  data images, package builds, fonts by name. They run on a core-data package built for the pinned engine, with
+  the Extra Packages add-on mounted for the documents that need it, as for a user who installed it. On CI they
+  skip with one notice until both data packages are pinned; once they are, they fail without the engine and the
+  data, instead of skipping.
 - **VS Code tests** run in the installed VS Code (on CI, in downloaded versions) in a throwaway profile, with
   the stubs in the extension host and the engine host; a separate window runs Restricted Mode. Another window
   has LaTeX Workshop installed: there the stubs also allow its MathJax worker and its PDF viewer's server on the

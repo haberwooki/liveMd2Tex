@@ -1,10 +1,11 @@
-// The engine's notices (engine/engine-notices.json; the licence gate, L-01 and M2 to M4): every archive and object
-// TeXlyre's link line names is a component's, every notice file is pinned and present, THIRD_PARTY_NOTICES.md's table
-// is the one the manifest gives, and the VSIX scan requires each file wherever the engine ships.
+// The engine's notices (engine/engine-notices.json; the licence gate, L-01 and M2 to M4): each component's links are
+// the part the build's link check gives it, and every part of the link map the build recorded is a component; every
+// notice file is pinned and present; THIRD_PARTY_NOTICES.md's table is the one the manifest gives; and the VSIX scan
+// requires each file wherever the engine ships.
 
 import * as assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import * as path from 'node:path';
 import { importScript, root } from '../support/helpers';
 
@@ -17,12 +18,17 @@ interface Component {
 interface Manifest {
   components: Component[];
   files: Record<string, { sha256: string; from: string }>;
-  makefile: { lines: Record<string, string> };
-  sources: { name: string; url: string; sha256: string }[];
+  build: { texLive: { commit: string }; emscripten: { commit: string; release: string }; scripts: { commit: string; treeSha256: string }; manifest: string };
+  sources: { name: string; url?: string; sha256?: string; commit?: string; repository?: string }[];
+}
+interface BuildRecord {
+  inputs: { texLive: { commit: string }; emscripten: { commit: string; release: string } };
+  build: { scripts: { commit: string; treeSha256: string } };
+  linkMap: { parts: Record<string, number>; unmapped: string[]; droppedParts: string[]; pass: boolean };
 }
 interface Lib {
   loadEngineNotices(): Manifest;
-  linkedFiles(m: Manifest): string[];
+  linkProblems(m: Manifest, record: unknown, linkParts: Record<string, string[]>): string[];
   noticesTable(m: Manifest): string;
   inPackage(p: string): string;
 }
@@ -35,14 +41,28 @@ describe('the engine notices (engine/engine-notices.json)', () => {
     manifest = lib.loadEngineNotices();
   });
 
-  it("every archive and object on TeXlyre's link line is a component's, and every component's is on it", () => {
-    const linked = lib.linkedFiles(manifest);
-    assert.ok(linked.length > 40, `${linked.length} files linked`);
-    const covered = new Set(manifest.components.flatMap((c) => c.links));
-    assert.deepEqual(linked.filter((f) => !covered.has(f)), [], 'linked but no component names it');
-    assert.deepEqual([...covered].filter((f) => !linked.includes(f)), [], 'a component names a file the link line does not link');
-    // LuaHBTeX is linked (the engine host runs it in ini mode), so it is named.
-    assert.ok(manifest.components.some((c) => c.id === 'luahbtex' && c.links.includes('luahbtex-luatex.o')));
+  const record = (): BuildRecord => JSON.parse(readFileSync(path.join(root, 'engine', 'engine-build.json'), 'utf8')) as BuildRecord;
+
+  it("each component's links are the build's link check's part, and every part of the recorded link map is a component", async () => {
+    const lr = await importScript<{ LINK_PARTS: Record<string, string[]> }>('engine/build/tools/link-report.mjs');
+    assert.deepEqual(lib.linkProblems(manifest, record(), lr.LINK_PARTS), []);
+    assert.ok(Object.keys(record().linkMap.parts).length >= 20, 'the map has its parts');
+    // Each way it can fail: a component's links that drift from the link check, a part of the map no component is,
+    // a component the map takes nothing from, and a map that did not pass.
+    const drifted = { ...manifest, components: manifest.components.map((c) => (c.id === 'zlib' ? { ...c, links: ['wasm/libs/zlib/other.a'] } : c)) };
+    assert.match(lib.linkProblems(drifted, record(), lr.LINK_PARTS).join('\n'), /zlib: its links are not/);
+    const r = record();
+    const extra = { ...r, linkMap: { ...r.linkMap, parts: { ...r.linkMap.parts, lua: 3 }, pass: false } };
+    const problems = lib.linkProblems(manifest, extra, lr.LINK_PARTS).join('\n');
+    assert.match(problems, /the link map's part lua is no component/);
+    assert.match(problems, /no passing link map/);
+    const noZlib = Object.fromEntries(Object.entries(r.linkMap.parts).filter(([id]) => id !== 'zlib'));
+    assert.match(lib.linkProblems(manifest, { ...r, linkMap: { ...r.linkMap, parts: noZlib } }, lr.LINK_PARTS).join('\n'), /zlib: the link map takes nothing from it/);
+    // None of the earlier engine's other parts is left: its build's own code, LuaTeX, MakeIndex, fontconfig, expat,
+    // zziplib, libpaper.
+    for (const id of ['texlyre', 'luahbtex', 'makeindex', 'fontconfig', 'expat', 'zziplib', 'libpaper']) {
+      assert.ok(!manifest.components.some((c) => c.id === id), id);
+    }
   });
 
   it('every notice file is in the repository, at its pinned bytes, and every component that needs one has one', () => {
@@ -56,41 +76,36 @@ describe('the engine notices (engine/engine-notices.json)', () => {
       }
     }
     const noNotice = manifest.components.filter((c) => c.notices.length === 0).map((c) => c.id).sort();
-    assert.deepEqual(noNotice, ['libpaper', 'minilz4', 'web2c'], 'only libpaper (in an engine no release ships), MiniLZ4 (its notice is in the glue) and web2c (permissive, no notice condition) carry none');
+    assert.deepEqual(noNotice, ['web2c'], 'only web2c (permissive, no notice condition) carries none');
+    // LICENSES/engine/ holds the pinned notice files and nothing else.
+    const held = readdirSync(path.join(root, 'LICENSES', 'engine')).map((n) => `LICENSES/engine/${n}`).sort();
+    assert.deepEqual(held, Object.keys(manifest.files).sort());
   });
 
   it("THIRD_PARTY_NOTICES.md's table is the one the manifest gives, and it names the engine's sources exactly", () => {
     const notices = readFileSync(path.join(root, 'THIRD_PARTY_NOTICES.md'), 'utf8');
     assert.ok(notices.includes(lib.noticesTable(manifest)), 'run node scripts/lib/engine-notices.mjs and put its table under "Inside the engine"');
-    for (const s of manifest.sources) {
-      assert.ok(notices.includes(s.url) && notices.includes(s.sha256), s.name);
+    for (const s of manifest.sources.filter((x) => x.url)) {
+      assert.ok(notices.includes(s.url ?? '?') && notices.includes(s.sha256 ?? '?'), s.name);
     }
-    assert.match(notices, /46ebb6216a5c1fe63dd1dc885831d1a8cef2dc86/);
+    // The commit of our build scripts that built the pinned engine.
+    assert.ok(notices.includes(manifest.build.scripts.commit), "THIRD_PARTY_NOTICES.md names the scripts' commit");
   });
 
-  it("names the commit and release that engine/pins.json pins, so a new engine pin fails until the manifest follows (S2, L2-01)", () => {
-    const pins = JSON.parse(readFileSync(path.join(root, 'engine', 'pins.json'), 'utf8')) as { sources: { id: string; tag: string }[] };
-    const tag = pins.sources.find((s) => s.id === 'texlyre-busytex')?.tag;
-    const m = manifest as Manifest & { build: { texlyre: { commit: string; release: string } }; makefile: { url: string; sha256: string } };
-    assert.equal(m.build.texlyre.release, tag);
-    assert.ok(tag?.startsWith(`build_wasm_${m.build.texlyre.commit}_`), `${tag} is not a build of ${m.build.texlyre.commit}`);
-    assert.equal(m.makefile.url, `https://raw.githubusercontent.com/TeXlyre/texlyre-busytex-build/${m.build.texlyre.commit}/Makefile`);
-    assert.match(m.makefile.sha256, /^[0-9a-f]{64}$/);
+  it('the notices name the commits and the scripts the pinned engine was built from, and the archives GitHub makes of them', () => {
+    const r = record();
+    assert.equal(manifest.build.texLive.commit, r.inputs.texLive.commit);
+    assert.equal(manifest.build.emscripten.commit, r.inputs.emscripten.commit);
+    assert.equal(manifest.build.emscripten.release, r.inputs.emscripten.release);
+    assert.equal(manifest.build.scripts.commit, r.build.scripts.commit);
+    assert.equal(manifest.build.scripts.treeSha256, r.build.scripts.treeSha256);
+    assert.equal(manifest.build.manifest, 'engine/engine-build.json');
     // The archives GitHub makes from a commit name it, so the release check can compare their contents with it.
-    const commits = (manifest.sources as { url: string; commit?: string; repository?: string }[]).filter((s) => /\/archive\//.test(s.url));
-    assert.equal(commits.length, 2);
-    for (const s of commits) {
+    const archives = manifest.sources.filter((s) => s.url && /\/archive\//.test(s.url));
+    assert.deepEqual(archives.map((s) => s.commit).sort(), [r.inputs.emscripten.commit, r.inputs.texLive.commit].sort());
+    for (const s of archives) {
       assert.equal(s.url, `${s.repository}/archive/${s.commit}.tar.gz`);
     }
-  });
-
-  it('the patched glue names the date of its last change, and fails when the patches change without it (F2, N2)', async () => {
-    const glue = await importScript<{ notice: { date: string; patchesSha256: string }; patches: { id: string; count: number; find: string; replace: string }[] }>('engine/patches/busytex-glue.mjs');
-    const sha = createHash('sha256')
-      .update(JSON.stringify(glue.patches.map(({ id, count, find, replace }) => ({ id, count, find, replace }))))
-      .digest('hex');
-    assert.equal(glue.notice.patchesSha256, sha, `the patches changed: set notice.date to the day of the change and notice.patchesSha256 to ${sha}, then run scripts/engine-patch.mjs and pin the new glue`);
-    assert.match(glue.notice.date, /^\d{4}-\d{2}-\d{2}$/);
   });
 
   it('the search below the link line covers every linked part, with notices its parts ship (F2-M1)', () => {
@@ -203,13 +218,13 @@ describe('the engine notices (engine/engine-notices.json)', () => {
     // Five probes from a licence review: a stranger's clause beside a public-domain line, a pointer to a notice that
     // does not ship, and clauses beside FreeType's and libpng's licence sentences.
     assert.equal(verdict('texk/kpathsea', 'probe.c', '/*\n * Copyright (c) 2021 Jane Q. Stranger\n * Based on public domain code by Someone Else.\n * Redistribution and use in source and binary forms, with or without\n * modification, must reproduce the above copyright notice.\n */\n'), 'problem');
-    assert.equal(verdict('texk/web2c/luatexdir', 'probe.c', '/*\n** Copyright (c) 2021 Jane Q. Stranger\n** Parts of this file are in the public domain.\n** Released under the MIT license. See stranger.txt for the full notice.\n*/\n'), 'problem');
-    assert.equal(verdict('texk/web2c/luatexdir', 'lua/probe.c', '/*\n** See Copyright Notice in fancy.h\n*/\n'), 'problem');
+    assert.equal(verdict('texk/web2c/xetexdir', 'probe.c', '/*\n** Copyright (c) 2021 Jane Q. Stranger\n** Parts of this file are in the public domain.\n** Released under the MIT license. See stranger.txt for the full notice.\n*/\n'), 'problem');
+    assert.equal(verdict('libs/freetype2/freetype-src/src', 'gzip/probe.c', '/*\n * See Copyright Notice in fancy.h\n */\n'), 'problem');
     assert.equal(verdict('libs/freetype2/freetype-src/src', 'probe.c', '/*\n * This file is part of the FreeType project, and may only be used,\n * modified, and distributed under the terms of the FreeType project\n * license, LICENSE.TXT.\n * Portions Copyright (c) 2021 Jane Q. Stranger: Permission is hereby granted, free of charge,\n * provided that this notice appears in all copies.\n */\n'), 'problem');
     assert.equal(verdict('libs/libpng/libpng-src', 'probe.c', '/*\n * This code is released under the libpng license.\n * Copyright (c) 2021 Jane Q. Stranger\n * Redistribution and use in source and binary forms are permitted provided that\n * the above copyright notice is reproduced.\n */\n'), 'problem');
     // The exceptions still hold on their own lines.
     assert.equal(verdict('texk/kpathsea', 'pd.c', '/* Written by Someone Else. Public domain. */\n'), 'covered');
-    assert.equal(verdict('texk/web2c/luatexdir', 'lua/pointer.c', '/*\n** See Copyright Notice in lua.h\n*/\n'), 'covered');
+    assert.equal(verdict('libs/freetype2/freetype-src/src', 'gzip/pointer.c', '/* see copyright notice in zlib.h */\n'), 'covered');
     assert.equal(verdict('libs/freetype2/freetype-src/src', 'own.c', '/*\n * Copyright (C) 2021 by Someone.\n *\n * This file is part of the FreeType project, and may only be used,\n * modified, and distributed under the terms of the FreeType project\n * license, LICENSE.TXT.\n */\n'), 'covered');
 
     // Seven more probes from a licence review: clauses of one kind next to another kind's licence, on the same line,
@@ -220,8 +235,8 @@ describe('the engine notices (engine/engine-notices.json)', () => {
       ['texk/kpathsea', 'probe2.c', '/*\n * Redistribution and use in source and binary forms must reproduce this notice;\n * the tables below are public domain.\n */\n'],
       ['libs/freetype2/freetype-src/src', 'probe3.c', '/*\n * Permission is hereby granted, free of charge, to use this file, which is\n * distributed under the terms of the FreeType project license.\n */\n'],
       ['libs/libpng/libpng-src', 'probe4.c', '/*\n * Redistribution and use in source and binary forms, released under the libpng license, must keep this notice.\n */\n'],
-      ['texk/web2c/luatexdir', 'probe5.c', '/* Copyright (C) 2000-2008 by George Williams */\n/*\n * Redistribution and use in source and binary forms, with or without\n * modification, are permitted provided that the following conditions are met:\n * Parts by another author: Released under the MIT license, see COPYING.other\n */\n'],
-      ['texk/web2c/luatexdir', 'probe6.c', '/* Copyright (C) 2000-2008 by George Williams */\n/*\n * Copyright (c) 2021 Jane Q. Stranger\n * Redistribution and use in source and binary forms, with or without\n * modification, are permitted provided that the following conditions are met:\n */\n'],
+      ['texk/web2c/synctexdir', 'probe5.c', '/* Copyright (c) 2008-2017 jerome DOT laurens AT u-bourgogne DOT fr */\n/*\n * Permission is hereby granted, free of charge, to any person obtaining a copy\n * of this software and associated documentation files (the "Software").\n * Parts by another author: Released under the MIT license, see COPYING.other\n */\n'],
+      ['texk/web2c/synctexdir', 'probe6.c', '/* Copyright (c) 2008-2017 jerome DOT laurens AT u-bourgogne DOT fr */\n/*\n * Copyright (c) 2021 Jane Q. Stranger\n * Permission is hereby granted, free of charge, to any person obtaining a copy\n * of this software and associated documentation files (the "Software").\n */\n'],
       ['texk/kpathsea', 'probe7.c', '/*\n * Copyright (c) 2021 Jane Q. Stranger. All rights reserved. This file is not in the public domain; its terms are in COPYING.stranger.\n */\n'],
     ] as const;
     for (const [folderPath, rel, text] of r5) {
@@ -252,7 +267,7 @@ describe('the engine notices (engine/engine-notices.json)', () => {
     const vsix = await importScript<{ engineNoticeFiles(): string[]; missingNotices(e: Map<string, Buffer>): string[] }>('scripts/vsix-scan.mjs');
     const want = [...new Set(manifest.components.flatMap((c) => c.notices).map((n) => `extension/${lib.inPackage(n)}`))].sort();
     assert.deepEqual(vsix.engineNoticeFiles(), want);
-    const entries = new Map<string, Buffer>([['extension/dist/engine/busytex.wasm', Buffer.from('x')]]);
+    const entries = new Map<string, Buffer>([['extension/dist/engine/engine.wasm', Buffer.from('x')]]);
     const missing = vsix.missingNotices(entries).map((m) => m.split(':')[0]);
     assert.deepEqual(want.filter((w) => !missing.includes(w)), [], 'each is required');
   });

@@ -54,7 +54,7 @@ function compile(marker) {
       : marker.kind === 'user-path'
         ? `${SEP}users${SEP}${text}(?![a-z0-9])`
         : text;
-  return { id: marker.id, regex: new RegExp(source, 'gi') };
+  return { id: marker.id, kind: marker.kind ?? 'text', regex: new RegExp(source, 'gi') };
 }
 
 /** The environment variable that carries the markers on CI (a repository secret). */

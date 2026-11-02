@@ -37,6 +37,9 @@ const cases: { name: string; file: string; code: string; expect: string | null }
   { name: 'require()', file: 'src/extension/probe.ts', code: "export const m = () => require('child_process');\n", expect: SYNTAX },
   { name: 'dynamic import()', file: 'src/engine-host/probe.ts', code: "export const m = () => import('node:child_process');\n", expect: SYNTAX },
   { name: 'getBuiltinModule', file: 'src/extension/probe.ts', code: "export const m = () => process.getBuiltinModule('net');\n", expect: SYNTAX },
+  // A lazy or preloaded file makes the engine's glue read a URL, under Node from the real disk.
+  { name: 'FS.createLazyFile', file: 'src/engine-host/probe.ts', code: "export const f = (M: { FS: { createLazyFile(): void } }) => M.FS.createLazyFile();\n", expect: SYNTAX },
+  { name: "M['FS_preloadFile']", file: 'src/engine-host/probe.ts', code: "export const f = (M: Record<string, () => void>) => M['FS_preloadFile']();\n", expect: SYNTAX },
   { name: 'fetch', file: 'src/extension/probe.ts', code: "export const r = () => fetch('https://example.org');\n", expect: GLOBALS },
   { name: 'WebSocket', file: 'src/engine-host/probe.ts', code: "export const w = () => new WebSocket('ws://x');\n", expect: GLOBALS },
   { name: 'globalThis.fetch', file: 'src/converter/probe.ts', code: "export const r = () => globalThis.fetch('x');\n", expect: SYNTAX },

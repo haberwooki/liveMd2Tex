@@ -32,8 +32,8 @@
     "CC-BY-SA-3.0": { "file": "engine/licence-texts/CC-BY-SA-3.0.txt", "sha256": "3f941b3b89cf7b8370ceb83cc76d2120d471b58735d8ca60238a751a48d7f72f", "source": "SPDX licence list v3.27.0, text/CC-BY-SA-3.0.txt" },
     "CC-BY-SA-4.0": { "file": "engine/licence-texts/CC-BY-SA-4.0.txt", "sha256": "cde7883b9050a1104f4ac19a1572aafd6e5d7323b68351aaf51fbf4beba54966", "source": "SPDX licence list v3.27.0, text/CC-BY-SA-4.0.txt" },
     "Knuth": { "file": "engine/licence-texts/Knuth.txt", "sha256": "db02604d6674a353a15ab576421de23aabba077311293800e040eab997e257a7", "source": "CTAN's explanation of the Knuth License, https://ctan.org/license/knuth, 2026-10-26, with a line that names it, and Knuth's own words from plain.tex" },
-    "MakeIndex": { "file": "LICENSES/MakeIndex.txt", "sha256": "9de7394ed884ea714157e049990757d7052c93e53ac93d9688e0b4444d37b4ed", "source": "MakeIndex's distribution notice, texk/makeindexk/COPYING in TeX Live's source tree at tag texlive-2026.0 (github.com/TeX-Live/texlive-source, branch tags/texlive-2026.0), the source TeXlyre build 46ebb62 compiles, 2026-10-26; the main extension ships it too, for the MakeIndex in the engine" },
-    "ICU": { "file": "LICENSES/ICU.txt", "sha256": "e55522d81edc687a341a4411e0776e54ca654e90147f354a90458aaced4116af", "source": "ICU's LICENSE (the Unicode License V3 and the third-party notices), libs/icu/icu-src/LICENSE in TeX Live's source tree at tag texlive-2026.0 (ICU 78.2), which TeXlyre build 46ebb62 compiles; the same in unicode-org/icu releases 78.1 and 78.2, 2026-10-26" },
+    "MakeIndex": { "file": "LICENSES/MakeIndex.txt", "sha256": "9de7394ed884ea714157e049990757d7052c93e53ac93d9688e0b4444d37b4ed", "source": "MakeIndex's distribution notice, texk/makeindexk/COPYING in TeX Live's source tree at tag texlive-2026.0 (github.com/TeX-Live/texlive-source, branch tags/texlive-2026.0), 2026-10-26; the same bytes at commit 6a300188053b8f2ded89dbd52293732a706b9c0e, 2026-11-01. For the makeindex package's index styles in the data sets; the engine holds no MakeIndex" },
+    "ICU": { "file": "LICENSES/ICU.txt", "sha256": "e55522d81edc687a341a4411e0776e54ca654e90147f354a90458aaced4116af", "source": "ICU's LICENSE (the Unicode License V3 and the third-party notices), libs/icu/icu-src/LICENSE in TeX Live's source tree at tag texlive-2026.0 (ICU 78.2); the same in unicode-org/icu releases 78.1 and 78.2, 2026-10-26; the same bytes at commit 6a300188053b8f2ded89dbd52293732a706b9c0e, which the engine compiles, 2026-11-01" },
     "TeX-Live-LICENSE.TL": { "package": "texlive.infra", "path": "LICENSE.TL", "source": "TeX Live's own licence statement, in texlive.infra's archive" },
     "TeX-Live-LICENSE.CTAN": { "package": "texlive.infra", "path": "LICENSE.CTAN", "source": "TeX Live's note on CTAN's licences, in texlive.infra's archive" }
   },
@@ -114,13 +114,5 @@
     "packable": ["lppl", "gpl"],
     "unclear": "its header states no licence, and other fonts of its package state different terms",
     "unread": "its header states no licence, and its package's licence is not the LPPL, the GUST Font License or the GPL"
-  },
-  "engineFiles": {
-    "about": "The files core-data takes from the engine build's pinned image (scripts/lib/bundle.mjs, engineSupportFiles), by path: the texts they need. A file no pattern matches stops the build.",
-    "^texlive/icudt\\d+l\\.dat$": { "texts": ["ICU"], "note": "ICU's data (ICU 78.2), which XeTeX reads; its source: libs/icu in TeX Live's source tree at tag texlive-2026.0, https://github.com/TeX-Live/texlive-source/tree/tags/texlive-2026.0/libs/icu" },
-    "^texlive/(LICENSE\\.(TL|CTAN)|release-texlive\\.txt|texmf\\.cnf|texmfcnf\\.lua|fonts\\.conf)$": { "texts": ["TeX-Live-LICENSE.TL", "TeX-Live-LICENSE.CTAN"], "note": "TeX Live's own files" },
-    "^texlive/tex/(generic|latex)/tex-ini-files/": { "texts": [], "note": "TeX Live's tex-ini-files, which the Catalogue gives as public domain" },
-    "^texlive/tex/latex/latexconfig/": { "texts": ["TeX-Live-LICENSE.TL", "TeX-Live-LICENSE.CTAN"], "note": "TeX Live's latexconfig, which has no Catalogue licence: TeX Live's own files" },
-    "^(bin/busytex|etc/passwd|etc/fonts/fonts\\.conf)$": { "texts": [], "note": "files the engine build writes for its own file system (a placeholder program, a user list, fontconfig's file)" }
   }
 }

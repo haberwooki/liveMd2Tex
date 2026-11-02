@@ -1,6 +1,6 @@
 // The font coverage table (src/converter/fonts/coverage.ts) that the converter's font rule reads (docs/DESIGN.md#converter): which characters each font of the XeTeX templates has. XeTeX itself
-// measures it (\iffontchar over U+0020 to U+1FFFF), on the pinned DejaVu files (the project-folder route until
-// B1 ships them) and on the Latin Modern and TeX Gyre fonts of the engine image. A family's coverage is the
+// measures it (\iffontchar over U+0020 to U+1FFFF), on the pinned DejaVu files and on the Latin Modern and TeX
+// Gyre fonts of the core data's image. A family's coverage is the
 // intersection of its faces and optical sizes, so a character it "has" prints in bold, italic and every size.
 // The test fails when the committed table no longer matches the fonts; UPDATE_FONT_COVERAGE=1 rewrites it.
 
@@ -19,14 +19,14 @@ function dejavuFolder(): string {
   return path.join(assetsRoot, pins.sources.find((s) => s.id === 'ctan-dejavu')?.folder ?? 'ctan-dejavu', 'truetype');
 }
 
-/** The image's font files by base name (from the image's file list). */
+/** The core image's font files by base name (from the core data's image index, as its manifest names it). */
 function imageFonts(): string[] {
-  const pins = JSON.parse(readFileSync(path.join(root, 'engine', 'pins.json'), 'utf8')) as { sources: { id: string; folder: string }[] };
-  const folder = pins.sources.find((s) => s.id === 'texlyre-busytex')?.folder ?? '';
-  return readFileSync(path.join(assetsRoot, folder, 'texlive-extra.txt'), 'utf8')
-    .split('\n')
-    .map((l) => l.trim().replace(/^.*\//, ''))
-    .filter((n) => /\.(otf|ttf)$/.test(n));
+  const assets = engineAssetPaths();
+  if (!assets) {
+    return [];
+  }
+  const index = JSON.parse(readFileSync(assets.index, 'utf8')) as { metadata: { files: { filename: string }[] } };
+  return index.metadata.files.map((f) => f.filename.replace(/^.*\//, '')).filter((n) => /\.(otf|ttf)$/.test(n));
 }
 
 function groups(): Record<CoverageId, string[]> {

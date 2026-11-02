@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import * as vscode from 'vscode';
 import type { TestApi } from '../../src/extension/extension';
 import { STUB_STATE_KEY, type StubReport } from '../../src/shared/engineProtocol';
-import { EXTENSION_ID } from '../../src/shared/identity';
+import { EXTENSION_ID, EXTRA_DATA_NAME, PUBLISHER } from '../../src/shared/identity';
 
 /** The repository root (out/test/integration -> root). */
 export const root = path.resolve(__dirname, '..', '..', '..');
@@ -66,3 +66,39 @@ export function reportBlocked(label: string): void {
 }
 
 export const engineStubArgs =['--require', path.join(root, 'test', 'stubs', 'register-engine-host.cjs')];
+
+/** The Extra Packages add-on's id. */
+const EXTRA_ID = `${PUBLISHER}.${EXTRA_DATA_NAME}`;
+
+/**
+ * Installs the Extra Packages add-on into the throwaway profile from the .vsix that scripts/run-integration.mjs names
+ * (LIVEMD2TEX_TEST_EXTRA_VSIX: the extra-data package the data builder made for this engine), as a user installs it
+ * from the Extensions view. False when no add-on was given: a test that needs it then skips.
+ */
+export async function installAddOn(): Promise<boolean> {
+  const vsix = process.env.LIVEMD2TEX_TEST_EXTRA_VSIX;
+  if (!vsix) {
+    return false;
+  }
+  if (vscode.extensions.getExtension(EXTRA_ID)) {
+    return true;
+  }
+  const appeared = new Promise<void>((resolve) => {
+    const sub = vscode.extensions.onDidChange(() => {
+      if (vscode.extensions.getExtension(EXTRA_ID)) {
+        sub.dispose();
+        resolve();
+      }
+    });
+  });
+  await vscode.commands.executeCommand('workbench.extensions.installExtension', vscode.Uri.file(vsix));
+  await Promise.race([appeared, new Promise<void>((_, reject) => setTimeout(() => reject(new Error('the add-on did not appear after 120 s')), 120000))]);
+  return true;
+}
+
+/** Uninstalls the add-on again, so the next test file starts without it. */
+export async function uninstallAddOn(): Promise<void> {
+  if (vscode.extensions.getExtension(EXTRA_ID)) {
+    await vscode.commands.executeCommand('workbench.extensions.uninstallExtension', EXTRA_ID);
+  }
+}

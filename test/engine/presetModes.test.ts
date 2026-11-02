@@ -1,6 +1,7 @@
 // The example preset's modes (examples/presets/two-column-paper; docs/DESIGN.md#presets) produce LaTeX that
 // typesets on the bundled engine: the CC0 stand-in documents of test/converter/preset, converted in each mode,
-// compiled with pdfLaTeX (XeTeX for the report mode) and bibtex8. Figures are drawn in code (CC0). Results (numbers only) go to ../s1_runs/.
+// compiled with pdfLaTeX (XeTeX for the report mode) and bibtex8, with the core data alone. Figures are drawn in code
+// (CC0). Results (numbers only) go to ../s1_runs/.
 
 import * as assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -49,6 +50,8 @@ describe('the example preset modes typeset on the bundled engine', function () {
   });
 
   async function typeset(name: string, latex: string, engine: EngineName, extra: ProjectFile[]) {
+    // With the core data alone: the extension's own preset never needs the add-on (core-data's "forOwnDocuments",
+    // engine/bundle-sets.json, holds what its modes load: parskip for the letter and response modes).
     const r = await compileAndRecord(`preset-${name}`, job({ main: `${name}.tex`, files: [{ path: `${name}.tex`, data: enc.encode(latex) }, ...extra], engine, bibtex: 'auto', maxPasses: 4, synctex: true }));
     console.log(`      ${name}: ${r.result.steps.map((s) => `${s.argv[0]} ${s.ms} ms`).join(', ')}; pages ${r.analysis.pages}; errors ${r.analysis.errors.length}`);
     assert.ok(r.result.pdf, `${name}: no PDF (${r.result.error ?? r.analysis.errors.slice(0, 5).join(' | ')})`);

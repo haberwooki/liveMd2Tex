@@ -1,0 +1,8 @@
+% Fixture (CC0, written by the project): \input| must not start anything (docs/DESIGN.md#rules). With shell escape
+% on, TeX passes the command to popen(), which the engine's stub refuses, so the file is "not found".
+\documentclass{article}
+\begin{document}
+Before.
+\input|"echo pipe-was-here > pipe-was-here.txt"
+After.
+\end{document}

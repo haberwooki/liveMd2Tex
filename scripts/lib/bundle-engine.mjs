@@ -9,7 +9,7 @@ import path from 'node:path';
 
 const require = createRequire(import.meta.url);
 
-/** Starts `count` engine hosts on the given engine assets (the new core image as `data` and `loader`). */
+/** Starts `count` engine hosts on the given engine assets (the new core image as `data`, its index as `index`). */
 export async function startEngines(root, assets, count) {
   const { EngineHost } = require(path.join(root, 'out', 'src', 'extension', 'engineHostClient.js'));
   const hosts = [];

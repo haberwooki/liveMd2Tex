@@ -15,7 +15,7 @@ import type { CompileJob, CompileResult, EngineAssetPaths } from '../../src/shar
 import { pdfProblem } from '../../src/shared/pdfCheck';
 import { nodeFs } from '../support/nodeFs';
 
-const ASSETS: EngineAssetPaths = { glue: 'g', wasm: 'w', data: 'd', loader: 'l', cnfOverride: 'c', fontsConf: 'f' };
+const ASSETS: EngineAssetPaths = { glue: 'g', wasm: 'w', data: 'd', index: 'i', cnfOverride: 'c' };
 
 const okResult = (job: CompileJob, error?: string): CompileResult => ({
   id: job.id,

@@ -1,31 +1,37 @@
 #!/usr/bin/env node
-// Development tool: puts the engine (and, with --data, the interim TeX data) inside dist/ so that F5, the
-// integration tests and a test-copy VSIX find them where the extension looks (src/extension/engine/
-// engineService.ts):
-//   dist/engine/  busytex.js (the patched glue pinned in engine/pins.json, from ../engine_assets/derived/<its
-//                 SHA-256's first 16 digits>/), busytex.wasm, texmf-override.cnf, fonts.conf
-//   dist/data/    texlive-extra.data (TeXlyre's image, unchanged), texlive-extra.index.json (its loader's
-//                 metadata as JSON, so no loader script ships), manifest.json, packages.json (the package index
-//                 of docs/DESIGN.md#architecture, #engine-and-data, built from the image's own .sty and .cls files and cached in
-//                 ../engine_assets/derived/; the interim stand-in for B1's manifest), fonts/ (the Markdown notes
-//                 template's DejaVu files from the pinned CTAN set, until B1)
-// Large files are hard links to ../engine_assets when the file system allows, so nothing is copied twice.
-// Every input is checked against engine/pins.json first. build.mjs empties dist/, so run this after it.
+// Development tool: puts the engine (and, with --data, the core TeX data) inside dist/ so that F5, the integration
+// tests and a test-copy VSIX find them where the extension looks (src/extension/engine/engineService.ts):
+//   dist/engine/  engine.js and engine.wasm (our engine release, pinned in engine/pins.json as livemd2tex-engine,
+//                 from ../engine_assets/<its folder>/), texmf-override.cnf
+//   dist/data/    the data/ folder of a core-data package: manifest.json, the image and its index, licences.json;
+//                 and its LICENSES/ folder as dist/data/LICENSES/
+// The engine's files are hard links to ../engine_assets when the file system allows, so nothing is copied twice;
+// they are checked against engine/pins.json first (size and SHA-256). The core data is hard-linked too when it is
+// given as an unpacked package folder (the data builder's <out>/core-data/); a .vsix is unpacked instead, about
+// 180 MB written on each run. build.mjs empties dist/, so run this after it.
 //
-//   node scripts/stage-engine.mjs [--data] [--if-present]
-// --if-present: without the engine downloads (a fresh clone, CI), say so and stop without an error; the engine
-// tests then skip.
+//   node scripts/stage-engine.mjs [--data [--data-package PATH]] [--if-present]
+// --data: no core-data package is pinned in engine/pins.json yet, so --data takes a core-data package built for
+//         this engine (its manifest's abi must be the pinned engine.wasm's SHA-256), as a .vsix or as the package's
+//         unpacked folder (the one with data/ and LICENSES/): --data-package PATH, or the path the variable
+//         LIVEMD2TEX_CORE_DATA names (so npm run test:engine, which stages with --data alone, finds it). The
+//         package is checked before dist/data is replaced.
+// --if-present: when an input is simply not there, say so and stop without an error, and the engine tests then
+//         skip: the engine downloads are missing (a fresh clone, CI), or --data names no package. Anything else
+//         (a file of the wrong size or hash, a package that is not there or not built for this engine) still
+//         fails.
 
 import { createHash } from 'node:crypto';
-import { copyFileSync, existsSync, linkSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, linkSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { pinnedGluePath } from './lib/derived-glue.mjs';
-import { engineAbi, standinManifest } from './lib/extra-standin.mjs';
-import { openImage } from './lib/image-files.mjs';
-import { buildPackageIndex, INDEX_FORMAT } from './lib/package-index.mjs';
+import { readZip } from './lib/zip.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+/** The pin of our engine release in engine/pins.json. */
+export const ENGINE_SOURCE = 'livemd2tex-engine';
+/** The engine's files dist/engine holds, by the release's names. */
+export const ENGINE_FILES = ['engine.js', 'engine.wasm'];
 
 function sha256File(file) {
   return createHash('sha256').update(readFileSync(file)).digest('hex');
@@ -42,148 +48,118 @@ function linkOrCopy(from, to) {
   }
 }
 
-/** The JSON object that starts at the first "{" at or after `from` (brace counting outside strings). */
-function jsonAt(source, from) {
-  const start = source.indexOf('{', from);
-  let depth = 0;
-  let inString = false;
-  for (let i = start; i < source.length; i++) {
-    const c = source[i];
-    if (inString) {
-      if (c === '\\') i++;
-      else if (c === '"') inString = false;
-    } else if (c === '"') inString = true;
-    else if (c === '{') depth++;
-    else if (c === '}' && --depth === 0) return JSON.parse(source.slice(start, i + 1));
+/** An input that is simply not there: the one error --if-present passes over. */
+export class NotPresent extends Error {}
+
+/** The pinned engine's source in engine/pins.json and its folder under ../engine_assets. */
+export function enginePin(repo = root) {
+  const pins = JSON.parse(readFileSync(path.join(repo, 'engine', 'pins.json'), 'utf8'));
+  const source = pins.sources.find((s) => s.id === ENGINE_SOURCE);
+  if (!source) {
+    throw new Error(`engine/pins.json has no ${ENGINE_SOURCE} source`);
   }
-  throw new Error('unbalanced JSON in the loader');
+  return { source, dir: path.join(repo, '..', 'engine_assets', source.folder) };
 }
 
-export function stageEngine({ data = false } = {}) {
-  const assets = path.join(root, '..', 'engine_assets');
-  const pins = JSON.parse(readFileSync(path.join(root, 'engine', 'pins.json'), 'utf8'));
-  const tl = pins.sources.find((s) => s.id === 'texlyre-busytex');
-  const pinOf = (name) => tl.files.find((f) => f.name === name);
-  const dir = path.join(assets, tl.folder);
-  const check = (name) => {
+/**
+ * The files of an unpacked core-data package folder: data/ as they are, LICENSES/ under LICENSES/. Each entry is
+ * [path under dist/data, a reader of its bytes, the file to link].
+ */
+function folderFiles(dir) {
+  const out = [];
+  const walk = (from, prefix) => {
+    if (!existsSync(from)) return;
+    for (const name of readdirSync(from)) {
+      const file = path.join(from, name);
+      if (statSync(file).isDirectory()) walk(file, `${prefix}${name}/`);
+      else out.push([`${prefix}${name}`, () => readFileSync(file), file]);
+    }
+  };
+  walk(path.join(dir, 'data'), '');
+  walk(path.join(dir, 'LICENSES'), 'LICENSES/');
+  return out;
+}
+
+/** The same from a .vsix: extension/data/ and extension/LICENSES/, read from the archive (nothing to link). */
+function zipFiles(file) {
+  const entries = readZip(readFileSync(file));
+  const out = [];
+  for (const [n, bytes] of entries) {
+    if (n.endsWith('/')) continue;
+    if (n.startsWith('extension/data/')) out.push([n.slice('extension/data/'.length), () => bytes, null]);
+    else if (n.startsWith('extension/LICENSES/')) out.push([`LICENSES/${n.slice('extension/LICENSES/'.length)}`, () => bytes, null]);
+  }
+  return out;
+}
+
+export function stageEngine({ data = false, dataPackage = null } = {}) {
+  const { source, dir } = enginePin();
+  const checked = (name) => {
+    const pin = source.files.find((f) => f.name === name);
     const file = path.join(dir, name);
-    const pin = pinOf(name);
-    if (!existsSync(file) || statSync(file).size !== pin.size) {
-      throw new Error(`${name} is missing or has the wrong size; run node scripts/engine-assets.mjs`);
+    if (!pin) {
+      throw new Error(`engine/pins.json pins no ${name}`);
+    }
+    if (!existsSync(file)) {
+      throw new NotPresent(`${name} is not downloaded; run node scripts/engine-assets.mjs --source ${ENGINE_SOURCE}`);
+    }
+    if (statSync(file).size !== pin.size) {
+      throw new Error(`${name} has the wrong size; run node scripts/engine-assets.mjs --source ${ENGINE_SOURCE}`);
+    }
+    if (sha256File(file) !== pin.sha256) {
+      throw new Error(`${name} is not the pinned file (SHA-256 ${pin.sha256}); run node scripts/engine-assets.mjs --source ${ENGINE_SOURCE}`);
     }
     return file;
   };
-  // The glue of these pins only, from its own folder (scripts/lib/derived-glue.mjs): another worktree's glue is never read.
-  const glue = pinnedGluePath(assets, pins);
-  if (!existsSync(glue)) {
-    throw new Error(`the patched glue ${path.relative(assets, glue)} is missing; run node scripts/engine-patch.mjs`);
-  }
-  // The patched glue is pinned too: a glue without one of the patches must not reach a package (G1S-08).
-  if (tl.patchedGlue && sha256File(glue) !== tl.patchedGlue.sha256) {
-    throw new Error(`the patched glue's SHA-256 is not the pinned ${tl.patchedGlue.sha256}; run node scripts/engine-patch.mjs and review the patches`);
-  }
   const engineDir = path.join(root, 'dist', 'engine');
+  rmSync(engineDir, { recursive: true, force: true });
   mkdirSync(engineDir, { recursive: true });
-  copyFileSync(glue, path.join(engineDir, 'busytex.js'));
-  const how = linkOrCopy(check('busytex.wasm'), path.join(engineDir, 'busytex.wasm'));
+  const how = ENGINE_FILES.map((name) => linkOrCopy(checked(name), path.join(engineDir, name)));
   copyFileSync(path.join(root, 'engine', 'texmf-override.cnf'), path.join(engineDir, 'texmf-override.cnf'));
-  copyFileSync(path.join(root, 'engine', 'fonts.conf'), path.join(engineDir, 'fonts.conf'));
-  const report = [`dist/engine: glue, wasm (${how}), texmf-override.cnf, fonts.conf`];
+  const report = [`dist/engine: ${ENGINE_FILES.map((n, i) => `${n} (${how[i]})`).join(', ')}, texmf-override.cnf`];
 
   const dataDir = path.join(root, 'dist', 'data');
-  rmSync(dataDir, { recursive: true, force: true });
-  if (data) {
-    mkdirSync(dataDir, { recursive: true });
-    const image = check('texlive-extra.data');
-    const imageHow = linkOrCopy(image, path.join(dataDir, 'texlive-extra.data'));
-    const loader = readFileSync(check('texlive-extra.js'), 'utf8');
-    const index = {
-      compressed: jsonAt(loader, loader.indexOf('var compressedData = ')),
-      metadata: jsonAt(loader, loader.lastIndexOf('loadPackage({"files"')),
-    };
-    writeFileSync(path.join(dataDir, 'texlive-extra.index.json'), JSON.stringify(index));
-    const manifest = {
-      format: 1,
-      set: 'interim: TeXlyre texlive-extra image, unchanged (docs/DESIGN.md#engine-and-data, #testing, V0)',
-      texLive: 2026,
-      release: tl.release,
-      image: { file: 'texlive-extra.data', bytes: pinOf('texlive-extra.data').size, sha256: pinOf('texlive-extra.data').sha256 },
-      engine: { file: '../engine/busytex.wasm', sha256: pinOf('busytex.wasm').sha256 },
-      glue: { file: '../engine/busytex.js', sha256: sha256File(path.join(engineDir, 'busytex.js')), patchedFrom: pinOf('busytex.js').sha256 },
-      files: index.metadata.files.length,
-      // The data must match the engine: the SHA-256 of the engine WebAssembly is its ABI (docs/DESIGN.md#store-and-packaging).
-      abi: engineAbi(root),
-    };
-    // The package index (cached per image and index format: reading every .sty and .cls takes a few seconds).
-    const cache = path.join(assets, 'derived', `package-index-${pinOf('texlive-extra.data').sha256.slice(0, 16)}-v${INDEX_FORMAT}.json`);
-    let packages;
-    if (existsSync(cache)) {
-      packages = JSON.parse(readFileSync(cache, 'utf8'));
-    } else {
-      const reader = openImage(image, index.compressed);
-      const prefix = '/texlive/texmf-dist/';
-      const entries = new Map(index.metadata.files.filter((f) => f.filename.startsWith(prefix)).map((f) => [f.filename.slice(prefix.length), f]));
-      packages = buildPackageIndex([...entries.keys()], (rel) => reader.read(entries.get(rel).start, entries.get(rel).end).toString('latin1'));
-      writeFileSync(cache, JSON.stringify(packages));
-    }
-    writeFileSync(path.join(dataDir, 'packages.json'), JSON.stringify(packages));
-    manifest.index = { file: 'packages.json', format: packages.format, packages: Object.keys(packages.packages).length, files: Object.keys(packages.files).length };
-    // What the Extra Packages add-on holds, so the missing-package message can offer it (docs/DESIGN.md#engine-and-data).
-    // Until B1 the add-on is the test stand-in (scripts/lib/extra-standin.mjs).
-    try {
-      const extra = standinManifest(root);
-      // With each package's requires, so the first message can also name a dependency no set has (G2S-04).
-      const requires = Object.fromEntries(Object.entries(extra.index.packages).map(([p, v]) => [p, v.requires ?? []]));
-      manifest.elsewhere = { 'livemd2tex-extra-data': { set: extra.set, files: extra.index.files, requires } };
-    } catch {
-      // without the pinned REVTeX zip, nothing is listed elsewhere
-    }
-    // The Markdown notes template's DejaVu fonts (pinned CTAN set; docs/DESIGN.md#engine-and-data), which the image lacks.
-    // The extension hands them to XeTeX as project files (src/extension/engine/interimFonts.ts) until B1.
-    const dejavu = pins.sources.find((s) => s.id === 'ctan-dejavu');
-    if (dejavu) {
-      const fontsDir = path.join(dataDir, 'fonts');
-      mkdirSync(fontsDir, { recursive: true });
-      const ttf = dejavu.files.filter((x) => /\.ttf$/.test(x.name));
-      for (const f of ttf) {
-        const from = path.join(assets, dejavu.folder, ...f.name.split('/'));
-        if (!existsSync(from) || statSync(from).size !== f.size) {
-          throw new Error(`${f.name} is missing or has the wrong size; run node scripts/engine-assets.mjs`);
-        }
-        linkOrCopy(from, path.join(fontsDir, path.posix.basename(f.name)));
-      }
-      // The fonts' licence goes with every copy (Bitstream Vera licence; build gate 1, G1S-04).
-      const licence = dejavu.files.find((x) => /(^|\/)LICENSE$/.test(x.name));
-      if (!licence || !existsSync(path.join(assets, dejavu.folder, ...licence.name.split('/')))) {
-        throw new Error('the DejaVu LICENSE is missing; run node scripts/engine-assets.mjs');
-      }
-      copyFileSync(path.join(assets, dejavu.folder, ...licence.name.split('/')), path.join(fontsDir, 'LICENSE'));
-      manifest.interimFonts = { package: dejavu.package, licence: dejavu.licence, files: ttf.map((f) => ({ file: `fonts/${path.posix.basename(f.name)}`, sha256: f.sha256 })) };
-    }
-    // The licence files inside TeXlyre's image, as readable copies beside it: TeX Live's and CTAN's licence
-    // notes and the LPPL (build gate 1, G1S-04). The image itself is unchanged.
-    const reader = openImage(image, index.compressed);
-    const licenceDir = path.join(dataDir, 'licenses');
-    mkdirSync(licenceDir, { recursive: true });
-    for (const [name, out] of [['/texlive/LICENSE.TL', 'TeX-Live-LICENSE.TL.txt'], ['/texlive/LICENSE.CTAN', 'TeX-Live-LICENSE.CTAN.txt'], ['/texlive/texmf-dist/tex/latex/base/lppl.tex', 'lppl.tex']]) {
-      const entry = index.metadata.files.find((f) => f.filename === name);
-      if (!entry) {
-        throw new Error(`${name} is not in the image`);
-      }
-      writeFileSync(path.join(licenceDir, out), reader.read(entry.start, entry.end));
-    }
-    manifest.licences = 'licenses/ (TeX Live, CTAN, LPPL); fonts/LICENSE (DejaVu)';
-    writeFileSync(path.join(dataDir, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
-    report.push(`dist/data: image (${imageHow}, ${manifest.image.bytes} bytes), index (${manifest.files} files), packages.json (${manifest.index.packages} packages), ${manifest.interimFonts ? `fonts/ (${manifest.interimFonts.files.length} DejaVu files), ` : ''}manifest.json`);
+  const wasm = source.files.find((f) => f.name === 'engine.wasm').sha256;
+  if (!data) {
+    rmSync(dataDir, { recursive: true, force: true });
+    return report;
   }
+  if (!dataPackage) {
+    throw new NotPresent('no core-data package is pinned yet: give --data-package PATH (or LIVEMD2TEX_CORE_DATA), a livemd2tex-core-data .vsix or unpacked package folder built for this engine');
+  }
+  if (!existsSync(dataPackage)) {
+    throw new Error(`${dataPackage} is not there: give a core-data package built for this engine`);
+  }
+  // The package's files, as [path under dist/data, how to put it there], checked before dist/data is replaced.
+  const folder = existsSync(dataPackage) && statSync(dataPackage).isDirectory();
+  const files = folder ? folderFiles(dataPackage) : zipFiles(dataPackage);
+  if (!files.some(([rel]) => rel === 'manifest.json')) {
+    throw new Error(`${dataPackage} holds no data/manifest.json`);
+  }
+  const manifest = JSON.parse(files.find(([rel]) => rel === 'manifest.json')[1]().toString('utf8'));
+  if (manifest.abi !== wasm) {
+    throw new Error(`${path.basename(dataPackage)} was built for the engine ${manifest.abi}, not the pinned ${wasm}`);
+  }
+  rmSync(dataDir, { recursive: true, force: true });
+  const ways = new Map();
+  for (const [rel, bytes, from] of files) {
+    const out = path.join(dataDir, ...rel.split('/'));
+    mkdirSync(path.dirname(out), { recursive: true });
+    const way = from ? linkOrCopy(from, out) : (writeFileSync(out, bytes()), 'written');
+    ways.set(way, (ways.get(way) ?? 0) + 1);
+  }
+  const summary = [...ways].map(([w, n]) => `${n} ${w}`).join(', ');
+  report.push(`dist/data: ${files.length} files from ${path.basename(dataPackage)} (${summary}; image ${manifest.image?.file}, ${manifest.image?.bytes} bytes)`);
   return report;
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
+  const at = process.argv.indexOf('--data-package');
   try {
-    console.log(stageEngine({ data: process.argv.includes('--data') }).join('\n'));
+    const dataPackage = at >= 0 ? process.argv[at + 1] : process.env.LIVEMD2TEX_CORE_DATA || null;
+    console.log(stageEngine({ data: process.argv.includes('--data'), dataPackage }).join('\n'));
   } catch (err) {
-    if (!process.argv.includes('--if-present')) {
+    if (!(err instanceof NotPresent) || !process.argv.includes('--if-present')) {
       throw err;
     }
     console.log(`stage-engine: skipped (${err.message})`);

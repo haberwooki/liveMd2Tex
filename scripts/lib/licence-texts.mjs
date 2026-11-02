@@ -17,7 +17,6 @@
 //             archives that state them (shipped in its LICENSES folder), and the texts they name.
 //   fontTerms each Type 1 font's own terms, from its header (classifyFonts): they decide which core fonts are packed
 //             with t1c, and add their texts to the package's (a GPL font in an LPPL package; IBM's Courier).
-//   engineFiles the texts of the files the core takes from the engine build's image (ICU's data).
 // A package's own licence files come from its run archive (also those the image leaves out, under doc/ or at the
 // archive's root) and, when a key or the package asks for them, from its doc and source archives, checked against
 // the tlpdb's SHA-512 like every archive. For a licence with no common text, a file that states the terms (a README,
@@ -255,7 +254,7 @@ export function fontNoticesText(name, entries) {
  *   its terms (mayStateTerms); its shipped files (texmf-relative); and the texts and notices its fonts' own headers
  *   add (classifyFonts)
  */
-export function licenceFolder(set, packages, rules, texts, engineFiles = []) {
+export function licenceFolder(set, packages, rules, texts) {
   const files = new Map();
   const problems = [];
   const rows = [];
@@ -351,19 +350,6 @@ export function licenceFolder(set, packages, rules, texts, engineFiles = []) {
     }
     rows.push(`${p.name}\t${keys.join(' ')}\t${[...new Set(entries)].join(' ') || '-'}`);
   }
-  // The files the core takes from the engine build's image (ICU's data among them), by the rules' path patterns.
-  const engineRows = [];
-  const patterns = Object.entries(rules.engineFiles ?? {}).filter(([k]) => k !== 'about');
-  for (const file of [...engineFiles].map((f) => f.replace(/^\//, '')).sort()) {
-    const rule = patterns.find(([re]) => new RegExp(re).test(file))?.[1];
-    if (!rule) {
-      problems.push(`${set}: ${file}, from the engine build's image, matches no rule in engine/bundle-licences.json ("engineFiles")`);
-      continue;
-    }
-    const entries = [];
-    (rule.texts ?? []).forEach((id) => addText({ name: file }, id, entries));
-    engineRows.push(`${file}\t(engine build)\t${entries.join(' ') || '-'}`);
-  }
   const head = [
     `# The licence texts of the TeX Live packages in data/ (${set}), written by liveMd2Tex's bundle builder.`,
     '# One line per package, tab-separated: its name, its licences as the TeX Catalogue names them ("(none)": TeX',
@@ -373,8 +359,7 @@ export function licenceFolder(set, packages, rules, texts, engineFiles = []) {
     '# needs no text (public domain; Knuth\'s terms, which the files state). "ships no files": nothing of it is here.',
     '',
   ];
-  const engineHead = engineRows.length > 0 ? ['', "# The files from the engine build's image, by path: their licence texts. ICU's data is ICU 78.2 (Unicode License V3),", "# from libs/icu in TeX Live's source tree at tag texlive-2026.0: https://github.com/TeX-Live/texlive-source.", ''] : [];
-  return { files, index: `${[...head, ...rows, ...engineHead, ...engineRows].join('\n')}\n`, problems, found };
+  return { files, index: `${[...head, ...rows].join('\n')}\n`, problems, found };
 }
 
 /** What t1c did to each packed font, for the GPL's change notices (LICENSES/CHANGES-GPL). */

@@ -1,9 +1,9 @@
-// M6 in VS Code (docs/DESIGN.md#testing): a corpus document with a missing class (P2, the REVTeX sample,
-// without the REVTeX files) is told what is missing before it compiles, then reaches a PDF through "Add a package
-// from a file" (the CTAN ZIP, and a .dtx with its .ins built by docstrip) and through the Extra Packages route,
-// with the stand-in add-on installed from a local VSIX into the throwaway profile. The compile command answers
-// with its own compile, never an older one still running. Uses the V0 workspace and the stand-in VSIX that
-// scripts/run-integration.mjs prepares; skips without them.
+// M6 in VS Code (docs/DESIGN.md#testing): a corpus document whose packages are in the Extra Packages add-on (P7:
+// memoir and biblatex) is told what is missing before it compiles, then reaches a PDF through the Extra Packages
+// route, with the add-on installed from its VSIX into the throwaway profile. "Add a package from a file" takes the
+// CTAN ZIP (REVTeX, for P2 without its own copies) and a .dtx with its .ins built by docstrip. The compile command
+// answers with its own compile, never an older one still running. Uses the V0 workspace and the add-on VSIX that
+// scripts/run-integration.mjs prepares (LIVEMD2TEX_EXTRA_DATA); the add-on route skips without the add-on.
 
 import * as assert from 'node:assert/strict';
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -11,12 +11,12 @@ import * as path from 'node:path';
 import * as vscode from 'vscode';
 import type { CompileRecord } from '../../src/extension/compile/controller';
 import type { TestApi } from '../../src/extension/extension';
-import { COMMAND_PREFIX, DISPLAY_NAME, EXTRA_DATA_NAME, PUBLISHER } from '../../src/shared/identity';
+import { COMMAND_PREFIX, DISPLAY_NAME, EXTRA_DATA_NAME } from '../../src/shared/identity';
 import type { CorpusProject } from '../support/corpusProjects';
-import { activateExtension, engineStubArgs, ownAttempts, root, stubState } from './support';
+import { missingInput } from '../support/missingData';
+import { activateExtension, engineStubArgs, installAddOn, ownAttempts, root, stubState, uninstallAddOn } from './support';
 
 const assets = path.resolve(root, '..', 'engine_assets');
-const EXTRA_ID = `${PUBLISHER}.${EXTRA_DATA_NAME}`;
 
 function withTimeout<T>(promise: Promise<T>, ms: number, what: string): Promise<T> {
   return Promise.race([promise, new Promise<T>((_, reject) => setTimeout(() => reject(new Error(`${what}: no result after ${ms} ms`)), ms))]);
@@ -27,6 +27,7 @@ describe('M6: package help in VS Code', function () {
   let api: TestApi;
   let workspace = '';
   let p2: CorpusProject | undefined;
+  let p7: CorpusProject | undefined;
   let blockedBefore = 0;
 
   /** A copy of P2 without the REVTeX files, under `name` in the workspace. */
@@ -73,29 +74,47 @@ describe('M6: package help in VS Code', function () {
   before(async function () {
     workspace = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? '';
     api = await activateExtension();
-    if (!workspace || !existsSync(path.join(workspace, 'v0-corpus.json')) || !api.engineAvailable()) {
+    if (!workspace || !existsSync(path.join(workspace, 'v0-corpus.json'))) {
+      this.skip();
+    }
+    if (!api.engineAvailable()) {
+      missingInput('the staged engine and core data (node scripts/stage-engine.mjs --data)');
       this.skip();
     }
     const projects = JSON.parse(readFileSync(path.join(workspace, 'v0-corpus.json'), 'utf8')) as CorpusProject[];
     p2 = projects.find((p) => p.id === 'P2');
-    if (!p2) {
+    p7 = projects.find((p) => p.id === 'P7');
+    if (!p2 || !p7) {
       this.skip();
     }
+    await uninstallAddOn();
     api.setEngineExecArgv(engineStubArgs);
     blockedBefore = stubState().blocked.length;
   });
 
-  it('P2 without REVTeX: the missing class is named before the compile, with the add-on offered', async () => {
-    const main = bareP2('M6-P2-before');
+  /** A copy of P7 under `name` in the workspace, so each test compiles a document of its own. */
+  function copyP7(name: string): string {
+    const folder = path.join(workspace, name);
+    cpSync((p7 as CorpusProject).folder, folder, { recursive: true });
+    return path.join(folder, (p7 as CorpusProject).main);
+  }
+
+  it('P7 without the add-on: biblatex is named before the compile and memoir by TeX\'s "not found", each with the add-on', async () => {
+    const main = copyP7('M6-P7-before');
     const record = await compile(main);
-    assert.deepEqual(record.missingPackages, ['revtex4-2.cls']);
-    const ours = vscode.languages.getDiagnostics(vscode.Uri.file(main)).filter((d) => d.source === DISPLAY_NAME);
+    // The document asks for biblatex; memoir is its own class's base class, which the scan does not read.
+    assert.deepEqual(record.missingPackages, ['biblatex.sty']);
+    const all = vscode.languages.getDiagnostics(vscode.Uri.file(main));
+    const ours = all.filter((d) => d.source === DISPLAY_NAME);
     assert.equal(ours.length, 1);
-    assert.match(ours[0].message, /"revtex4-2\.cls" \(class revtex\) is not inside the installed packages\. The Extra Packages add-on has it/);
-    const classLine = readFileSync(main, 'utf8')
+    assert.match(ours[0].message, /"biblatex\.sty" \(package biblatex\) is not inside the installed packages\. The Extra Packages add-on has it/);
+    const useLine = readFileSync(main, 'utf8')
       .split(/\r?\n/)
-      .findIndex((l) => l.startsWith('\\documentclass'));
-    assert.equal(ours[0].range.start.line, classLine, 'not on the \\documentclass line');
+      .findIndex((l) => /\\usepackage(\[[^\]]*\])?\{biblatex\}/.test(l));
+    assert.equal(ours[0].range.start.line, useLine, 'not on the \\usepackage line');
+    // TeX's own "not found" names memoir and the add-on, in the project's files.
+    const tex = Object.values(Object.fromEntries(vscode.languages.getDiagnostics().map(([uri, d]) => [uri.toString(), d]))).flat();
+    assert.ok(tex.some((d) => d.source === 'TeX' && /memoir\.cls is in package memoir, in the Extra Packages add-on/.test(d.message)), tex.map((d) => d.message).join('\n'));
   });
 
   it('"Add a package from a file" with the CTAN ZIP: the same document reaches a PDF', async function () {
@@ -159,29 +178,19 @@ describe('M6: package help in VS Code', function () {
     await vscode.commands.executeCommand('workbench.action.revertAndCloseActiveEditor');
   });
 
-  it('the Extra Packages route: the button opens the Extensions view; with the stand-in add-on installed, P2 reaches a PDF', async function () {
+  it('the Extra Packages route: the button opens the Extensions view; with the add-on installed, P7 reaches a PDF', async function () {
     const vsix = process.env.LIVEMD2TEX_TEST_EXTRA_VSIX;
     if (!vsix || !existsSync(vsix)) {
+      console.log('      no Extra Packages add-on given (LIVEMD2TEX_EXTRA_DATA, for scripts/run-integration.mjs); skipped');
       this.skip();
     }
-    // The user folder from the previous test has REVTeX too; this test needs it to come from the add-on.
-    await api.removeUserPackage('revtex');
     const before = await api.dataSets();
     assert.equal(before.extraInstalled, false);
-    const main = bareP2('M6-P2-extra');
-    assert.deepEqual((await compile(main)).missingPackages, ['revtex4-2.cls']);
+    const main = copyP7('M6-P7-extra');
+    assert.deepEqual((await compile(main)).missingPackages, ['biblatex.sty']);
     await vscode.commands.executeCommand(`${COMMAND_PREFIX}.installExtraPackages`);
     // What the user does in the Extensions view, here from the local VSIX (the add-on is not on a store yet).
-    const changed = new Promise<void>((resolve) => {
-      const sub = vscode.extensions.onDidChange(() => {
-        if (vscode.extensions.getExtension(EXTRA_ID)) {
-          sub.dispose();
-          resolve();
-        }
-      });
-    });
-    await vscode.commands.executeCommand('workbench.extensions.installExtension', vscode.Uri.file(vsix));
-    await withTimeout(changed, 60000, 'the add-on to appear');
+    assert.ok(await installAddOn());
     const after = await api.dataSets();
     assert.equal(after.extraInstalled, true);
     assert.ok((after.sets[EXTRA_DATA_NAME] ?? 0) >= 1, JSON.stringify(after.sets));
@@ -189,7 +198,7 @@ describe('M6: package help in VS Code', function () {
     assert.deepEqual(record.missingPackages, []);
     assert.ok(record.pdfBytes > 0, record.error);
     assert.deepEqual(ownAttempts(stubState(), blockedBefore), [], 'the extension tried to spawn or connect');
-    console.log(`      P2 through the add-on: PDF ${record.pdfBytes} bytes; data sets ${JSON.stringify(after.sets)}`);
-    await vscode.commands.executeCommand('workbench.extensions.uninstallExtension', EXTRA_ID);
+    console.log(`      P7 through the add-on: PDF ${record.pdfBytes} bytes; data sets ${JSON.stringify(after.sets)}`);
+    await uninstallAddOn();
   });
 });

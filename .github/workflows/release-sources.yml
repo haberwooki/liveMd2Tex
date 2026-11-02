@@ -8,16 +8,19 @@
 # real run, confirm that gh finds the draft release by its tag (GitHub's tag look-up does not return drafts). The job:
 # - checks out the tag and downloads the draft's .vsix files;
 # - lists the sources each one needs (scripts/release-sources.mjs): for a package with the engine, the engine's
-#   source archives (engine/engine-notices.json); for a data package, the archives of the pinned snapshot that its
+#   source archives (engine/engine-notices.json: TeX Live's and Emscripten's commit archives, each from the engine
+#   release's own copy first), after checking the packaged engine against its build record and pin at this tag,
+#   which also says whether this tag or the engine release holds our build scripts' source; for a data package, the archives of the pinned snapshot that its
 #   licences.json lists for packages under the GPL, LGPL or AGPL, which must be under the snapshot's mirrors. It also
 #   checks the tag against the extension's version and README, and refuses any name that is not a plain name;
 # - downloads them with curl (on the runner only), and for each archive GitHub makes from a commit, that commit's
 #   tree with git (fetched with --filter=blob:none, so only the trees come down; then git ls-tree), so the archive's
 #   files are checked against the commit as well as its bytes;
-# - checks every archive: its hash; a data archive's SHA-512 against the pinned package database; TeXlyre's Makefile
-#   against the manifest's hash and link lines;
+# - checks every archive: its hash; a commit archive's files against its commit's tree; a data archive's SHA-512
+#   against the pinned package database;
 # - attaches one tar file per group (engine, core-data, extra-data) and the list, sources.json, to the draft.
-# The minutes, estimated: 10 (about 150 MB for the engine, up to a few hundred MB for a data package).
+# The minutes, estimated: 10 (about 190 MB for the engine group: TeX Live's 149 MB and Emscripten's 33 MB; up to a
+# few hundred MB for a data package).
 
 name: release-sources
 

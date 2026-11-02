@@ -6,11 +6,21 @@ import { closeSync, existsSync, openSync, readFileSync, readSync, statSync } fro
 import { Worker } from 'node:worker_threads';
 import { basename, dirname, join, posix } from 'node:path';
 import { failedResult as failed, imageKey, TEXMF_PREFIX, type CompileJob, type CompileResult, type DataImageRef, type EngineAssetPaths, type EngineInitInfo } from '../../shared/engineJobs';
-import { buildImageIndex, DamagedData, damagedMessage, packedMismatch, readPackageMetadata, type CompressedTable, type PackageMetadata } from './packageMeta';
-import type { CacheFile, ExtraImage, WorkerJob, WorkerSetup } from './worker';
+import { checkEnvOverrides } from './layout';
+import { buildImageIndex, DamagedData, damagedMessage, packedMismatch, type CompressedTable, type PackageMetadata } from './packageMeta';
+import type { ExtraImage, WorkerJob, WorkerSetup } from './worker';
+
+/**
+ * The V8 stack of each compile's worker thread, MiB. TeX's recursion runs on it (WebAssembly calls use the
+ * JavaScript engine's own stack). With Node's default of 4 MB, the shipped engine (-O3) ends a deep but legal
+ * recursion with a RangeError before TeX's own expand_depth (10,000) stops a runaway macro: in pdfLaTeX's second run
+ * and in XeLaTeX's first (measured 2026-11-02; at -Oz only pdfLaTeX's second). An engine built at another level can
+ * need another size (test/engine/fixtures/recursion.tex; docs/DEVELOPING.md, "The TeX engine").
+ */
+export const WORKER_STACK_MB = 16;
 
 export interface LoadedEngine {
-  setup: Omit<WorkerSetup, 'createdAt' | 'fontCache'>;
+  setup: Omit<WorkerSetup, 'createdAt'>;
   info: EngineInitInfo;
 }
 
@@ -80,16 +90,15 @@ export async function loadEngine(paths: EngineAssetPaths): Promise<LoadedEngine>
   const t1 = performance.now();
   const image = readIntoShared(paths.data);
   const t2 = performance.now();
-  // The loader script (development) or the JSON index made from it for the package (scripts/stage-engine.mjs).
-  const loaderText = readFileSync(paths.loader, 'utf8');
-  const { metadata, compressed } = paths.loader.endsWith('.json')
-    ? (JSON.parse(loaderText) as ReturnType<typeof readPackageMetadata>)
-    : readPackageMetadata(loaderText);
+  // The image's index: Emscripten's file_packager metadata as JSON (the data set's .index.json).
+  const { metadata, compressed } = JSON.parse(readFileSync(paths.index, 'utf8')) as { metadata: PackageMetadata; compressed: CompressedTable };
   const t3 = performance.now();
   if (metadata.remote_package_size !== image.byteLength) {
     throw new Error(`image is ${image.byteLength} bytes, its metadata says ${metadata.remote_package_size}`);
   }
-  checkPackedList(paths.loader, metadata, null);
+  checkPackedList(paths.index, metadata, null);
+  // A tool or a test may set only a few variables over the engine's environment, never shell escape (layout.ts).
+  checkEnvOverrides(paths.env);
   return {
     setup: {
       module,
@@ -97,7 +106,7 @@ export async function loadEngine(paths: EngineAssetPaths): Promise<LoadedEngine>
       index: buildImageIndex(metadata, compressed),
       gluePath: paths.glue,
       cnfOverride: readFileSync(paths.cnfOverride, 'utf8'),
-      fontsConf: readFileSync(paths.fontsConf, 'utf8'),
+      ...(paths.env ? { env: paths.env } : {}),
     },
     info: {
       compileMs: Math.round(t1 - t0),
@@ -113,8 +122,6 @@ interface Standby {
   worker: Worker;
   /** The data images this worker mounted when it started. */
   extras: Set<string>;
-  /** The version of fontconfig's cache the worker was given when it started. */
-  fontCacheVersion: number;
   dead: boolean;
 }
 
@@ -125,12 +132,6 @@ export class EngineCore {
    * compile runs, so a live edit's job pays only for its own files and the TeX run (docs/DESIGN.md#live-behaviour).
    */
   private standby: Standby | null = null;
-  /**
-   * fontconfig's cache, one file per font folder: made by the first XeTeX compile, completed by later ones (a newly
-   * mounted add-on's folders), and given to every later worker. Each change makes a new version.
-   */
-  private fontCache: CacheFile[] = [];
-  private fontCacheVersion = 0;
   /**
    * Data extension images read so far (G2E-02), by key (id, version and content; G2E-R1). Only images still
    * installed are kept (CompileJob.knownImages), and a worker mounts exactly the images its job lists.
@@ -215,9 +216,10 @@ export class EngineCore {
   /** A worker that mounts `extras` (data images) while it prepares, before any job. */
   private spawn(extras: ExtraImage[]): Standby {
     const worker = new Worker(this.workerFile, {
-      workerData: { ...this.engine.setup, extras, fontCache: this.fontCache, createdAt: Date.now() } satisfies WorkerSetup,
+      workerData: { ...this.engine.setup, extras, createdAt: Date.now() } satisfies WorkerSetup,
+      resourceLimits: { stackSizeMb: WORKER_STACK_MB },
     });
-    const standby: Standby = { worker, fontCacheVersion: this.fontCacheVersion, dead: false, extras: new Set(extras.map((e) => e.key)) };
+    const standby: Standby = { worker, dead: false, extras: new Set(extras.map((e) => e.key)) };
     // A worker that fails before it gets a job is replaced by the next compile.
     worker.on('error', () => {
       standby.dead = true;
@@ -281,7 +283,7 @@ export class EngineCore {
       standby = this.spawn(images);
     }
     this.lastImages = images;
-    const { worker, fontCacheVersion } = standby;
+    const { worker } = standby;
     const mounted = standby.extras;
     return new Promise<CompileResult>((resolve) => {
       let done = false;
@@ -297,13 +299,7 @@ export class EngineCore {
           () => undefined,
           () => undefined,
         );
-        const { fontCache, ...rest } = result;
-        if (fontCache && fontCache.length > 0) {
-          const names = new Set(fontCache.map((f) => f.name));
-          this.fontCache = [...this.fontCache.filter((f) => !names.has(f.name)), ...fontCache];
-          this.fontCacheVersion++;
-        }
-        resolve({ ...rest, timings: { ...rest.timings, totalMs: Math.round(performance.now() - started) } });
+        resolve({ ...result, timings: { ...result.timings, totalMs: Math.round(performance.now() - started) } });
         if (this.keepStandby && !this.standby && !this.disposed) {
           this.standby = this.spawn(this.lastImages.filter((i) => this.extras.has(i.key)));
         }
@@ -314,7 +310,6 @@ export class EngineCore {
       worker.once('exit', (code) => settle(failed(job.id, `worker exited with code ${code}`)));
       const message: WorkerJob = {
         job,
-        fontCache: fontCacheVersion !== this.fontCacheVersion && this.fontCache.length > 0 ? this.fontCache : undefined,
         // Images this worker did not mount when it started (read for this job): it mounts them first.
         extras: images.filter((i) => !mounted.has(i.key)),
       };

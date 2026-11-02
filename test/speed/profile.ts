@@ -1,6 +1,6 @@
 // Reads the .cpuprofile files that `--host-arg --cpu-prof --host-arg --cpu-prof-dir=DIR` makes (one per thread of
 // the engine host: its main thread and each compile worker) and sums self time by kind: the engine's WebAssembly,
-// the Emscripten glue (file system, LZ4), our worker code, garbage collection, idle. Today's busytex.wasm has no
+// the Emscripten glue (file system, LZ4), our worker code, garbage collection, idle. The pinned engine.wasm has no
 // name section, so WebAssembly functions show by index only; a build linked with --profiling-funcs names them.
 //
 //   node out/test/speed/profile.js DIR [--top N]

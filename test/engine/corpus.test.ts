@@ -8,7 +8,7 @@ import * as path from 'node:path';
 import { PDFDocument, rgb } from 'pdf-lib';
 import type { ProjectFile } from '../../src/shared/engineJobs';
 import { importScript, root, stubState } from '../support/helpers';
-import { assetsRoot, compileAndRecord, engineAssetPaths, job, readFolder, sharedEngine, writeResults } from './support';
+import { assetsRoot, compileAndRecord, engineAssetPaths, job, readFolder, sharedEngine, withAddOn, writeResults } from './support';
 
 interface Pins {
   sources: { id: string; folder: string }[];
@@ -126,7 +126,8 @@ describe('S1 pass tests on the public corpus P1 to P8', function () {
     // The class names itself through a macro (\ProvidesClass{\@shortjid}); docstrip's header names the file.
     assert.ok(cls && cls.includes("This is file `elsarticle.cls'"), 'docstrip did not build elsarticle.cls');
     const files = [...flat(ctan('ctan-elsarticle'), ['elsarticle-template-num.tex', 'elsarticle-num.bst']), { path: 'elsarticle.cls', data: text(cls) }];
-    const r = await compileAndRecord('P4', job({ main: 'elsarticle-template-num.tex', files, engine: 'pdflatex', bibtex: 'auto', maxPasses: 3, synctex: true }));
+    // mwe's example images are in the Extra Packages add-on, as for a user who installed it.
+    const r = await compileAndRecord('P4', job(await withAddOn({ main: 'elsarticle-template-num.tex', files, engine: 'pdflatex', bibtex: 'auto', maxPasses: 3, synctex: true })));
     console.log(`      P4 docstrip: ${built.steps[0].ms} ms, elsarticle.cls ${cls.length} bytes`);
     summary('P4', r);
     assertPass('P4', r);
@@ -153,7 +154,8 @@ describe('S1 pass tests on the public corpus P1 to P8', function () {
     const thesis = files.find((f) => f.path === 'thesis.tex');
     assert.ok(thesis);
     thesis.data = text(new TextDecoder().decode(thesis.data).replace('\\usepackage{biblatex}', '\\usepackage[backend=bibtex8]{biblatex}'));
-    const r = await compileAndRecord('P7', job({ main: 'thesis.tex', files, engine: 'pdflatex', bibtex: 'auto', maxPasses: 4, synctex: true }));
+    // memoir and biblatex are in the Extra Packages add-on, as for a user who installed it.
+    const r = await compileAndRecord('P7', job(await withAddOn({ main: 'thesis.tex', files, engine: 'pdflatex', bibtex: 'auto', maxPasses: 4, synctex: true })));
     summary('P7', r);
     assertPass('P7', r);
     assert.ok(r.result.steps.some((s) => s.argv[0] === 'bibtex8'), 'bibtex8 ran for biblatex');

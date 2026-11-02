@@ -3,14 +3,16 @@
 // preparation of picked package files (ZIP, .dtx with .ins, single files).
 
 import * as assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import * as path from 'node:path';
 import { crc32 } from 'node:zlib';
 import { imagesForNotFound, type PreparedCompile } from '../../src/extension/compile/pipeline';
 import { checkDataManifest } from '../../src/extension/engine/dataSets';
 import type { CompileResult } from '../../src/shared/engineJobs';
 import { preparePackages, projectCopies, texmfPathFor } from '../../src/extension/packages/userPackages';
 import { missingMessage, packageRequests, scanDiagnostics, scanPackages, type ScanInput } from '../../src/extension/project/packageScan';
-import { buildPackageIndex, loadsOf, type PackageIndex } from '../../src/shared/packageIndex';
-import { importScript } from '../support/helpers';
+import { buildPackageIndex, filesBothHold, loadsOf, type PackageIndex } from '../../src/shared/packageIndex';
+import { importScript, root } from '../support/helpers';
 
 const index = (packages: Record<string, { files: string[]; requires?: string[]; kind?: 'tex' | 'fonts' }>): PackageIndex => {
   const out: PackageIndex = { format: 1, packages: {}, files: {} };
@@ -206,7 +208,7 @@ describe('M6: data sets must fit the engine', () => {
       const r = checkDataManifest({ format: 1, texLive: 2026, abi: 'abc', ...other }, b1, 'Extra Packages add-on');
       assert.ok(!r.ok && /built from another TeX Live snapshot .* than the core packages \(2026\/10\/15\)\. Update both to the same release\./.test(r.message));
     }
-    // The interim core names no snapshot: no check (the stand-in add-on has none either).
+    // A core that names no snapshot is not checked against the add-on's (the stand-in add-on names none either).
     assert.equal(checkDataManifest({ format: 1, texLive: 2026, abi: 'abc', snapshot: '2026/10/15' }, expected, 'Extra Packages add-on').ok, true);
   });
 
@@ -217,7 +219,7 @@ describe('M6: data sets must fit the engine', () => {
     const prepared = (mounted: string[] = []) =>
       ({ packages: { core: null, installed: [fonts, macros], elsewhere: [] }, job: { dataImages: mounted.map((id) => ({ id })) } }) as unknown as PreparedCompile;
     const result = (log: string) => ({ log, blg: null }) as unknown as CompileResult;
-    const type1 = '!pdfTeX error: /bin/busytex (file pbkl8r.pfb): cannot open Type 1 font file for reading\n';
+    const type1 = '!pdfTeX error: /bin/engine (file pbkl8r.pfb): cannot open Type 1 font file for reading\n';
     assert.deepEqual(imagesForNotFound(result(type1), prepared()), ['livemd2tex-extra-data']);
     assert.deepEqual(imagesForNotFound(result(type1), prepared(['livemd2tex-extra-data'])), [], 'already mounted');
     assert.deepEqual(imagesForNotFound(result(type1.replace('pbkl8r', 'other8r')), prepared()), [], 'a file no set holds');
@@ -289,5 +291,32 @@ describe('M6: the package index is the same in the extension and in the build sc
     const files = Object.keys(texts);
     assert.deepEqual(buildPackageIndex(files, (r) => texts[r]), mjs.buildPackageIndex(files, (r: string) => texts[r]));
     assert.deepEqual(buildPackageIndex(files, (r) => texts[r]).packages.a.requires, ['article.cls', 'b.sty', 'c.sty']);
+  });
+});
+
+describe('M6: an add-on shares no file name with the core', () => {
+  it("names the files an add-on's index shares with the core's, which the extension and the builder refuse", () => {
+    const index = (files: Record<string, string>) => ({ format: 1, packages: {}, files });
+    assert.deepEqual(filesBothHold(index({ 'article.cls': 'base', 't1.cmap': 'cmap' }), index({ 'memoir.cls': 'memoir', 't1.cmap': 'mmap' })), ['t1.cmap']);
+    assert.deepEqual(filesBothHold(index({ 'article.cls': 'base' }), index({ 'memoir.cls': 'memoir' })), []);
+    assert.deepEqual(filesBothHold(null, index({ 'memoir.cls': 'memoir' })), [], 'no core index, nothing to compare');
+  });
+
+  it("the builder's stop is the extension's rule: scripts/lib/package-index.mjs's filesBothHold gives the same names", async () => {
+    const mjs = await importScript<{ filesBothHold(core: PackageIndex | null, addOn: PackageIndex): string[] }>('scripts/lib/package-index.mjs');
+    const index = (files: Record<string, string>) => ({ format: 1, packages: {}, files });
+    const cases: [PackageIndex | null, PackageIndex][] = [
+      [index({ 'article.cls': 'base', 't1.cmap': 'cmap', 'ot1.cmap': 'cmap' }), index({ 'memoir.cls': 'memoir', 't1.cmap': 'mmap', 'ot1.cmap': 'mmap' })],
+      [index({ 'article.cls': 'base' }), index({ 'memoir.cls': 'memoir' })],
+      [null, index({ 'memoir.cls': 'memoir' })],
+    ];
+    for (const [core, addOn] of cases) {
+      assert.deepEqual(mjs.filesBothHold(core, addOn), filesBothHold(core, addOn));
+    }
+    assert.deepEqual(mjs.filesBothHold(...cases[0]), ['t1.cmap', 'ot1.cmap']);
+    // The builder calls it, not a copy of its own.
+    const builder = readFileSync(path.join(root, 'scripts', 'build-bundle.mjs'), 'utf8');
+    assert.match(builder, /import \{[^}]*\bfilesBothHold\b[^}]*\} from '\.\/lib\/package-index\.mjs'/);
+    assert.match(builder, /const shared = filesBothHold\(coreIndex, extraIndex\);/);
   });
 });

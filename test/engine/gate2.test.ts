@@ -19,6 +19,7 @@ import { ENGINE_FORMATS, type ProjectFile } from '../../src/shared/engineJobs';
 import { buildPackageIndex } from '../../src/shared/packageIndex';
 import { importScript, root } from '../support/helpers';
 import { nodeFs } from '../support/nodeFs';
+import { stagedEngine } from './support';
 
 const assets = path.resolve(root, '..', 'engine_assets');
 const tex = (lines: string[]) => `${lines.join('\n')}\n`;
@@ -32,8 +33,8 @@ describe('gate 2 (engine level): data images, and package builds beside compiles
   const context = (installed: PackageContext['installed'] = []) => packageContext(core, installed);
 
   before(async function () {
-    if (!bundledEngineAssets(root) || !existsSync(path.join(root, 'dist', 'data', 'packages.json'))) {
-      this.skip();
+    if (!stagedEngine(this)) {
+      return;
     }
     engine = new EngineService({ modulePath: path.join(root, 'dist', 'engine-host.js'), assets: () => bundledEngineAssets(root), idleMinutes: () => 0, log: () => undefined });
     engine.execArgv = ['--require', path.join(root, 'test', 'stubs', 'register-engine-host.cjs')];

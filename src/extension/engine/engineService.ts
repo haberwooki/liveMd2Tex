@@ -13,27 +13,60 @@
 // - Cancel names the job it means: the one this service has in flight. The engine host ignores a cancel for any
 //   other job (G1E-06).
 
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
 import * as path from 'node:path';
 import type { BackendCapabilities, BackendResult, CanCompile, CompileBackend } from '../../shared/backend';
 import { TEXMF_PREFIX, type CompileJob, type CompileResult, type EngineAssetPaths, type EngineInitInfo, type EngineMemory, type ProjectFile } from '../../shared/engineJobs';
 import { EngineHost, type EngineHostOptions } from '../engineHostClient';
 
+/** The core manifest's image names, by the manifest file and its size and time: it is about 2 MB, read once per change. */
+const imageNames = new Map<string, { stamp: string; file: string; index: string }>();
+
+function coreImageNames(manifest: string): { file: string; index: string } | null {
+  let stamp: string;
+  try {
+    const st = statSync(manifest);
+    stamp = `${st.size}:${st.mtimeMs}`;
+  } catch {
+    return null;
+  }
+  const known = imageNames.get(manifest);
+  if (known && known.stamp === stamp) {
+    return known;
+  }
+  let image: { file?: unknown; index?: unknown } | undefined;
+  try {
+    image = (JSON.parse(readFileSync(manifest, 'utf8')) as { image?: { file?: unknown; index?: unknown } }).image;
+  } catch {
+    return null;
+  }
+  if (typeof image?.file !== 'string' || typeof image.index !== 'string') {
+    return null;
+  }
+  // The names as file names only, as dataSets.ts takes them for data extensions.
+  const names = { stamp, file: path.basename(image.file), index: path.basename(image.index) };
+  imageNames.set(manifest, names);
+  return names;
+}
+
 /**
- * The engine files inside this copy of the extension: dist/engine/ (the patched glue, the WebAssembly engine,
- * our texmf.cnf and fonts.conf) and dist/data/ (the TeX image and its index). Version 0 ships TeXlyre's image
- * unchanged as the interim data; the separate data extensions come with B1 and G0 (docs/DESIGN.md#store-and-packaging).
+ * The engine files inside this copy of the extension: dist/engine/ (engine.js, engine.wasm and our texmf.cnf) and
+ * dist/data/ (the core data set's image and its index, as its manifest names them;
+ * docs/DESIGN.md#store-and-packaging). Null when any is missing. The manifest is parsed again only when it changes.
  */
 export function bundledEngineAssets(extensionPath: string): EngineAssetPaths | null {
   const engine = path.join(extensionPath, 'dist', 'engine');
   const data = path.join(extensionPath, 'dist', 'data');
+  const image = coreImageNames(path.join(data, 'manifest.json'));
+  if (!image) {
+    return null;
+  }
   const paths: EngineAssetPaths = {
-    glue: path.join(engine, 'busytex.js'),
-    wasm: path.join(engine, 'busytex.wasm'),
+    glue: path.join(engine, 'engine.js'),
+    wasm: path.join(engine, 'engine.wasm'),
     cnfOverride: path.join(engine, 'texmf-override.cnf'),
-    fontsConf: path.join(engine, 'fonts.conf'),
-    data: path.join(data, 'texlive-extra.data'),
-    loader: path.join(data, 'texlive-extra.index.json'),
+    data: path.join(data, image.file),
+    index: path.join(data, image.index),
   };
   return Object.values(paths).every((p) => existsSync(p)) ? paths : null;
 }

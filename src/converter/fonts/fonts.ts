@@ -13,8 +13,7 @@
 // Math characters Latin Modern Math lacks are taken from DejaVu Math TeX Gyre through unicode-math's range
 // option. A character no shipped font has is shown as [U+XXXX] by the writer, with a notice.
 //
-// Until the data package carries DejaVu, its files reach the engine as project files (the project-folder
-// route, docs/DESIGN.md#engine-and-data): FontPlan.files names them.
+// The fonts are in the core data set (DejaVu among them), so XeTeX finds each by its file name.
 
 import { COVERAGE, type CoverageId } from './coverage';
 
@@ -94,34 +93,24 @@ interface Fallback {
   command: string;
   /** Font file (one file for every face: fallback characters print upright). */
   file: string;
-  /** Interim project-route file (DejaVu, until the data package carries it); undefined for fonts in the engine image. */
-  interim: boolean;
 }
 
 const FALLBACKS: Record<string, Fallback> = {
-  serif: { id: 'DejaVuSerif-upright', command: 'mdfbDejaVuSerif', file: 'DejaVuSerif.ttf', interim: true },
-  sans: { id: 'DejaVuSans-upright', command: 'mdfbDejaVuSans', file: 'DejaVuSans.ttf', interim: true },
-  mono: { id: 'DejaVuSansMono-upright', command: 'mdfbDejaVuSansMono', file: 'DejaVuSansMono.ttf', interim: true },
-  dejavuMath: { id: 'texgyredejavu-math', command: 'mdfbDejaVuMath', file: 'texgyredejavu-math.otf', interim: false },
-  lmMath: { id: 'latinmodern-math', command: 'mdfbLatinModernMath', file: 'latinmodern-math.otf', interim: false },
+  serif: { id: 'DejaVuSerif-upright', command: 'mdfbDejaVuSerif', file: 'DejaVuSerif.ttf' },
+  sans: { id: 'DejaVuSans-upright', command: 'mdfbDejaVuSans', file: 'DejaVuSans.ttf' },
+  mono: { id: 'DejaVuSansMono-upright', command: 'mdfbDejaVuSansMono', file: 'DejaVuSansMono.ttf' },
+  dejavuMath: { id: 'texgyredejavu-math', command: 'mdfbDejaVuMath', file: 'texgyredejavu-math.otf' },
+  lmMath: { id: 'latinmodern-math', command: 'mdfbLatinModernMath', file: 'latinmodern-math.otf' },
 };
 
 /** Fallback order for characters in the serif text, and in monospaced code. */
 const TEXT_ORDER = [FALLBACKS.serif, FALLBACKS.sans, FALLBACKS.mono, FALLBACKS.dejavuMath, FALLBACKS.lmMath];
 const CODE_ORDER = [FALLBACKS.mono, FALLBACKS.sans, FALLBACKS.serif, FALLBACKS.dejavuMath, FALLBACKS.lmMath];
 
-/** The DejaVu text files the notes template names (all faces: fontspec checks them when it sets the families). */
-export const DEJAVU_FILES = ['DejaVuSerif', 'DejaVuSans', 'DejaVuSansMono'].flatMap((stem) => {
-  const italic = stem === 'DejaVuSerif' ? 'Italic' : 'Oblique';
-  return ['', '-Bold', `-${italic}`, `-Bold${italic}`].map((s) => `${stem}${s}.ttf`);
-});
-
 export interface FontPlan {
   set: FontSetName;
   /** Preamble lines after \usepackage{fontspec} and \usepackage{unicode-math}. */
   preamble: string[];
-  /** Font files the engine image lacks, to be given to the compile as project files (DejaVu, until the data package carries it). */
-  files: string[];
   /** Characters with a fallback font, as [character, serif fallback file, code fallback file]. */
   fallbacks: [string, string | undefined, string | undefined][];
   /** Math characters that no math font has. */
@@ -130,17 +119,15 @@ export interface FontPlan {
 
 const hex = (ch: string) => cp(ch).toString(16).toUpperCase();
 
-/** The font lines and files for a document's characters in the given set. */
+/** The font lines for a document's characters in the given set. */
 export function fontPlan(use: CharacterUse, set: FontSetName): FontPlan {
   const preamble: string[] = [];
-  const files: string[] = [];
   if (set === 'dejavu') {
     preamble.push(
       '\\setmainfont{DejaVuSerif}[Extension=.ttf,BoldFont=*-Bold,ItalicFont=*-Italic,BoldItalicFont=*-BoldItalic]',
       '\\setsansfont{DejaVuSans}[Extension=.ttf,BoldFont=*-Bold,ItalicFont=*-Oblique,BoldItalicFont=*-BoldOblique]',
       '\\setmonofont{DejaVuSansMono}[Extension=.ttf,BoldFont=*-Bold,ItalicFont=*-Oblique,BoldItalicFont=*-BoldOblique,Scale=MatchLowercase]',
     );
-    files.push(...DEJAVU_FILES);
   }
   preamble.push('\\setmathfont{latinmodern-math.otf}');
 
@@ -169,7 +156,7 @@ export function fontPlan(use: CharacterUse, set: FontSetName): FontPlan {
   if (fallbacks.length > 0) {
     preamble.push(...fallbackLines(fallbacks));
   }
-  return { set, preamble, files, fallbacks, missingMath };
+  return { set, preamble, fallbacks, missingMath };
 }
 
 /** The XeTeX interchar setup for the fallback characters (one class per pair of serif and code fallbacks). */

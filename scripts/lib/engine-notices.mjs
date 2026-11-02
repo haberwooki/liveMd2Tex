@@ -1,13 +1,13 @@
 // The engine's components and their notices (engine/engine-notices.json; THIRD_PARTY_NOTICES.md, "Inside the engine";
-// the licence gates, L-01, M2 to M4, L2-01). The table in THIRD_PARTY_NOTICES.md is written from the manifest.
-// test/unit/engineNotices.test.ts checks that it is, that every archive on the manifest's copy of TeXlyre's link
-// lines is a component's, and that the manifest names the TeXlyre commit and release engine/pins.json pins.
-// scripts/release-sources.mjs checks the copy against the Makefile in TeXlyre's archive at that commit.
+// the licence gates, L-01, M2 to M4, L2-01). The table in THIRD_PARTY_NOTICES.md and the NOTICE of an engine release
+// are written from the manifest. test/unit/engineNotices.test.ts checks that the table is, that each component's
+// links are the part the build's link check gives it (engine/build/tools/link-report.mjs, LINK_PARTS), and that
+// every part of the link map engine/engine-build.json records is a component.
 //
 //   node scripts/lib/engine-notices.mjs     prints the table
 //   node scripts/lib/engine-notices.mjs --release-notice [MANIFEST]
 //                                           prints the NOTICE of an engine release (default manifest:
-//                                           engine/engine-notices.next.json; scripts/engine-release.mjs writes it)
+//                                           engine/engine-notices.json; scripts/engine-release.mjs writes it)
 
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -20,28 +20,32 @@ export function loadEngineNotices(file = path.join(root, 'engine', 'engine-notic
 }
 
 /**
- * The objects and archives the engine's link line (Makefile line 376) links: its own objects, and those of the
- * OBJ_ variables it names, each as its file name.
+ * The check of the manifest's 'linked': each component's links are the patterns the build's link check gives its
+ * part (LINK_PARTS, engine/build/tools/link-report.mjs), every part of the build record's link map is a component,
+ * and the record says the map passed, with no input unmapped and no dropped part linked. Returns the problems.
+ * @param {{ components: { id: string, links: string[] }[] }} manifest engine/engine-notices.json
+ * @param {{ linkMap?: { parts?: Record<string, number>, unmapped?: string[], droppedParts?: string[], pass?: boolean } }} record engine/engine-build.json
+ * @param {Record<string, string[]>} linkParts LINK_PARTS
  */
-export function linkedFiles(manifest) {
-  const lines = manifest.makefile.lines;
-  const link = lines['376'];
-  const variables = new Map(
-    Object.values(lines)
-      .map((l) => /^(OBJ_[A-Z_]+)\s*=\s*(.*)$/.exec(l))
-      .filter(Boolean)
-      .map((m) => [m[1], m[2]]),
-  );
-  const names = (text) => [...text.matchAll(/[\w.+-]+\.(?:a|o)\b/g)].map((m) => m[0].slice(m[0].lastIndexOf('/') + 1));
-  const own = [...link.matchAll(/(?:\$\(basename \$@\)\.o|[\w$*/.-]+\/([\w.-]+\.o))/g)].map((m) => (m[1] ? m[1] : 'busytex.o'));
-  const used = [...link.matchAll(/\$\((OBJ_[A-Z_]+)\)/g)].map((m) => m[1]);
-  const fromVariables = used.flatMap((v) => {
-    if (!variables.has(v)) {
-      throw new Error(`the link line names ${v}, which engine-notices.json's makefile lines lack`);
-    }
-    return names(variables.get(v).replace(/\$\(addprefix [^,]+,/g, ''));
-  });
-  return [...new Set([...own, ...fromVariables])].sort();
+export function linkProblems(manifest, record, linkParts) {
+  const problems = [];
+  const ids = new Set(manifest.components.map((c) => c.id));
+  for (const c of manifest.components) {
+    if (JSON.stringify(c.links) !== JSON.stringify(linkParts[c.id] ?? [])) problems.push(`${c.id}: its links are not the link check's patterns for it`);
+  }
+  for (const id of Object.keys(linkParts)) if (!ids.has(id)) problems.push(`the link check has a part ${id}, which no component is`);
+  const map = record.linkMap ?? {};
+  if (map.pass !== true) problems.push('the build record holds no passing link map');
+  if ((map.unmapped ?? []).length > 0) problems.push(`the link map has inputs of no part: ${map.unmapped.slice(0, 3).join(', ')}`);
+  if ((map.droppedParts ?? []).length > 0) problems.push(`the link map takes dropped parts: ${map.droppedParts.slice(0, 3).join(', ')}`);
+  for (const [id, n] of Object.entries(map.parts ?? {})) {
+    if (!ids.has(id)) problems.push(`the link map's part ${id} is no component`);
+    else if (!(n > 0)) problems.push(`the link map takes nothing from ${id}`);
+  }
+  for (const c of manifest.components) {
+    if (c.links.length > 0 && !(c.id in (map.parts ?? {}))) problems.push(`${c.id}: the link map takes nothing from it`);
+  }
+  return problems;
 }
 
 /** Where a notice file is in the package: dist/licenses/... (LICENSE ships as GPL-3.0.txt). */
@@ -65,7 +69,7 @@ export const releaseAssetName = (p) => (p === 'LICENSE' ? 'GPL-3.0.txt' : path.p
 
 /**
  * The NOTICE of an engine release (scripts/engine-release.mjs): the licence statement, then every component of the
- * manifest (engine/engine-notices.next.json until it replaces engine-notices.json) with its version, licence,
+ * manifest (engine/engine-notices.json) with its version, licence,
  * copyright, the notice files that ship beside it (by their asset names) and its note.
  */
 export function releaseNotice(manifest) {
@@ -109,6 +113,6 @@ export function releaseNotice(manifest) {
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const i = process.argv.indexOf('--release-notice');
-  if (i >= 0) process.stdout.write(releaseNotice(loadEngineNotices(process.argv[i + 1] ?? path.join(root, 'engine', 'engine-notices.next.json'))));
+  if (i >= 0) process.stdout.write(releaseNotice(loadEngineNotices(process.argv[i + 1] ?? path.join(root, 'engine', 'engine-notices.json'))));
   else console.log(noticesTable(loadEngineNotices()));
 }

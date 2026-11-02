@@ -1,22 +1,28 @@
 // Typesets a Markdown file the way the extension's compile route does (src/extension/compile/runner.ts):
 // the converter, with the image rule of ConversionService (a .pdf beside a .png is preferred); the pipeline's
-// prepareMarkdownCompile with the interim fonts the conversion names (dist/data/fonts, staged by
-// scripts/stage-engine.mjs --data); the engine service with the engine-host stubs. Shared by the M1 tests.
+// prepareMarkdownCompile; the engine service on the staged engine and core data (scripts/stage-engine.mjs --data),
+// with the engine-host stubs. Shared by the M1 tests.
 
 import { readdir, readFile } from 'node:fs/promises';
 import * as path from 'node:path';
 import { convertMarkdown, type ConversionResult, type ConvertOptions } from '../../src/converter/markdownToLatex';
-import { diagnosticsFor, prepareMarkdownCompile, type PreparedCompile } from '../../src/extension/compile/pipeline';
+import { diagnosticsFor, prepareMarkdownCompile, type PackageContext, type PreparedCompile } from '../../src/extension/compile/pipeline';
 import type { TexDiagnostic } from '../../src/extension/diagnostics/logParser';
 import { bundledEngineAssets, EngineService } from '../../src/extension/engine/engineService';
-import { interimFontsFolder, readInterimFonts } from '../../src/extension/engine/interimFonts';
 import type { ProjectFs } from '../../src/extension/project/collect';
 import type { CompileResult } from '../../src/shared/engineJobs';
 import { root } from '../support/helpers';
+import { missingInput } from '../support/missingData';
+import { testPackages } from './support';
 
-/** The engine service on the staged engine, or null when dist/engine and dist/data are not staged. */
+/**
+ * The engine service on the staged engine, or null when dist/engine and dist/data are not staged: the caller then
+ * skips, on CI with one notice while the data packages are not pinned; once both are, a missing engine fails on CI
+ * (test/support/missingData.ts).
+ */
 export function markdownEngineService(): EngineService | null {
   if (!bundledEngineAssets(root)) {
+    missingInput('the staged engine and core data (node scripts/stage-engine.mjs --data)');
     return null;
   }
   const service = new EngineService({
@@ -77,7 +83,7 @@ export interface TypesetMarkdown {
 const TWINS: Record<string, string[]> = { png: ['pdf'], jpg: ['pdf'], jpeg: ['pdf'], svg: ['pdf', 'png'], gif: ['png', 'pdf'], eps: ['pdf'] };
 
 /** Converts `text` (the Markdown file `markdownRel` of the project) and typesets it through the extension's route. */
-export async function typesetMarkdown(service: EngineService, fs: ProjectFs, markdownRel: string, text: string, options: ConvertOptions = {}): Promise<TypesetMarkdown> {
+export async function typesetMarkdown(service: EngineService, fs: ProjectFs, markdownRel: string, text: string, options: ConvertOptions = {}, packages?: PackageContext): Promise<TypesetMarkdown> {
   const dir = path.posix.dirname(markdownRel) === '.' ? '' : `${path.posix.dirname(markdownRel)}/`;
   const exists = async (rel: string) => {
     try {
@@ -109,7 +115,9 @@ export async function typesetMarkdown(service: EngineService, fs: ProjectFs, mar
     latex: conversion.latex,
     lineMap: conversion.lineMap,
     engine: conversion.engine,
-    extraFiles: await readInterimFonts(interimFontsFolder(root), conversion.fontFiles),
+    // The core and, when the tests have it, the add-on, as the extension installs them (its scan mounts the add-on);
+    // or the context the caller gives (the core alone, for the extension's own documents).
+    packages: packages ?? (await testPackages()),
   });
   const { result } = await service.compile(prepared.job);
   const missing = result.log.split('\n').filter((l) => /Missing character: There is no/.test(l));

@@ -1,8 +1,10 @@
-// M6 at engine level (docs/DESIGN.md#engine-and-data, #testing): the preamble scan on the corpus, a
-// corpus document with a missing class reaching a PDF through the Extra Packages route (the stand-in add-on,
-// read the way the extension reads an installed data extension) and through "Add a package from a file" (the
-// CTAN ZIP), and a real .dtx and .ins package from CTAN (tensor) built by docstrip on the bundled engine and
-// loaded. Needs the staged engine and data (dist/), and the pinned CTAN files; skips without them.
+// M6 at engine level (docs/DESIGN.md#engine-and-data, #testing): the preamble scan on the corpus (with the Extra
+// Packages add-on installed when the tests have it, support.ts extraAddOn), a corpus document whose class and
+// packages are in the add-on (P7: memoir, biblatex) named before the compile with the add-on offered and then
+// reaching a PDF through the Extra Packages route (the real add-on, read the way the extension reads an installed
+// data extension), P2 without its REVTeX files through "Add a package from a file" (the CTAN ZIP), and a real .dtx
+// and .ins package from CTAN (tensor) built by docstrip on the bundled engine and loaded. Needs the staged engine
+// and data (dist/), and the pinned CTAN files; skips without them.
 
 import * as assert from 'node:assert/strict';
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -18,7 +20,7 @@ import { materializeCorpus, type CorpusProject } from '../support/corpusProjects
 import { importScript, root } from '../support/helpers';
 import { nodeFs } from '../support/nodeFs';
 import { docstripWith } from '../support/prepareV0Workspace';
-import { record, writeResults } from './support';
+import { extraAddOn, needAddOn, record, stagedEngine, writeResults } from './support';
 
 const assets = path.resolve(root, '..', 'engine_assets');
 
@@ -47,8 +49,8 @@ describe('M6 (engine level): package help', function () {
   };
 
   before(async function () {
-    if (!bundledEngineAssets(root) || !existsSync(path.join(root, 'dist', 'data', 'packages.json'))) {
-      this.skip();
+    if (!stagedEngine(this)) {
+      return;
     }
     engine = new EngineService({
       modulePath: path.join(root, 'dist', 'engine-host.js'),
@@ -85,8 +87,10 @@ describe('M6 (engine level): package help', function () {
 
   it('the scan finds nothing missing in the corpus documents that compile (no false alarms)', async () => {
     const report: Record<string, number> = {};
-    for (const p of projects.filter((x) => x.main.endsWith('.tex'))) {
-      const prepared = await prepareCompile({ fs: nodeFs(p.folder), mainRel: p.main, engineSetting: 'pdflatex', packages: context() });
+    // P7 needs the add-on (memoir, biblatex): installed when the tests have it, as for a user who installed it.
+    const extra = await extraAddOn();
+    for (const p of projects.filter((x) => x.main.endsWith('.tex') && (extra || x.id !== 'P7'))) {
+      const prepared = await prepareCompile({ fs: nodeFs(p.folder), mainRel: p.main, engineSetting: 'pdflatex', packages: context(extra ? [extra] : []) });
       const scan = prepared.packageScan;
       assert.ok(scan, `${p.id}: no scan`);
       report[p.id] = scan.requests;
@@ -100,43 +104,43 @@ describe('M6 (engine level): package help', function () {
     console.log(`      requests scanned: ${Object.entries(report).map(([k, v]) => `${k} ${v}`).join(', ')}`);
   });
 
-  it('P2 without the REVTeX files: every missing file at once, before compiling, with the add-on offered', async () => {
-    const prepared = await prepareCompile({ fs: nodeFs(p2bare), mainRel: 'apssamp.tex', engineSetting: 'pdflatex', packages: context() });
+  it('P7 without the add-on: the scan names its package before compiling, TeX\'s "not found" its class, each with the add-on', async () => {
+    const p7 = projects.find((p) => p.id === 'P7') as CorpusProject;
+    const prepared = await prepareCompile({ fs: nodeFs(p7.folder), mainRel: p7.main, engineSetting: 'pdflatex', packages: context() });
     const missing = prepared.packageScan?.missing ?? [];
-    // The .bst comes with the class (its .rtx files name it), so the document itself asks only for the class.
-    assert.deepEqual(missing.map((m) => m.file), ['revtex4-2.cls']);
+    // The document asks for biblatex; memoir is the project's own class's base class, which the scan does not read.
+    assert.deepEqual(missing.map((m) => m.file), ['biblatex.sty']);
+    // The core's manifest lists the add-on's files, so each is offered from it.
     for (const m of missing) {
-      assert.equal(m.offer?.id, EXTRA_DATA_NAME);
+      assert.equal(m.offer?.id, EXTRA_DATA_NAME, `${m.file}: no offer`);
     }
     const { result } = await engine.compile(prepared.job);
+    assert.equal(result.pdf, null);
     const diagnostics = diagnosticsFor(result, prepared);
     const scanned = diagnostics.filter((d) => d.source === DISPLAY_NAME);
-    assert.equal(scanned.length, 1);
-    assert.match(scanned.find((d) => /revtex4-2\.cls/.test(d.message))?.message ?? '', /"revtex4-2\.cls" \(class revtex\) is not inside the installed packages\. The Extra Packages add-on has it/);
+    assert.match(scanned.find((d) => /biblatex\.sty/.test(d.message))?.message ?? '', /"biblatex\.sty" \(package biblatex\) is not inside the installed packages\. The Extra Packages add-on has it/);
     // The log's own "not found" names the package and the add-on too.
-    assert.ok(diagnostics.some((d) => d.source === 'TeX' && /revtex4-2\.cls is in package revtex, in the Extra Packages add-on/.test(d.message)));
-    record('M6-P2-missing', { missing: missing.map((m) => m.file), pdf: result.pdf !== null });
+    assert.ok(diagnostics.some((d) => d.source === 'TeX' && /memoir\.cls is in package memoir, in the Extra Packages add-on/.test(d.message)), diagnostics.map((d) => d.message).join('\n'));
+    record('M6-P7-missing', { missing: missing.map((m) => m.file), pdf: result.pdf !== null });
   });
 
-  it('the Extra Packages route: with the stand-in add-on installed, P2 reaches a PDF', async () => {
-    const { writeStandinFolder } = await importScript<{ writeStandinFolder(root: string, target: string): unknown }>('scripts/lib/extra-standin.mjs');
-    const folder = path.join(tmp, 'extensions', `haberwooki.${EXTRA_DATA_NAME}-0.0.1`);
-    writeStandinFolder(root, folder);
-    const extra = await readDataExtension(folder, EXTRA_DATA_NAME, expected);
-    assert.ok('set' in extra, 'problem' in extra ? extra.problem : '');
-    const prepared = await prepareCompile({ fs: nodeFs(p2bare), mainRel: 'apssamp.tex', engineSetting: 'pdflatex', packages: context([extra]) });
+  it('the Extra Packages route: with the add-on installed, P7 reaches a PDF', async function () {
+    // The add-on comes from LIVEMD2TEX_EXTRA_DATA; without it the case skips, and on CI it fails once a core-data
+    // package is pinned (support.ts, needAddOn).
+    const extra = await needAddOn(this);
+    const p7 = projects.find((p) => p.id === 'P7') as CorpusProject;
+    const prepared = await prepareCompile({ fs: nodeFs(p7.folder), mainRel: p7.main, engineSetting: 'pdflatex', packages: context([extra]) });
     assert.deepEqual(prepared.packageScan?.missing, []);
     // The add-on's image is mounted whole; no file of it is copied into the job (build gate 2, G2E-02).
     assert.deepEqual(prepared.job.dataImages?.map((i) => i.id), [EXTRA_DATA_NAME]);
     assert.equal(prepared.job.texmfFiles, undefined);
     const { result } = await engine.compile(prepared.job);
     assert.ok(result.pdf, `no PDF: ${result.log.split('\n').slice(-12).join('\n')}`);
-    assert.match(result.log, /\/texmf-extra\/tex\/latex\/revtex\/revtex4-2\.cls/);
+    assert.match(result.log, /\/texmf-extra\/tex\/latex\/memoir\/memoir\.cls/);
     assert.equal(result.bibtexRan, true);
     const errors = diagnosticsFor(result, prepared).filter((d) => d.severity === 'error');
-    // The sample's four .eps figures stay errors (no Ghostscript), as with the class beside it in V0.
-    assert.ok(errors.every((d) => /eps-converted-to\.pdf/.test(d.message)), errors.map((d) => d.message).join('\n'));
-    record('M6-P2-extra', { images: prepared.job.dataImages?.length, pdfBytes: result.pdf.length, errors: errors.length });
+    assert.deepEqual(errors.map((d) => d.message), []);
+    record('M6-P7-extra', { images: prepared.job.dataImages?.length, pdfBytes: result.pdf.length });
   });
 
   it('a data set built for another engine or TeX Live year is refused with one plain message', async () => {
@@ -201,13 +205,14 @@ describe('M6 (engine level): package help', function () {
     mkdirSync(doc, { recursive: true });
     writeFileSync(
       path.join(doc, 'main.tex'),
-      ['\\documentclass{article}', '\\usepackage{newtxtext}', '\\usepackage{minted}', '\\usepackage{biblatex}', '\\begin{document}', 'Text.', '\\end{document}', ''].join('\n'),
+      ['\\documentclass{article}', '\\usepackage{kpfonts}', '\\usepackage{minted}', '\\usepackage{biblatex}', '\\begin{document}', 'Text.', '\\end{document}', ''].join('\n'),
     );
     const prepared = await prepareCompile({ fs: nodeFs(doc), mainRel: 'main.tex', engineSetting: 'pdflatex', packages: context() });
     const scan = prepared.packageScan;
     assert.ok(scan);
-    const newtx = scan.missing.find((m) => m.file === 'newtxtext.sty');
-    assert.ok(newtx?.font, 'newtxtext was not taken for a font package');
+    // kpfonts is in neither data set (newtx, which this case named before, is in the core now).
+    const kp = scan.missing.find((m) => m.file === 'kpfonts.sty');
+    assert.ok(kp?.font, 'kpfonts was not taken for a font package');
     assert.deepEqual(scan.outside.map((o) => o.name).sort(), ['biblatex', 'minted']);
     const { result } = await engine.compile(prepared.job);
     const messages = diagnosticsFor(result, prepared).filter((d) => d.source === DISPLAY_NAME).map((d) => d.message);

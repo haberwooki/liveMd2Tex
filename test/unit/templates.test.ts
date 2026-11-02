@@ -30,11 +30,11 @@ describe('New document from template: the catalog', () => {
     }
   });
 
-  it('says which classes need the Extra Packages add-on: exactly the journal classes', () => {
-    const extra = TEMPLATES.filter((t) => t.extra).map((t) => t.id);
-    assert.deepEqual(extra.sort(), ['md-elsarticle', 'md-ieeetran', 'md-revtex', 'tex-elsarticle', 'tex-ieeetran', 'tex-revtex']);
-    for (const t of TEMPLATES.filter((x) => x.kind === 'tex' && x.extra)) {
-      assert.match(t.detail, /Extra Packages/, t.id);
+  it('needs no add-on: every class and package of the templates is in the core data (newDocuments.test.ts compiles each)', () => {
+    assert.deepEqual(TEMPLATES.filter((t) => t.extra).map((t) => t.id), []);
+    // A template that ever needs the add-on must say so in its detail.
+    for (const t of TEMPLATES) {
+      assert.equal(/Extra Packages/.test(t.detail), t.extra === true, t.id);
     }
   });
 

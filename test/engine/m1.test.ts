@@ -30,7 +30,6 @@ function summary(name: string, t: TypesetMarkdown) {
   const entry = {
     engine: t.conversion.engine,
     fontSet: t.conversion.fontSet ?? null,
-    fontFiles: t.conversion.fontFiles.length,
     passes: t.result.passes,
     bibtexRan: t.result.bibtexRan,
     ms: t.result.timings.totalMs,
@@ -120,7 +119,6 @@ describe('M1: Markdown typeset through the engine, public documents (Node)', fun
     const t = await typesetMarkdown(service, standIn('accented-names.md'), 'accented-names.md', read('accented-names.md'));
     summary('accented-names', t);
     assert.equal(t.conversion.fontSet, 'latin-modern');
-    assert.deepEqual(t.conversion.fontFiles, []);
     assertClean('accented-names', t);
     const text = squeeze((await pdfText(t.result.pdf as Uint8Array)).replace(/-\n/g, ''));
     for (const name of ['ÁronSzép', 'ÉmileDurand', 'AnaRădulescu', 'ŽydrūnėVaitkutė', 'DovilėKazlauskienė', 'ElīzaBērziņa']) {

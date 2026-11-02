@@ -111,7 +111,7 @@ describe('plain-words help for TeX errors', () => {
     // The messages as the engine prints them (a probe on the extension's engine, 2026-10-22), through the log parser.
     const log = [
       '(./main.tex',
-      '!pdfTeX error: /bin/busytex (file pbkl8r.pfb): cannot open Type 1 font file for reading',
+      '!pdfTeX error: /bin/engine (file pbkl8r.pfb): cannot open Type 1 font file for reading',
       ' ==> Fatal error occurred, no output PDF file produced!',
       './main.tex:3: Package fontspec Error: ',
       '(fontspec)                The font "Fira Sans" cannot be found; this',

@@ -17,15 +17,27 @@
 //      shapes), the fonts embedded (FontFile, FontFile2, FontFile3 in the PDF), whether SyncTeX was written, the
 //      steps' exit codes and times, and the WebAssembly memory size after each step; whether A's and B's PDFs are
 //      the same bytes, and the same once dates, IDs and subset tags are set aside;
-//   4. the corpus documents' page counts against the data build's (corpus-bundle.json, today's engine) and TeX
+//   4. the corpus documents' page counts against the data build's (corpus-bundle.json, the pinned engine) and TeX
 //      Live's (corpus-reference.json), when given.
-// A and B are each "busytex" (today's engine, engine/pins.json's build, with the image as it is) or an engine
-// folder. Without --a only B runs.
+// A and B are each an engine folder (engine.js and engine.wasm; our engine release is ../engine_assets/<the
+// livemd2tex-engine folder of engine/pins.json>/) or "busytex", TeXlyre's engine, which only a host that still pins
+// it runs: --host DIR, a checkout from before our engine (its engine/pins.json, its patched glue and fonts.conf). One
+// host runs both sides, so a comparison with "busytex" runs our engine under that older host too. Without --a only B
+// runs.
 //
 // Ours (the liveMd2Tex authors), GPL-3.0-or-later.
 //
 //   node scripts/engine-shakedown.mjs --b busytex|ENGINE_DIR [--a busytex|ENGINE_DIR] --images DIR --work DIR
 //        [--corpus DIR] [--reference FILE] [--rounds N] [--only ID,ID] [--extra auto|always|never] [--host DIR]
+//        [--epoch N] [--b-epoch N]
+//
+//   --epoch N        the dates of every format build and compile of an engine folder: SOURCE_DATE_EPOCH=N and
+//                    FORCE_SOURCE_DATE=1 (default 1700000000, as the speed probe), set through the host's override of
+//                    the engine's environment (EngineAssetPaths.env). Every PDF must then carry that date, or the run
+//                    fails: a host without the override would leave the real date in. So A's and B's PDFs can be
+//                    compared byte for byte, and they must be the same bytes.
+//   --b-epoch N      another epoch for B only, as a positive control: B's PDFs then carry another date, and the run
+//                    must fail on every document that makes a PDF
 //
 //   --images DIR     the data packages (livemd2tex-core-data-*.vsix, and livemd2tex-extra-data-*.vsix, which is
 //                    installed as the add-on)
@@ -41,12 +53,19 @@
 //                    (shakedown.json); outside the repository
 //
 // The cases the harness adds (in <work>/cases): a XeLaTeX document with OpenType fonts by file name, mathematics and
-// a bibliography (bibtex8 and xdvipdfmx), and two pdfLaTeX documents with shell escape forced on, one with \write18
-// and one with \input|, whose commands must reach the engine's stubs and run nothing. For \write18 (X2) the log must
+// a bibliography (bibtex8 and xdvipdfmx) (X1); the speed benchmark's XeLaTeX document with TeX Gyre Pagella, TeX
+// Gyre Heros and Latin Modern Math by family name, fontspec and unicode-math (X4, test/speed/docs.ts's XEFONTS_TEX,
+// from out/; it needs the images' font lists, and must compile with no error line); and two pdfLaTeX documents with
+// shell escape forced on, one with \write18 and one with \input|, whose commands must reach the engine's stubs and
+// run nothing.
+//
+// With A given, every document that makes a PDF must give A and B the same PDF bytes (the dates are fixed, see
+// --epoch); a difference fails the run. Each compile's PDF is kept in <work>/pdf/<document>-<side>-<round>.pdf. For \write18 (X2) the log must
 // show runsystem(...)...executed, which TeX prints whenever it calls system(), and the file the command would make
 // must not appear, and on B the transcript must show "system returned with code -1": \write18 reached system(),
-// which ran nothing and refused the command, as our stub does. Today's engine's system() answers the same, so this
-// does not tell the two apart: that our stub is the system() linked is shown by the build's import checks.
+// which ran nothing and refused the command, as our stub does. The earlier engine's system() (TeXlyre's build)
+// answers the same, so this does not tell the two apart: that our stub is the system() linked is shown by the
+// build's import checks.
 
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -63,14 +82,15 @@ const sha256 = (b) => createHash('sha256').update(b).digest('hex');
 const MARKER = 'livemd2tex-shakedown-shell-escape-ran';
 
 function options(argv) {
-  const o = { rounds: 1, extra: 'auto' };
+  const o = { rounds: 1, extra: 'auto', epoch: '1700000000' };
   for (let i = 0; i < argv.length; i++) {
     const k = argv[i].replace(/^--/, '');
-    if (['a', 'b', 'images', 'work', 'corpus', 'reference', 'rounds', 'only', 'extra', 'host'].includes(k)) o[k] = argv[++i];
+    if (['a', 'b', 'images', 'work', 'corpus', 'reference', 'rounds', 'only', 'extra', 'host', 'epoch', 'b-epoch'].includes(k)) o[k] = argv[++i];
     else throw new Error(`unknown option ${argv[i]}`);
   }
   for (const k of ['b', 'images', 'work']) if (!o[k]) throw new Error(`--${k} is required`);
   if (!['auto', 'always', 'never'].includes(o.extra)) throw new Error('--extra is auto, always or never');
+  for (const k of ['epoch', 'b-epoch']) if (o[k] !== undefined && !/^\d{1,11}$/.test(o[k])) throw new Error(`--${k} is a number of seconds`);
   o.rounds = Number(o.rounds);
   return o;
 }
@@ -121,20 +141,30 @@ function fmtutilFormats(text) {
   return out;
 }
 
-/** The engine host's assets for one side. */
+/**
+ * The engine host's assets for one side, in the shape the host at hostRoot reads: the image's index as `index`
+ * (this repository's host) and as `loader` (a host from before our engine), and fontconfig's file when that host
+ * has one (engine/fonts.conf; ours has none).
+ */
 function assetsFor(side, images, imageDir) {
   const engineDir = path.join(hostRoot, 'engine');
-  const common = { cnfOverride: path.join(engineDir, 'texmf-override.cnf'), fontsConf: path.join(engineDir, 'fonts.conf') };
+  const common = { cnfOverride: path.join(engineDir, 'texmf-override.cnf'), ...(existsSync(path.join(engineDir, 'fonts.conf')) ? { fontsConf: path.join(engineDir, 'fonts.conf') } : {}) };
   const core = coreImage(images);
   if (side.busytex) {
     const pins = JSON.parse(readFileSync(path.join(engineDir, 'pins.json'), 'utf8'));
     const tl = pins.sources.find((x) => x.files?.some((f) => f.name === 'busytex.wasm'));
+    if (!tl?.patchedGlue) {
+      throw new Error(`busytex needs --host of a checkout that pins it; ${hostRoot}'s engine/pins.json does not`);
+    }
     const assets = path.resolve(hostRoot, '..', 'engine_assets');
-    return { ...common, glue: path.join(assets, 'derived', tl.patchedGlue.sha256.slice(0, 16), 'busytex.patched.js'), wasm: path.join(assets, tl.folder, 'busytex.wasm'), data: core.data, loader: core.index };
+    return { ...common, glue: path.join(assets, 'derived', tl.patchedGlue.sha256.slice(0, 16), 'busytex.patched.js'), wasm: path.join(assets, tl.folder, 'busytex.wasm'), data: core.data, index: core.index, loader: core.index };
   }
   const data = imageDir ? path.join(imageDir, 'core.data') : core.data;
-  const loader = imageDir ? path.join(imageDir, 'core.index.json') : core.index;
-  return { ...common, glue: path.join(side.dir, 'engine.js'), wasm: path.join(side.dir, 'engine.wasm'), data, loader };
+  const index = imageDir ? path.join(imageDir, 'core.index.json') : core.index;
+  // The fixed dates (--epoch): the host's override of the engine's environment, which only a host with
+  // EngineAssetPaths.env applies; checkDates() fails a run whose PDFs do not carry them.
+  const env = { SOURCE_DATE_EPOCH: side.epoch, FORCE_SOURCE_DATE: '1' };
+  return { ...common, glue: path.join(side.dir, 'engine.js'), wasm: path.join(side.dir, 'engine.wasm'), data, index, loader: index, env };
 }
 
 async function startHost(assets) {
@@ -154,7 +184,11 @@ async function imageWithFormats(side, images, work) {
   mkdirSync(dir, { recursive: true });
   const engineSha = sha256(readFileSync(path.join(side.dir, 'engine.wasm')));
   const stamp = path.join(dir, 'formats.json');
-  if (existsSync(stamp) && JSON.parse(readFileSync(stamp, 'utf8')).engineSha256 === engineSha) return { dir, ...JSON.parse(readFileSync(stamp, 'utf8')) };
+  if (existsSync(stamp)) {
+    const kept = JSON.parse(readFileSync(stamp, 'utf8'));
+    // Kept only when made by the same engine with the same dates (a format holds its dump date and time).
+    if (kept.engineSha256 === engineSha && kept.epoch === side.epoch) return { dir, ...kept };
+  }
   const core = coreImage(images);
   const original = await readImage(core.data, core.index);
   const fmtutil = original.files.get('texlive/texmf-dist/web2c/fmtutil.cnf');
@@ -170,7 +204,7 @@ async function imageWithFormats(side, images, work) {
   }
   const ms = Math.round(performance.now() - t0);
   const files = new Map(original.files);
-  const record = { engineSha256: engineSha, ms, formats: {} };
+  const record = { engineSha256: engineSha, epoch: side.epoch, ms, formats: {} };
   for (const [rel, bytes] of made.formats) {
     const key = `texlive/texmf-dist/${rel}`;
     if (!files.has(key)) throw new Error(`the image has no ${key} to replace`);
@@ -225,7 +259,18 @@ const CASES = {
   },
 };
 
-/** The data build's log of a corpus document (<main>.bundle.log, today's engine), which B is compared with when A is not run. */
+/**
+ * The cases with X4: the speed benchmark's XeLaTeX document with fonts by family name (XEFONTS_TEX of
+ * test/speed/docs.ts, from out/), so OpenType fonts found by name go through xdvipdfmx on both sides.
+ */
+function allCases() {
+  const docsJs = path.join(root, 'out', 'test', 'speed', 'docs.js');
+  if (!existsSync(docsJs)) throw new Error(`${docsJs} is missing: build out/ (npx tsc -p tsconfig.json) for the case X4`);
+  const { XEFONTS_TEX } = require(docsJs);
+  return { ...CASES, X4: { engine: 'xelatex', main: 'xefonts.tex', files: { 'xefonts.tex': XEFONTS_TEX } } };
+}
+
+/** The data build's log of a corpus document (<main>.bundle.log, the pinned engine), which B is compared with when A is not run. */
 function bundleLog(folder, main) {
   const f = path.join(folder, main.replace(/\.tex$/i, '.bundle.log'));
   return existsSync(f) ? readFileSync(f, 'utf8') : null;
@@ -241,7 +286,7 @@ function documents(o) {
       docs.push({ id, engine: d.engine, main: d.main, folder, bundlePages: d.pages, bundleLog: bundleLog(folder, d.main) });
     }
   }
-  for (const [id, c] of Object.entries(CASES)) {
+  for (const [id, c] of Object.entries(allCases())) {
     const folder = path.join(o.work, 'cases', id);
     for (const [name, text] of Object.entries(c.files)) {
       mkdirSync(folder, { recursive: true });
@@ -267,17 +312,30 @@ async function pdfFacts(pdf) {
   return { pages: doc.getPageCount(), fonts };
 }
 
-/** The PDF without what changes from run to run (dates, ID, subset tags, lengths), its streams inflated. */
-function normalized(pdf) {
+/** The PDF as latin1 text with its Flate streams inflated. */
+function inflatedText(pdf) {
   const text = Buffer.from(pdf).toString('latin1');
-  const inflated = text.replace(/(\/FlateDecode[^]*?stream\r?\n)([^]*?)(\r?\nendstream)/g, (all, head, body, tail) => {
+  return text.replace(/(\/FlateDecode[^]*?stream\r?\n)([^]*?)(\r?\nendstream)/g, (all, head, body, tail) => {
     try {
       return `${head}${inflateSync(Buffer.from(body, 'latin1')).toString('latin1')}${tail}`;
     } catch {
       return all;
     }
   });
-  return inflated
+}
+
+/** The PDF's /CreationDate string (D:…), in the file or in an inflated stream; null without one. */
+function creationDate(pdf) {
+  const find = (t) => /\/CreationDate\s*\((D:[^)]*)\)/.exec(t)?.[1] ?? null;
+  return find(Buffer.from(pdf).toString('latin1')) ?? find(inflatedText(pdf));
+}
+
+/** The D:YYYYMMDDHHmmSS date a PDF made with SOURCE_DATE_EPOCH=epoch and FORCE_SOURCE_DATE=1 carries (UTC). */
+const pdfDateOf = (epoch) => `D:${new Date(Number(epoch) * 1000).toISOString().replace(/[-:T]/g, '').slice(0, 14)}`;
+
+/** The PDF without what changes from run to run (dates, ID, subset tags, lengths), its streams inflated. */
+function normalized(pdf) {
+  return inflatedText(pdf)
     .replace(/\/(CreationDate|ModDate)\s*\([^)]*\)/g, '')
     .replace(/\/ID\s*\[\s*<[0-9A-Fa-f]+>\s*<[0-9A-Fa-f]+>\s*\]/g, '')
     .replace(/\/Length \d+/g, '')
@@ -337,7 +395,7 @@ async function compileOn(host, doc, packages) {
   }
   const ms = Math.round(performance.now() - t0);
   const facts = await pdfFacts(result.pdf);
-  return {
+  const record = {
     ok: Boolean(result.ok),
     error: result.error ?? null,
     ms,
@@ -359,7 +417,11 @@ async function compileOn(host, doc, packages) {
     // What system() returned, as TeX prints it on stderr (the worker's transcript).
     systemReturned: ((result.transcript ?? '').match(/system returned with code -?\d+/g) ?? []).slice(0, 5),
     pdf: result.pdf ? { sha256: sha256(result.pdf), normalized: sha256(Buffer.from(normalized(result.pdf), 'latin1')) } : null,
+    pdfDate: result.pdf ? creationDate(result.pdf) : null,
   };
+  // The PDF's bytes go with the record for main() to keep in <work>/pdf/, but not into the JSON report.
+  Object.defineProperty(record, 'pdfBytes', { value: result.pdf ?? null, enumerable: false });
+  return record;
 }
 
 async function main() {
@@ -369,10 +431,11 @@ async function main() {
   const images = await unpackImages(o);
   pipeline = loadPipeline(images, o.extra);
   const packages = await packagesOf(pipeline);
-  const sideOf = (label, v) => (v === 'busytex' ? { label, busytex: true, name: 'busytex (engine/pins.json)' } : { label, dir: path.resolve(v), name: path.basename(path.resolve(v)) });
+  const sideOf = (label, v) => (v === 'busytex' ? { label, busytex: true, name: "busytex (the --host checkout's engine/pins.json)" } : { label, dir: path.resolve(v), name: path.basename(path.resolve(v)) });
   const sides = [];
   if (o.a) sides.push(sideOf('A', o.a));
   sides.push(sideOf('B', o.b));
+  for (const side of sides) side.epoch = side.label === 'B' && o['b-epoch'] !== undefined ? o['b-epoch'] : o.epoch;
   for (const side of sides) {
     if (side.busytex) continue;
     side.engine = { wasmSha256: sha256(readFileSync(path.join(side.dir, 'engine.wasm'))), glueSha256: sha256(readFileSync(path.join(side.dir, 'engine.js'))) };
@@ -393,6 +456,10 @@ async function main() {
         for (const side of order) {
           rmSync(marker, { force: true });
           const r = await compileOn(side.host, doc, packages);
+          if (r.pdfBytes) {
+            mkdirSync(path.join(o.work, 'pdf'), { recursive: true });
+            writeFileSync(path.join(o.work, 'pdf', `${doc.id}-${side.label}-${round + 1}.pdf`), r.pdfBytes);
+          }
           r.shellCommandRan = existsSync(marker);
           rmSync(marker, { force: true });
           ((results[doc.id] ??= {})[side.label] ??= []).push(r);
@@ -432,10 +499,25 @@ async function main() {
     if (doc.id === 'X2' && !first.runsystem.some((r) => /^runsystem\(touch [^)]*\)\.\.\.executed/.test(r))) problems.push('X2: the log shows no runsystem(touch ...)...executed: \\write18 did not reach system()');
     if (doc.id === 'X2' && !first.systemReturned.includes('system returned with code -1')) problems.push(`X2: the transcript does not show "system returned with code -1" (${first.systemReturned.join(' | ') || 'nothing'}): system() did not refuse the command`);
     if (doc.id === 'X1' && first.fonts && first.fonts.FontFile3 + first.fonts.FontFile2 === 0) problems.push('X1: xdvipdfmx embedded no OpenType font');
+    if (doc.id === 'X4' && first.fonts && first.fonts.FontFile3 + first.fonts.FontFile2 === 0) problems.push('X4: xdvipdfmx embedded no OpenType font');
+    if (doc.id === 'X4' && first.errors.length) problems.push(`X4: error lines on B (fonts by family name need the images' font lists): ${first.errors.join(' | ')}`);
+    // The dates are fixed (--epoch): every PDF of an engine folder carries its side's date, or the host did not apply
+    // the environment override and the byte comparison below would compare clocks.
+    for (const side of sides) {
+      if (side.busytex) continue;
+      const want = pdfDateOf(side.epoch);
+      for (const r of results[doc.id][side.label] ?? []) {
+        if (r.pdf && !(r.pdfDate ?? '').startsWith(want)) problems.push(`${doc.id}: ${side.label}'s PDF carries ${r.pdfDate ?? 'no /CreationDate'}, not ${want}: the host did not fix the dates (it needs EngineAssetPaths.env)`);
+      }
+    }
     if (a) {
       const same = (k) => b.every((r) => r.pdf && a.every((x) => x.pdf && x.pdf[k] === r.pdf[k]));
       line.pdfSameBytes = same('sha256');
       line.pdfSameNormalized = same('normalized');
+      // With the dates fixed, A's and B's PDFs must be the same bytes (X3 makes none on either side, by design).
+      if ((a.some((r) => r.pdf) || b.some((r) => r.pdf)) && !line.pdfSameBytes) {
+        problems.push(`${doc.id}: A's and B's PDFs differ byte for byte (${line.pdfSameNormalized ? 'the same once dates, IDs and subset tags are set aside' : 'also once dates, IDs and subset tags are set aside'}); kept as pdf/${doc.id}-A-*.pdf and pdf/${doc.id}-B-*.pdf`);
+      }
     }
     const med = (xs) => xs.slice().sort((x, y) => x - y)[Math.floor(xs.length / 2)];
     line.msB = med(b.map((r) => r.ms));
@@ -446,7 +528,7 @@ async function main() {
   }
   const report = {
     about: 'scripts/engine-shakedown.mjs: real LaTeX through the extension\'s engine host on a data set\'s core image (docs/DEVELOPING.md, "The TeX engine: our own build").',
-    sides: sides.map((x) => ({ label: x.label, name: x.name, busytex: x.busytex === true, engine: x.engine, formats: x.formats })),
+    sides: sides.map((x) => ({ label: x.label, name: x.name, busytex: x.busytex === true, engine: x.engine, epoch: x.busytex ? null : x.epoch, formats: x.formats })),
     rounds: o.rounds,
     extra: o.extra,
     documents: summary,

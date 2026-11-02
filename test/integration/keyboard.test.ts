@@ -15,6 +15,7 @@ import type { ViewerCommand, ViewerState } from '../../src/shared/viewerProtocol
 import type { SourceLine } from '../../src/synctex/compose';
 import type { CorpusProject } from '../support/corpusProjects';
 import { CORPUS_LIST } from '../support/prepareV0Workspace';
+import { missingInput } from '../support/missingData';
 import { activateExtension, engineStubArgs, root } from './support';
 
 /** The darkest channel of a "#rrggbb" colour (0 to 255). */
@@ -30,7 +31,11 @@ describe('M2-B: the viewer by keyboard', function () {
   before(async function () {
     const folder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
     api = await activateExtension();
-    if (!folder || !existsSync(path.join(folder, CORPUS_LIST)) || !api.engineAvailable()) {
+    if (!folder || !existsSync(path.join(folder, CORPUS_LIST))) {
+      this.skip();
+    }
+    if (!api.engineAvailable()) {
+      missingInput('the staged engine and core data (node scripts/stage-engine.mjs --data)');
       this.skip();
     }
     projects = JSON.parse(readFileSync(path.join(folder as string, CORPUS_LIST), 'utf8')) as CorpusProject[];

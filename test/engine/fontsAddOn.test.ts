@@ -1,17 +1,24 @@
-// Fonts that only an add-on holds (B1: the Extra Packages add-on holds bookman, charter, utopia, more OpenType
-// fonts), on the real engine, with a made-up add-on:
-// - XeTeX finds an add-on's TrueType font by name (engine/fonts.conf names the add-ons' font folders), also after
-//   a compile without the add-on made fontconfig's cache: the add-on's folders carry their own time stamp.
-// - A font XeTeX cannot find by name, while the add-on is installed but not mounted: the next compile mounts it.
-// - A Type 1 font file pdfTeX cannot open, which the add-on holds: the message has help and names the add-on, and
+// Fonts by name on the real engine, through the font lists XeTeX's fontconfig stand-in reads (each image's
+// fonts/xetex-fonts.tsv, joined by the engine host; docs/DESIGN.md, "Engine and data"), and fonts that only an add-on
+// holds (B1: the Extra Packages add-on holds bookman, charter, utopia, more OpenType fonts):
+// - XeLaTeX finds the core's fonts by name (DejaVu Serif with its bold and italic faces, from the files the rules
+//   choose; Latin Modern Roman). With LIVEMD2TEX_FONT_LIST_CHECK set the stand-in reports every name two faces of the
+//   shipped lists share: on the core alone and with the real add-on mounted, the reported names are exactly the
+//   names of the data builder's fontOrder rules for the mounted sets, and the face first in the list is each rule's;
+// - an add-on's TrueType font by name: not found while the add-on is not mounted (with help), then the next compile
+//   mounts it and XeTeX finds the font through the add-on's own list;
+// - an updated add-on: its new list is the one read;
+// - a Type 1 font file pdfTeX cannot open, which the add-on holds: the message has help and names the add-on, and
 //   the next compile mounts it.
-// The interim core (TeXlyre's image) holds no DejaVu, so DejaVu Sans from the pinned CTAN set stands in for an
-// add-on font; cmr10's files under another name stand in for a Type 1 font.
+// The add-on's fonts are DejaVu files of the pinned CTAN set with their names changed (same length, so no table
+// moves): DejaVu is in the core, and an add-on font must have names of its own. cmr10's files under another name
+// stand in for a Type 1 font.
 
 import * as assert from 'node:assert/strict';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { PDFDict, PDFDocument, PDFName } from 'pdf-lib';
 import { diagnosticsFor, imagesForNotFound, prepareCompile, type PackageContext } from '../../src/extension/compile/pipeline';
 import { withErrorHelp } from '../../src/extension/diagnostics/errorHelp';
 import { packageContext, readCoreData, readDataExtension, type Expected } from '../../src/extension/engine/dataSets';
@@ -19,12 +26,45 @@ import { bundledEngineAssets, EngineService } from '../../src/extension/engine/e
 import { buildPackageIndex } from '../../src/shared/packageIndex';
 import { importScript, root } from '../support/helpers';
 import { nodeFs } from '../support/nodeFs';
+import { needAddOn, stagedEngine } from './support';
 
 const assets = path.resolve(root, '..', 'engine_assets');
 const dejavu = path.join(assets, 'ctan-dejavu', 'truetype', 'DejaVuSans.ttf');
 const tex = (lines: string[]) => `${lines.join('\n')}\n`;
 
-describe('B1: fonts that only an add-on holds (engine)', function () {
+/**
+ * A copy of a font whose name table says `to` wherever it said `from` (both spellings: one byte per character and
+ * UTF-16BE), the two of the same length, so no offset in the file moves. FreeType and the list writer read the
+ * names from that table; neither checks the table's checksum.
+ */
+function renamed(font: Buffer, pairs: [string, string][]): Buffer {
+  const out = Buffer.from(font);
+  const tables = out.readUInt16BE(4);
+  let start = -1;
+  let length = 0;
+  for (let i = 0; i < tables; i++) {
+    const at = 12 + i * 16;
+    if (out.toString('latin1', at, at + 4) === 'name') {
+      start = out.readUInt32BE(at + 8);
+      length = out.readUInt32BE(at + 12);
+    }
+  }
+  assert.ok(start >= 0, 'the font has no name table');
+  for (const [from, to] of pairs) {
+    assert.equal(from.length, to.length);
+    for (const [a, b] of [
+      [Buffer.from(from, 'latin1'), Buffer.from(to, 'latin1')],
+      [Buffer.from(from, 'utf16le').swap16(), Buffer.from(to, 'utf16le').swap16()],
+    ]) {
+      for (let i = out.indexOf(a, start); i >= 0 && i < start + length; i = out.indexOf(a, i + 1)) {
+        b.copy(out, i);
+      }
+    }
+  }
+  return out;
+}
+
+describe('fonts by name, and fonts that only an add-on holds (engine)', function () {
   this.timeout(600000);
   let tmp = '';
   let core: Awaited<ReturnType<typeof readCoreData>>;
@@ -37,7 +77,11 @@ describe('B1: fonts that only an add-on holds (engine)', function () {
   };
 
   before(async function () {
-    if (!bundledEngineAssets(root) || !existsSync(path.join(root, 'dist', 'data', 'packages.json')) || !existsSync(dejavu)) {
+    if (!stagedEngine(this)) {
+      return;
+    }
+    // The renamed fonts come from the pinned CTAN set (npm run engine:assets).
+    if (!existsSync(dejavu)) {
       this.skip();
     }
     tmp = mkdtempSync(path.join(os.tmpdir(), 'livemd2tex-fonts-'));
@@ -52,10 +96,17 @@ describe('B1: fonts that only an add-on holds (engine)', function () {
     }
   });
 
-  /** A data extension folder holding the given texmf files as one image, in the contract's layout. */
+  /**
+   * A data extension folder holding the given texmf files as one image, in the contract's layout, with the font list
+   * the data builder writes for its OpenType and TrueType files (fonts/xetex-fonts.tsv, by the image's own paths).
+   */
   async function dataExtension(name: string, files: Record<string, Uint8Array>): Promise<string> {
     const { buildDataImage } = await importScript<{ buildDataImage(f: Iterable<[string, Uint8Array]>): { data: Buffer; index: unknown; sha256: string } }>('scripts/lib/data-image.mjs');
-    const image = buildDataImage(new Map(Object.entries(files)));
+    const fl = await importScript<{ describeFile(b: Uint8Array, file: string): { faces: unknown[] }; listLine(f: unknown): string; isListedFontPath(p: string): boolean }>('scripts/lib/font-list.mjs');
+    const lines = Object.entries(files)
+      .filter(([p]) => fl.isListedFontPath(p))
+      .flatMap(([p, b]) => fl.describeFile(b, `/${p}`).faces.map((f) => fl.listLine(f)));
+    const image = buildDataImage(new Map([...Object.entries(files), ['fonts/xetex-fonts.tsv', new TextEncoder().encode(lines.length > 0 ? `${lines.join('\n')}\n` : '')]]));
     const folder = path.join(tmp, 'extensions', name);
     mkdirSync(path.join(folder, 'data'), { recursive: true });
     writeFileSync(path.join(folder, 'data', 'extra.data'), image.data);
@@ -66,28 +117,136 @@ describe('B1: fonts that only an add-on holds (engine)', function () {
     return folder;
   }
 
-  /** A file of the interim core image, by its path in the image. */
+  /** A file of the core image, by its path in the image. */
   async function coreFile(name: string): Promise<Buffer> {
     const { openImage } = await importScript<{ openImage(p: string, c: unknown): { read(s: number, e: number): Buffer } }>('scripts/lib/image-files.mjs');
-    const index = JSON.parse(readFileSync(path.join(root, 'dist', 'data', 'texlive-extra.index.json'), 'utf8')) as { compressed: unknown; metadata: { files: { filename: string; start: number; end: number }[] } };
+    const assets = bundledEngineAssets(root);
+    assert.ok(assets, 'the core data is not staged');
+    const index = JSON.parse(readFileSync(assets.index, 'utf8')) as { compressed: unknown; metadata: { files: { filename: string; start: number; end: number }[] } };
     const f = index.metadata.files.find((x) => x.filename.endsWith(name));
     assert.ok(f, name);
-    return openImage(path.join(root, 'dist', 'data', 'texlive-extra.data'), index.compressed).read(f.start, f.end);
+    return openImage(assets.data, index.compressed).read(f.start, f.end);
   }
 
-  it('XeTeX finds an add-on font by name, also after a compile without the add-on made the font cache', async () => {
-    const folder = await dataExtension('fonts-byname', { 'fonts/truetype/public/dejavu/DejaVuSans.ttf': readFileSync(dejavu) });
+  const fontDoc = (name: string, lines: string[]) => {
+    const folder = path.join(tmp, name);
+    mkdirSync(folder, { recursive: true });
+    writeFileSync(path.join(folder, 'main.tex'), tex(['% !TEX program = xelatex', '\\documentclass{article}', '\\usepackage{fontspec}', ...lines, '\\begin{document}', 'Text, \\textbf{bold} and \\textit{italic}.', '\\end{document}']));
+    return folder;
+  };
+
+  /** The BaseFont names of a PDF's fonts, its object streams read too. */
+  async function pdfFonts(pdf: Uint8Array | null): Promise<string[]> {
+    assert.ok(pdf, 'no PDF');
+    const doc = await PDFDocument.load(pdf, { updateMetadata: false });
+    const names: string[] = [];
+    for (const [, obj] of doc.context.enumerateIndirectObjects()) {
+      if (obj instanceof PDFDict && obj.get(PDFName.of('Type')) === PDFName.of('Font')) {
+        const base = obj.get(PDFName.of('BaseFont'));
+        if (base) names.push(base.toString().replace(/^\//, ''));
+      }
+    }
+    return names;
+  }
+
+  type Rule = { name: string; first: string };
+  const rules = (): Record<'core-data' | 'extra-data', Rule[]> => {
+    const sets = JSON.parse(readFileSync(path.join(root, 'engine', 'bundle-sets.json'), 'utf8')) as Record<string, { fontOrder?: Rule[] }>;
+    return { 'core-data': sets['core-data'].fontOrder ?? [], 'extra-data': sets['extra-data'].fontOrder ?? [] };
+  };
+
+  /**
+   * The stand-in's collision report against the rules: the names it reports are exactly the rules' names, and for
+   * each reported pair of lines of /engine/fonts.list the first is the rule's file. Returns the number of lines.
+   */
+  function checkReport(transcript: string, list: string, ruleList: Rule[], what: string): number {
+    const lines = list.split('\n');
+    const byName = new Map(ruleList.map((r) => [r.name, r.first]));
+    const reported = transcript.split('\n').filter((l) => l.startsWith('fonts.list:'));
+    assert.ok(reported.length > 0, `${what}: the stand-in reported nothing (does LIVEMD2TEX_FONT_LIST_CHECK reach it?)`);
+    // The stand-in reports the pairs of neighbouring lines that share a name, so a name three faces share comes in
+    // two pairs; the first of all its lines is the face XeTeX uses.
+    const firstLine = new Map<string, number>();
+    for (const line of reported) {
+      const m = /^fonts\.list: .*? "([^"]+)" on lines (\d+) and (\d+); the first is used/.exec(line);
+      assert.ok(m, `${what}: an unexpected report line: ${line}`);
+      const [, name, a, b] = m;
+      assert.ok(byName.has(name), `${what}: "${name}" is reported, and no rule decides it`);
+      firstLine.set(name, Math.min(firstLine.get(name) ?? Infinity, Number(a), Number(b)));
+    }
+    for (const [name, first] of firstLine) {
+      assert.equal(lines[first - 1]?.split('\t')[0], byName.get(name), `${what}: the face first in the list for "${name}" is not the rule's`);
+    }
+    assert.deepEqual([...firstLine.keys()].sort(), [...byName.keys()].sort(), `${what}: the reported names are the rules' names`);
+    return reported.length;
+  }
+
+  it("XeLaTeX finds the core's fonts by name through the core's list, bold and italic from the rules' files; the stand-in's report matches the rules", async () => {
+    const coreAssets = bundledEngineAssets(root);
+    assert.ok(coreAssets);
+    // The stand-in's collision report, which the engine host never asks for, on the shipped list.
+    const engine = new EngineService({ modulePath: path.join(root, 'dist', 'engine-host.js'), assets: () => ({ ...coreAssets, env: { LIVEMD2TEX_FONT_LIST_CHECK: '1' } }), idleMinutes: () => 0, log: () => undefined });
+    engine.execArgv = ['--require', path.join(root, 'test', 'stubs', 'register-engine-host.cjs')];
+    try {
+      for (const [name, font] of [
+        ['core-serif', 'DejaVu Serif'],
+        ['core-lm', 'Latin Modern Roman'],
+      ]) {
+        const prepared = await prepareCompile({ fs: nodeFs(fontDoc(name, [`\\setmainfont{${font}}`])), mainRel: 'main.tex', engineSetting: 'xelatex', packages: context([]) });
+        const r = (await engine.compile({ ...prepared.job, readBack: ['/engine/fonts.list'] })).result;
+        assert.ok(r.pdf, `${font}: ${r.log.split('\n').slice(-15).join('\n')}`);
+        assert.doesNotMatch(r.log, /cannot be\s+found/, font);
+        // DejaVu Serif's bold and italic faces are found by its family names; Latin Modern's optical families are
+        // fontspec's business, as on any TeX Live.
+        if (font === 'DejaVu Serif') {
+          assert.doesNotMatch(r.log, /Font shape .* undefined/, font);
+          // The bold face is the file the rule "DejaVu Serif Bold" chooses, not the condensed face of the same name:
+          // the PDF embeds DejaVuSerif-Bold (its PostScript name), and no condensed face.
+          const fonts = await pdfFonts(r.pdf);
+          assert.ok(fonts.some((n) => /\+DejaVuSerif-Bold$/.test(n)), fonts.join(' '));
+          assert.ok(!fonts.some((n) => /Condensed/.test(n)), fonts.join(' '));
+        }
+        // The stand-in reports every name two faces share; on the core's list they are exactly core-data's rules.
+        checkReport(r.transcript, r.readBack?.['/engine/fonts.list'] ?? '', rules()['core-data'], `core only (${font})`);
+      }
+    } finally {
+      await engine.stop();
+    }
+  });
+
+  it("with the add-on mounted, the stand-in's report on the joined lists matches both sets' rules", async function () {
+    const extra = await needAddOn(this);
+    const coreAssets = bundledEngineAssets(root);
+    assert.ok(coreAssets);
+    const engine = new EngineService({ modulePath: path.join(root, 'dist', 'engine-host.js'), assets: () => ({ ...coreAssets, env: { LIVEMD2TEX_FONT_LIST_CHECK: '1' } }), idleMinutes: () => 0, log: () => undefined });
+    engine.execArgv = ['--require', path.join(root, 'test', 'stubs', 'register-engine-host.cjs')];
+    try {
+      const prepared = await prepareCompile({ fs: nodeFs(fontDoc('joined', ['\\setmainfont{DejaVu Serif}'])), mainRel: 'main.tex', engineSetting: 'xelatex', packages: context([]) });
+      const r = (await engine.compile({ ...prepared.job, dataImages: [extra.image], readBack: ['/engine/fonts.list'] })).result;
+      assert.ok(r.pdf, r.log.split('\n').slice(-15).join('\n'));
+      const all = [...rules()['core-data'], ...rules()['extra-data']];
+      const count = checkReport(r.transcript, r.readBack?.['/engine/fonts.list'] ?? '', all, 'core and add-on');
+      console.log(`      ${count} collisions reported, ${all.length} rules`);
+    } finally {
+      await engine.stop();
+    }
+  });
+
+  it('XeTeX finds an add-on font by name through the add-on\'s own list, once the add-on is mounted', async () => {
+    const font = renamed(readFileSync(dejavu), [
+      ['DejaVu Sans', 'Livemd Sans'],
+      ['DejaVuSans', 'LivemdSans'],
+    ]);
+    const folder = await dataExtension('fonts-byname', { 'fonts/truetype/test/livemd/LivemdSans.ttf': font });
     const extra = await readDataExtension(folder, 'livemd2tex-extra-data', expected);
     assert.ok('image' in extra, 'problem' in extra ? extra.problem : '');
-    const doc = path.join(tmp, 'byname');
-    mkdirSync(doc, { recursive: true });
-    writeFileSync(path.join(doc, 'main.tex'), tex(['% !TEX program = xelatex', '\\documentclass{article}', '\\usepackage{fontspec}', '\\setmainfont{DejaVu Sans}', '\\begin{document}', 'Text.', '\\end{document}']));
+    const doc = fontDoc('byname', ['\\setmainfont{Livemd Sans}']);
     const engine = fresh();
     try {
-      // First a compile without the add-on installed: fontconfig makes its cache, and the font is not there.
+      // Without the add-on installed: the font is not there, and the message has help.
       const without = await prepareCompile({ fs: nodeFs(doc), mainRel: 'main.tex', engineSetting: 'xelatex', packages: context([]) });
       const r0 = (await engine.compile(without.job)).result;
-      assert.match(r0.log, /The font "DejaVu Sans" cannot be\s+found/);
+      assert.match(r0.log, /The font "Livemd Sans" cannot be\s+found/);
       const help = withErrorHelp(diagnosticsFor(r0, without));
       assert.ok(help.some((d) => d.help?.id === 'font-name-not-found'), JSON.stringify(help.map((d) => d.message)));
       // Installed but not asked for (the scan does not read font names): the font is not found, and the next
@@ -102,36 +261,39 @@ describe('B1: fonts that only an add-on holds (engine)', function () {
       const r2 = (await engine.compile(second.job)).result;
       assert.ok(r2.pdf, r2.log.split('\n').slice(-15).join('\n'));
       assert.doesNotMatch(r2.log, /cannot be\s+found/);
-      // xdvipdfmx read the font from the add-on's folder (its object streams hide the font's name in the PDF).
-      assert.match(r2.transcript, /\/texmf-extra\/fonts\/truetype\/public\/dejavu\/DejaVuSans\.ttf/);
+      // xdvipdfmx read the font from the add-on's tree (its object streams hide the font's name in the PDF).
+      assert.match(r2.transcript, /\/texmf-extra\/fonts\/truetype\/test\/livemd\/LivemdSans\.ttf/);
     } finally {
       await engine.stop();
     }
   });
 
-  it('an updated add-on: XeTeX finds its new fonts by name, though the font cache knew the old version\'s folder', async () => {
-    const mono = readFileSync(path.join(assets, 'ctan-dejavu', 'truetype', 'DejaVuSansMono.ttf'));
-    // The same folder in both versions, with other fonts in it.
-    const v1 = await readDataExtension(await dataExtension('fonts-v1', { 'fonts/truetype/public/dejavu/DejaVuSansMono.ttf': mono }), 'livemd2tex-extra-data', expected);
-    const v2 = await readDataExtension(await dataExtension('fonts-v2', { 'fonts/truetype/public/dejavu/DejaVuSans.ttf': readFileSync(dejavu) }), 'livemd2tex-extra-data', expected);
+  it('an updated add-on: the new version\'s list is the one read, and the old version\'s font is gone', async () => {
+    const sans = renamed(readFileSync(dejavu), [
+      ['DejaVu Sans', 'Livemd Sans'],
+      ['DejaVuSans', 'LivemdSans'],
+    ]);
+    const mono = renamed(readFileSync(path.join(assets, 'ctan-dejavu', 'truetype', 'DejaVuSansMono.ttf')), [
+      ['DejaVu Sans Mono', 'Livemd Sans Mono'],
+      ['DejaVuSansMono', 'LivemdSansMono'],
+    ]);
+    // The same folder in both versions, with another font in it.
+    const v1 = await readDataExtension(await dataExtension('fonts-v1', { 'fonts/truetype/test/livemd/LivemdSans.ttf': sans }), 'livemd2tex-extra-data', expected);
+    const v2 = await readDataExtension(await dataExtension('fonts-v2', { 'fonts/truetype/test/livemd/LivemdSansMono.ttf': mono }), 'livemd2tex-extra-data', expected);
     assert.ok('image' in v1 && 'image' in v2);
-    const doc = (name: string, font: string) => {
-      const folder = path.join(tmp, name);
-      mkdirSync(folder, { recursive: true });
-      writeFileSync(path.join(folder, 'main.tex'), tex(['\\documentclass{article}', '\\usepackage{fontspec}', `\\setmainfont{${font}}`, '\\begin{document}', 'Text.', '\\end{document}']));
-      return folder;
-    };
     const engine = fresh();
     try {
       const run = async (folder: string, extra: typeof v1) => {
         const prepared = await prepareCompile({ fs: nodeFs(folder), mainRel: 'main.tex', engineSetting: 'xelatex', packages: context([extra as never]), mountSets: new Set(['livemd2tex-extra-data']) });
         return (await engine.compile(prepared.job)).result;
       };
-      const r1 = await run(doc('v1-doc', 'DejaVu Sans Mono'), v1);
+      const r1 = await run(fontDoc('v1-doc', ['\\setmainfont{Livemd Sans}']), v1);
       assert.doesNotMatch(r1.log, /cannot be\s+found/, 'version 1 finds its font');
-      const r2 = await run(doc('v2-doc', 'DejaVu Sans'), v2);
-      assert.doesNotMatch(r2.log, /cannot be\s+found/, 'version 2 finds its font: the folder was scanned again');
-      assert.match(r2.transcript, /\/texmf-extra\/fonts\/truetype\/public\/dejavu\/DejaVuSans\.ttf/);
+      const r2 = await run(fontDoc('v2-doc', ['\\setmainfont{Livemd Sans Mono}']), v2);
+      assert.doesNotMatch(r2.log, /cannot be\s+found/, 'version 2 finds its font');
+      assert.match(r2.transcript, /\/texmf-extra\/fonts\/truetype\/test\/livemd\/LivemdSansMono\.ttf/);
+      const r3 = await run(fontDoc('v2-old', ['\\setmainfont{Livemd Sans}']), v2);
+      assert.match(r3.log, /The font "Livemd Sans" cannot be\s+found/, 'version 1\'s font is gone with version 1');
     } finally {
       await engine.stop();
     }

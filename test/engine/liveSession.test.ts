@@ -27,7 +27,7 @@ import { materializeCorpus, type CorpusProject } from '../support/corpusProjects
 import { root } from '../support/helpers';
 import { nodeFs } from '../support/nodeFs';
 import { docstripWith } from '../support/prepareV0Workspace';
-import { record, writeResults } from './support';
+import { record, stagedEngine, writeResults } from './support';
 
 const SESSION_SECONDS = Number(process.env.M2A_SESSION_SECONDS ?? 45);
 const PAINT_MS = 100;
@@ -246,8 +246,8 @@ describe(`M2-A live session (Node): scripted typing and pauses, ${SESSION_SECOND
   let projects: CorpusProject[] = [];
 
   before(async function () {
-    if (!bundledEngineAssets(root)) {
-      this.skip();
+    if (!stagedEngine(this)) {
+      return;
     }
     engine = new EngineService({
       modulePath: path.join(root, 'dist', 'engine-host.js'),

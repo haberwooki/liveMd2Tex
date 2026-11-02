@@ -1,18 +1,14 @@
 // Markdown-to-PDF unit tests (docs/DESIGN.md#converter): the font rule of the XeTeX route (font sets, the fallback
 // classes, the math fallback), the engine choice of a preset mode on engine "auto", one plain warning per
-// unsupported construct, and the compile route's interim fonts. The engine side is test/engine/m1.test.ts.
+// unsupported construct. The engine side is test/engine/m1.test.ts.
 
 import * as assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import * as os from 'node:os';
+import { readFileSync } from 'node:fs';
 import * as path from 'node:path';
 import { anyFontHas, chooseFontSet, covers, emptyCharacterUse, fontPlan } from '../../src/converter/fonts/fonts';
 import { braceScriptCommands } from '../../src/converter/latexWriter';
 import { convertMarkdown } from '../../src/converter/markdownToLatex';
 import { resolveMode } from '../../src/converter/preset/load';
-import { prepareMarkdownCompile } from '../../src/extension/compile/pipeline';
-import { readInterimFonts } from '../../src/extension/engine/interimFonts';
-import type { ProjectFs } from '../../src/extension/project/collect';
 import { examplePreset, testDir } from './support';
 
 const use = (text: string, code = '', math = '') => {
@@ -46,7 +42,6 @@ describe('the font rule of the XeTeX route', () => {
     assert.deepEqual(byChar['✓'], ['DejaVuSans.ttf', 'DejaVuSansMono.ttf']);
     assert.deepEqual(byChar['𝒩'], ['texgyredejavu-math.otf', 'texgyredejavu-math.otf']);
     assert.deepEqual(byChar['─'], ['DejaVuSerif.ttf', 'DejaVuSansMono.ttf']); // upright faces have it
-    assert.equal(plan.files.length, 12);
     // One interchar class per pair of fallbacks, with tokens in both directions between classes.
     const classes = plan.preamble.filter((l) => l.startsWith('\\newXeTeXintercharclass'));
     assert.equal(classes.length, 3);
@@ -57,7 +52,6 @@ describe('the font rule of the XeTeX route', () => {
     const math = [...'∫'].concat(['\u{1F680}']).join('');
     const plan = fontPlan(use('', '', math), 'latin-modern');
     assert.deepEqual(plan.missingMath, ['\u{1F680}']);
-    assert.deepEqual(plan.files, []);
     assert.deepEqual(plan.fallbacks, []);
   });
 });
@@ -100,40 +94,5 @@ describe('the converter (Markdown to PDF)', () => {
     assert.doesNotMatch(names.latex, /fontenc|inputenc/);
     assert.match(names.latex, /Žilvinas Petrauskas/);
     assert.ok(names.diagnostics.some((d) => d.code === 'engine'));
-  });
-});
-
-describe('the compile route (Markdown to PDF)', () => {
-  it('reads the interim fonts by plain file name only, and leaves out missing files', async () => {
-    const dir = mkdtempSync(path.join(os.tmpdir(), 'livemd2tex-fonts-'));
-    try {
-      writeFileSync(path.join(dir, 'A.ttf'), 'font');
-      const files = await readInterimFonts(dir, ['A.ttf', 'B.ttf', '../A.ttf', 'A.txt']);
-      assert.deepEqual(files.map((f) => f.path), ['A.ttf']);
-    } finally {
-      rmSync(dir, { recursive: true, force: true });
-    }
-  });
-
-  it('adds the extra files to the compile, unless the project has a file of the same name', async () => {
-    const fs: ProjectFs = {
-      readDirectory: async (rel) => (rel === '' ? [['DejaVuSans.ttf', 'file']] : []),
-      readFile: async () => new TextEncoder().encode('own'),
-    };
-    const prepared = await prepareMarkdownCompile({
-      fs,
-      markdownRel: 'notes.md',
-      latex: '\\documentclass{article}\\usepackage{fontspec}\\begin{document}x\\end{document}',
-      lineMap: [1],
-      engine: 'xelatex',
-      extraFiles: [
-        { path: 'DejaVuSans.ttf', data: new TextEncoder().encode('interim') },
-        { path: 'DejaVuSerif.ttf', data: new TextEncoder().encode('interim') },
-      ],
-    });
-    const byPath = new Map(prepared.job.files.map((f) => [f.path, new TextDecoder().decode(f.data)]));
-    assert.equal(byPath.get('DejaVuSans.ttf'), 'own');
-    assert.equal(byPath.get('DejaVuSerif.ttf'), 'interim');
-    assert.equal(prepared.job.engine, 'xelatex');
   });
 });

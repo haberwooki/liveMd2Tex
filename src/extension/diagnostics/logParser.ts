@@ -107,7 +107,7 @@ export function parseTexLog(log: string, mainRel: string): TexDiagnostic[] {
       continue;
     }
 
-    // pdfTeX's own errors: "!pdfTeX error: /bin/busytex (file sfrm1000.pfb): cannot open Type 1 font file for
+    // pdfTeX's own errors: "!pdfTeX error: /bin/engine (file sfrm1000.pfb): cannot open Type 1 font file for
     // reading". They stop the PDF; the program's path is left out of the message.
     const pdftex = /^!pdfTeX error: (?:\S+ )?(\(file [^)]+\): .*)$/.exec(line);
     if (pdftex) {

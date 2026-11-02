@@ -1,9 +1,9 @@
 // Development tool: the package index of a TeX file tree (docs/DESIGN.md#architecture, #engine-and-data): which package each file
 // name belongs to, and which files each package's .sty and .cls files load (\RequirePackage, \usepackage,
 // \LoadClass, and \input of another package's file). The extension's preamble scan resolves a document's
-// packages through it (src/extension/project/packageIndex.ts). B1 writes the real one into each data set's
-// manifest.json; until then scripts/stage-engine.mjs builds it from TeXlyre's interim image, and
-// scripts/build-extra-standin.mjs from the stand-in add-on's files.
+// packages through it (src/shared/packageIndex.ts, which a unit test keeps equal to this file). The data builder
+// writes it into each data set's manifest.json, and scripts/lib/extra-standin.mjs into the engine tests' made-up
+// add-on.
 
 import path from 'node:path';
 
@@ -109,4 +109,14 @@ export function buildPackageIndex(files, read) {
     entry.requires = [...requires].filter((f) => byName[f] !== name).sort();
   }
   return { format: INDEX_FORMAT, packages, files: byName };
+}
+
+/**
+ * The file names an add-on's package index shares with the core's. Mounted, the add-on is searched before the core,
+ * so such a file would change the core's for every document: the extension does not use an add-on that has one, and
+ * the data builder stops on one. src/shared/packageIndex.ts's filesBothHold is the extension's copy; a unit test keeps
+ * the two equal.
+ */
+export function filesBothHold(core, addOn) {
+  return core ? Object.keys(addOn.files).filter((f) => f in core.files) : [];
 }

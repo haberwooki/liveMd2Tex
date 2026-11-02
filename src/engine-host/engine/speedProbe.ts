@@ -23,7 +23,8 @@ const SWITCHES: Record<string, { valid: (v: string) => boolean; perJob: boolean 
   restore: { valid: (v) => ['upper', 'lazy', 'lazy-upper'].includes(v), perJob: true },
   // -1: SyncTeX written uncompressed (the SyncTeX worker reads both forms).
   synctex: { valid: (v) => v === '-1', perJob: true },
-  // Error.stackTraceLimit while the job runs (the glue's file-system error is an Error in today's engine).
+  // Error.stackTraceLimit while the job runs (the earlier engine's glue, TeXlyre's build, made each file-system error
+  // an Error; Emscripten 6.0.13's FS.ErrnoError is a plain class).
   stacklimit: { valid: integer(0, 100), perJob: true },
   // LZ4 chunk cache slots per mounted image (applies when the worker mounts, so environment only).
   lz4slots: { valid: integer(1, 4096), perJob: false },

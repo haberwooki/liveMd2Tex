@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 // Development tool (never shipped): fetches the pinned engine and TeX inputs of engine/pins.json into a folder
 // OUTSIDE the repository (default: ../engine_assets), one folder per source, and checks every file's size and
-// SHA-256. Files already present are re-checked, not re-downloaded. Downloads are data: nothing here runs them.
+// SHA-256. Files already present are re-checked, not re-downloaded. Downloads are data: nothing here runs them. A
+// source marked "published": null (an engine release that is still a draft, whose files cannot be downloaded
+// anonymously) is never fetched: a missing file of it fails with a message that says so and what to do.
 //
 //   node scripts/engine-assets.mjs [--root DIR] [--source ID] [--verify]
 
@@ -13,17 +15,16 @@ import { pipeline } from 'node:stream/promises';
 import { fileURLToPath } from 'node:url';
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const arg = (name) => {
-  const i = process.argv.indexOf(name);
-  return i >= 0 ? process.argv[i + 1] : undefined;
-};
-export const assetsRoot = path.resolve(arg('--root') ?? path.join(repo, '..', 'engine_assets'));
-const onlySource = arg('--source');
-const verifyOnly = process.argv.includes('--verify');
 
-if (path.relative(repo, assetsRoot).split(path.sep)[0] !== '..') {
-  console.error(`Refusing to put engine assets inside the repository: ${assetsRoot}`);
-  process.exit(2);
+/**
+ * Why a pinned file cannot be downloaded, or null when it can: a source whose release is not published yet
+ * ("published": null in engine/pins.json) has addresses that only work once it is.
+ */
+export function unpublishedProblem(source, dir) {
+  if (!('published' in source) || source.published) {
+    return null;
+  }
+  return `the release ${source.tag ?? source.id} is not published yet (engine/pins.json: "published": null), so its files cannot be downloaded. Publish it, or put its files into ${dir} by hand${source.note ? ` (the pin's note: ${source.note})` : ''}`;
 }
 
 async function sha256(file) {
@@ -54,31 +55,50 @@ async function download(url, file) {
   renameSync(part, file);
 }
 
-const pins = JSON.parse(readFileSync(path.join(repo, 'engine', 'pins.json'), 'utf8'));
-let failures = 0;
-let bytes = 0;
-for (const source of pins.sources) {
-  if (onlySource && source.id !== onlySource) {
-    continue;
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const arg = (name) => {
+    const i = process.argv.indexOf(name);
+    return i >= 0 ? process.argv[i + 1] : undefined;
+  };
+  const assetsRoot = path.resolve(arg('--root') ?? path.join(repo, '..', 'engine_assets'));
+  const onlySource = arg('--source');
+  const verifyOnly = process.argv.includes('--verify');
+  if (path.relative(repo, assetsRoot).split(path.sep)[0] !== '..') {
+    console.error(`Refusing to put engine assets inside the repository: ${assetsRoot}`);
+    process.exit(2);
   }
-  const dir = path.join(assetsRoot, source.folder);
-  mkdirSync(dir, { recursive: true });
-  for (const pin of source.files) {
-    const file = path.join(dir, ...pin.name.split('/'));
-    mkdirSync(path.dirname(file), { recursive: true });
-    let status = await check(file, pin);
-    if (status !== 'ok' && !verifyOnly) {
-      const t0 = Date.now();
-      await download(pin.url, file);
-      status = await check(file, pin);
-      console.log(`fetched ${source.id}/${pin.name} (${pin.size} B) in ${((Date.now() - t0) / 1000).toFixed(1)} s`);
+  const pins = JSON.parse(readFileSync(path.join(repo, 'engine', 'pins.json'), 'utf8'));
+  let failures = 0;
+  let bytes = 0;
+  for (const source of pins.sources) {
+    if (onlySource && source.id !== onlySource) {
+      continue;
     }
-    bytes += pin.size;
-    if (status !== 'ok') {
-      failures++;
-      console.error(`FAIL ${source.id}/${pin.name}: ${status}`);
+    const dir = path.join(assetsRoot, source.folder);
+    mkdirSync(dir, { recursive: true });
+    for (const pin of source.files) {
+      const file = path.join(dir, ...pin.name.split('/'));
+      mkdirSync(path.dirname(file), { recursive: true });
+      let status = await check(file, pin);
+      const unpublished = status === 'ok' ? null : unpublishedProblem(source, dir);
+      if (unpublished) {
+        failures++;
+        console.error(`FAIL ${source.id}/${pin.name}: ${status}; ${unpublished}`);
+        continue;
+      }
+      if (status !== 'ok' && !verifyOnly) {
+        const t0 = Date.now();
+        await download(pin.url, file);
+        status = await check(file, pin);
+        console.log(`fetched ${source.id}/${pin.name} (${pin.size} B) in ${((Date.now() - t0) / 1000).toFixed(1)} s`);
+      }
+      bytes += pin.size;
+      if (status !== 'ok') {
+        failures++;
+        console.error(`FAIL ${source.id}/${pin.name}: ${status}`);
+      }
     }
   }
+  console.log(`${failures === 0 ? 'all pinned files verified' : `${failures} file(s) failed`} (${(bytes / 1048576).toFixed(1)} MiB) under ${assetsRoot}`);
+  process.exitCode = failures === 0 ? 0 : 1;
 }
-console.log(`${failures === 0 ? 'all pinned files verified' : `${failures} file(s) failed`} (${(bytes / 1048576).toFixed(1)} MiB) under ${assetsRoot}`);
-process.exitCode = failures === 0 ? 0 : 1;

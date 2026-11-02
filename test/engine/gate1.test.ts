@@ -14,7 +14,7 @@ import { materializeCorpus, tinyPng, type CorpusProject } from '../support/corpu
 import { root } from '../support/helpers';
 import { nodeFs } from '../support/nodeFs';
 import { docstripWith } from '../support/prepareV0Workspace';
-import { record, writeResults } from './support';
+import { record, stagedEngine, writeResults } from './support';
 
 describe('gate 1 (engine level): cancel races and change sets', function () {
   this.timeout(900000);
@@ -23,8 +23,8 @@ describe('gate 1 (engine level): cancel races and change sets', function () {
   let projects: CorpusProject[] = [];
 
   before(async function () {
-    if (!bundledEngineAssets(root)) {
-      this.skip();
+    if (!stagedEngine(this)) {
+      return;
     }
     engine = new EngineService({ modulePath: path.join(root, 'dist', 'engine-host.js'), assets: () => bundledEngineAssets(root), idleMinutes: () => 0, log: () => undefined });
     engine.execArgv = ['--require', path.join(root, 'test', 'stubs', 'register-engine-host.cjs')];

@@ -6,7 +6,7 @@
 
 import * as assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { prepareCompile } from '../../src/extension/compile/pipeline';
@@ -15,6 +15,7 @@ import { bundledEngineAssets, EngineService } from '../../src/extension/engine/e
 import { buildPackageIndex } from '../../src/shared/packageIndex';
 import { importScript, root } from '../support/helpers';
 import { nodeFs } from '../support/nodeFs';
+import { stagedEngine } from './support';
 
 const tex = (lines: string[]) => `${lines.join('\n')}\n`;
 const FONT = 'fonts/type1/public/b1probe/b1probe.pfb';
@@ -35,16 +36,18 @@ describe('B1: t1c, packed Type 1 fonts on the engine', function () {
   let tfm: Buffer;
 
   before(async function () {
-    if (!bundledEngineAssets(root) || !existsSync(path.join(root, 'dist', 'data', 'packages.json'))) {
-      this.skip();
+    if (!stagedEngine(this)) {
+      return;
     }
     tmp = mkdtempSync(path.join(os.tmpdir(), 'livemd2tex-t1c-'));
     core = await readCoreData(path.join(root, 'dist', 'data'));
     assert.ok(core?.index);
     expected = { texLive: core.manifest.texLive, abi: core.manifest.abi };
     const { openImage } = await importScript<{ openImage(p: string, c: unknown): { read(s: number, e: number): Buffer } }>('scripts/lib/image-files.mjs');
-    const index = JSON.parse(readFileSync(path.join(root, 'dist', 'data', 'texlive-extra.index.json'), 'utf8')) as { compressed: unknown; metadata: { files: { filename: string; start: number; end: number }[] } };
-    const reader = openImage(path.join(root, 'dist', 'data', 'texlive-extra.data'), index.compressed);
+    const assets = bundledEngineAssets(root);
+    assert.ok(assets, 'the core data is not staged');
+    const index = JSON.parse(readFileSync(assets.index, 'utf8')) as { compressed: unknown; metadata: { files: { filename: string; start: number; end: number }[] } };
+    const reader = openImage(assets.data, index.compressed);
     const read = (name: string) => {
       const f = index.metadata.files.find((x) => x.filename.endsWith(name));
       assert.ok(f, name);

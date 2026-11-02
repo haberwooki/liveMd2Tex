@@ -8,21 +8,30 @@
 //     (the one fork file, by rule) and the hits on security/vsix-scan-allowlist.json (file, line, text, reason);
 //     and no speed probe (the text LIVEMD2TEX_SPEED_; docs/DEVELOPING.md, "Measuring speed");
 //   - every package: the licence texts (missingNotices; G1S-04), each at its pinned bytes (wrongNotices), and with
-//     the engine the notice of every part TeXlyre's build links into it (engine/engine-notices.json) and libpaper's
-//     two old strings absent (engineLinksLibpaper, which cannot see TeX Live's libpaper); with the starting documents (templates/) or the example presets
-//     (examples/presets/), their CC0 notices and the CC0 legal text, and an SPDX CC0-1.0 line in
-//     each of their files that has a comment form (cc0Headers; docs/DESIGN.md#store-and-packaging);
-//   - every file: no native program or library, no shell script, no source map, no node_modules folder;
+//     the engine the notice of every part linked into it (engine/engine-notices.json); with the starting documents
+//     (templates/) or the example presets (examples/presets/), their CC0 notices and the CC0 legal text, and an SPDX
+//     CC0-1.0 line in each of their files that has a comment form (cc0Headers; docs/DESIGN.md#store-and-packaging);
+//   - with the engine (extension/dist/engine/engine.wasm and engine.js; docs/DEVELOPING.md, "The rules the checks
+//     enforce"): the pinned engine (pinnedEngine); no libpaper, MakeIndex, LuaTeX or luaffi, and no remote-fetch
+//     code (engineStrings, the build's own string list); no shell, socket, network or dynamic loading among the
+//     wasm's imports, each resolved through the glue and on the build record's list, and none of the glue's watched
+//     names outside its reviewed comments (engineImports); the memory header (engineHeader);
+//   - every file: no native program or library, no shell script, no source map, no node_modules folder, nothing of
+//     engine/build/ (the build's own scripts and sources never ship);
 //   - every file: no private marker (scripts/marker-scan.mjs), so no build path from this laptop ships. A file
-//     over 16 MB whose SHA-256 equals a file pinned in engine/pins.json (TeXlyre's image, the engine WASM) is a
-//     byte-identical third-party download and is listed as such instead of being read as text.
+//     over 16 MB whose SHA-256 equals a file pinned in engine/pins.json (the engine WASM) is a byte-identical pinned
+//     file and is listed as such instead of being read as text. A data image (the .data a data manifest names) is
+//     read file by file through its index (scanImage): text files as text, binary ones for path-like markers; the
+//     name-like markers are left out of TeX Live's own files, which hold people's names by coincidence.
 //
 //   node scripts/vsix-scan.mjs                 build (production), package to out/vsix/, scan
-//   node scripts/vsix-scan.mjs --with-engine   the same, with the patched engine glue, its WASM and our engine
-//                                              config in dist/engine/ (scripts/stage-engine.mjs)
-//   node scripts/vsix-scan.mjs --test-copy     version 0's test copy: the engine plus TeXlyre's image, unchanged,
-//                                              in dist/data/ (stage-engine.mjs --data); about 360 MB. For a
-//                                              throwaway VS Code profile only, never for the stores.
+//   node scripts/vsix-scan.mjs --with-engine   the same, with engine.js, engine.wasm and our engine config in
+//                                              dist/engine/ (scripts/stage-engine.mjs)
+//   node scripts/vsix-scan.mjs --test-copy [--data-package PATH]
+//                                              a test copy: the engine plus a core-data package's data in
+//                                              dist/data/ (stage-engine.mjs --data; PATH a .vsix or its unpacked
+//                                              folder, by default LIVEMD2TEX_CORE_DATA); for a throwaway VS Code
+//                                              profile only, never for the stores.
 //   node scripts/vsix-scan.mjs --vsix FILE     scan an existing VSIX
 //   node scripts/vsix-scan.mjs --vsix FILE --data   a data package (no code at all: any JavaScript fails it)
 // Exit code 0 when clean; 1 with a report otherwise. A JSON report is written next to the VSIX.
@@ -32,6 +41,10 @@ import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { gunzipSync, inflateSync } from 'node:zlib';
+import { glueAcorn, loadAcorn, resolveGlue } from '../engine/build/tools/glue-imports.mjs';
+import { deniedImport, glueAllow, glueChecks, layout, readWasm, requiredStrings, stringChecks } from '../engine/build/tools/wasm-inspect.mjs';
+import { openImageBytes } from './lib/image-files.mjs';
 import { lineText, scanJavaScript } from './lib/js-scan.mjs';
 import { readZip } from './lib/zip.mjs';
 import { loadMarkers, loadMarkerValues, scanEncoded, scanPath, scanText } from './marker-scan.mjs';
@@ -42,6 +55,9 @@ export const FORK_FILE = 'extension/dist/fork.js';
 const NATIVE_OR_SHELL = /\.(node|exe|dll|so|dylib|bat|cmd|sh|ps1|com|msi)$/i;
 
 const LARGE = 16 * 1024 * 1024;
+const WASM = 'extension/dist/engine/engine.wasm';
+const GLUE = 'extension/dist/engine/engine.js';
+const sha256 = (b) => createHash('sha256').update(b).digest('hex');
 const TEXT_FILE = /\.(m?js|cjs|json|md|txt|css|html|xml|cnf|conf|tex|sty|cls|bst|vsixmanifest)$/i;
 
 /** SHA-256 -> "source/name" for every file pinned in engine/pins.json. */
@@ -102,40 +118,193 @@ export function wrongNotices(entries, manifestFile = path.join(root, 'engine', '
   return failures;
 }
 
-/**
- * The notices say that on wasm32 luaffi is only TeX Live's stub luaopen_ffi, so neither luaffifb's own code nor
- * DynASM is in the engine (the licence re-gates, L3-02, F3-S1). A new engine build that brings them in fails here,
- * until THIRD_PARTY_NOTICES.md says so: DynASM's "dasm_link error" (luaffi's call.c) and luaffi's "unable to convert
- * argument" (ffi.c) are not in the pinned build.
- */
-export function engineLinksLuaffiCode(entries) {
-  const wasm = entries.get('extension/dist/engine/busytex.wasm');
-  if (!wasm) {
-    return [];
-  }
-  const text = wasm.toString('latin1');
-  return ['dasm_link error', 'unable to convert argument'].filter((s) => text.includes(s)).map((s) => `extension/dist/engine/busytex.wasm: holds luaffi's "${s}"; THIRD_PARTY_NOTICES.md says only luaffi's stub is in the engine`);
+/** The engine release pinned in engine/pins.json (livemd2tex-engine) and its build record. */
+function pinnedEngineRecord(pinsFile = path.join(root, 'engine', 'pins.json'), recordFile = path.join(root, 'engine', 'engine-build.json')) {
+  const pin = JSON.parse(readFileSync(pinsFile, 'utf8')).sources.find((x) => x.id === 'livemd2tex-engine');
+  return { pin, record: JSON.parse(readFileSync(recordFile, 'utf8')) };
 }
 
 /**
- * The engine must not hold libpaper's code: it is GPL-2.0-only, which does not combine with the AGPL-3.0 parts. These
- * two strings are not in TeX Live's libpaper, so this check cannot see it, and the pinned TeXlyre build does link it
- * (THIRD_PARTY_NOTICES.md, libpaper): no release ships that engine. The engine that replaces it is checked for
- * libpaper's paper table and PAPERSIZE instead (engine/build/tools/wasm-inspect.mjs).
+ * Check 1, the engine is the pinned one: the wasm's and the glue's SHA-256 are engine/pins.json's livemd2tex-engine
+ * entries, and the wasm's is engine/engine-build.json's output hash. The glue is Emscripten's own, so its hash is
+ * what vouches for every line the allow-list reviews.
  */
-export function engineLinksLibpaper(entries) {
-  const wasm = entries.get('extension/dist/engine/busytex.wasm');
+export function pinnedEngine(entries, pinsFile, recordFile) {
+  const wasm = entries.get(WASM);
+  const glue = entries.get(GLUE);
+  if (!wasm && !glue) {
+    return [];
+  }
+  if (!wasm || !glue) {
+    return [`the package holds ${wasm ? WASM : GLUE} without ${wasm ? GLUE : WASM}`];
+  }
+  const { pin, record } = pinnedEngineRecord(pinsFile, recordFile);
+  if (!pin) {
+    return ['engine/pins.json pins no livemd2tex-engine source'];
+  }
+  const failures = [];
+  for (const [name, bytes, file] of [[WASM, wasm, 'engine.wasm'], [GLUE, glue, 'engine.js']]) {
+    const want = pin.files.find((f) => f.name === file)?.sha256;
+    if (sha256(bytes) !== want) {
+      failures.push(`${name}: SHA-256 ${sha256(bytes)} is not the pinned ${file} (${want ?? 'none pinned'})`);
+    }
+  }
+  if (record.outputs?.wasm?.sha256 !== sha256(wasm)) {
+    failures.push(`${WASM}: not the engine engine/engine-build.json records (${record.outputs?.wasm?.sha256})`);
+  }
+  return failures;
+}
+
+/**
+ * Checks 2, 4, 5 and 6, on the wasm read as latin1 and on the glue: no libpaper (GPL-2.0-only, which does not
+ * combine with the extension's GPL-3.0-or-later code: its paper table, PAPERSIZE, PAPERCONF and /etc/papersize
+ * absent, and dvipdfmx's own paper table present), no MakeIndex, no LuaTeX or luaffi, no remote-fetch code. The
+ * strings are the build's own list (engine/build/tools/wasm-inspect.mjs), so the build and the scan check the same.
+ */
+export function engineStrings(entries) {
+  const wasm = entries.get(WASM);
   if (!wasm) {
     return [];
   }
-  const text = wasm.toString('latin1');
-  return ['PAPERCONF', '/etc/papersize'].filter((s) => text.includes(s)).map((s) => `extension/dist/engine/busytex.wasm: holds libpaper's "${s}", and libpaper (GPL-2.0-only) may not ship with the AGPL-3.0 parts`);
+  const glue = entries.get(GLUE)?.toString('utf8') ?? null;
+  const failures = [];
+  for (const c of stringChecks(wasm, glue)) {
+    if (c.inWasm) failures.push(`${WASM}: holds "${c.text}" (${c.part}; ${c.check})`);
+    if (c.inGlue) failures.push(`${GLUE}: holds "${c.text}" (${c.part}; ${c.check})`);
+  }
+  for (const c of requiredStrings(wasm)) {
+    if (!c.inWasm) failures.push(`${WASM}: lacks "${c.text}" (${c.part}): dvipdfmx was built with libpaper`);
+  }
+  return failures;
+}
+
+/**
+ * Check 3, no shell, no socket, no network, no dynamic loading: every import of the wasm, resolved through the
+ * glue's wasmImports, is on engine/engine-build.json's list and none is denied, whatever the list says; the build
+ * record shows NODERAWSOCKETS, NODERAWFS and NODEFS off; and the glue's watched names (SOCKFS, createSocket,
+ * spawnSync, child_process) appear only in the comments engine/build/glue-allow.json reviews for this glue.
+ */
+export async function engineImports(entries, recordFile) {
+  const wasm = entries.get(WASM);
+  const glue = entries.get(GLUE);
+  if (!wasm || !glue) {
+    return [];
+  }
+  await loadAcorn();
+  glueAcorn();
+  const { record } = pinnedEngineRecord(undefined, recordFile);
+  const failures = [];
+  const text = glue.toString('utf8');
+  const resolved = resolveGlue(text, readWasm(wasm));
+  const recorded = new Set((record.imports ?? []).map((i) => i.resolved));
+  for (const imp of resolved.imports) {
+    if (imp.resolved === null) failures.push(`${WASM}: import ${imp.module}.${imp.name} does not resolve through the glue`);
+    else if (deniedImport(imp.resolved)) failures.push(`${WASM}: import ${imp.name} resolves to ${imp.resolved}, which is denied`);
+    else if (!recorded.has(imp.resolved)) failures.push(`${WASM}: import ${imp.resolved} is not on engine/engine-build.json's list`);
+  }
+  for (const [setting, value] of Object.entries(record.emscriptenSettingsOff ?? {})) {
+    if (value !== false && value !== 0) failures.push(`engine/engine-build.json: Emscripten setting ${setting} is on`);
+  }
+  for (const setting of ['NODERAWSOCKETS', 'NODERAWFS', 'NODEFS']) {
+    if (!(setting in (record.emscriptenSettingsOff ?? {}))) failures.push(`engine/engine-build.json records no ${setting}`);
+  }
+  failures.push(...glueChecks(text, glueAllow()).failures.map((f) => `${GLUE}: ${f}`));
+  return failures;
+}
+
+/** The WebAssembly files a package may hold: the engine (pinnedEngine checks it) and pdf.js's three decoders. */
+export const KNOWN_WASM = new Set([WASM, 'extension/dist/viewer/pdfjs/wasm/jbig2.wasm', 'extension/dist/viewer/pdfjs/wasm/openjpeg.wasm', 'extension/dist/viewer/pdfjs/wasm/qcms_bg.wasm']);
+
+/** The engine's build files by name: the build's own C files and lists, wherever they are in a package. */
+const BUILD_FILES = /(^|\/)(engine\/build\/|dispatcher\.c$|stubs\.c$|fontlist\.c$|glue-allow\.json$|engine-build-pins\.json$|configure-check\.mjs$|link-report\.mjs$|wasm-inspect\.mjs$)/;
+
+/**
+ * The engine by its content, not only its two names: every file that is WebAssembly (its first bytes are "\0asm",
+ * whatever its name) must be one of KNOWN_WASM; every script that is Emscripten's glue (it builds wasmImports and
+ * has Emscripten's file system) must be the engine's engine.js; and nothing of the engine's build ships, under
+ * engine/build/ or by one of its own file names anywhere. A stale engine, or one under a new name, fails here
+ * instead of passing the checks that look at the two names.
+ */
+export function engineByContent(entries) {
+  const failures = [];
+  for (const [name, data] of entries) {
+    if (data.length >= 4 && data[0] === 0 && data[1] === 0x61 && data[2] === 0x73 && data[3] === 0x6d && !KNOWN_WASM.has(name)) {
+      failures.push(`${name}: WebAssembly that is neither the pinned engine nor one of pdf.js's decoders`);
+    }
+    if (name !== GLUE && /\.(m|c)?js$/i.test(name)) {
+      const text = data.toString('latin1');
+      if (/\bwasmImports\b/.test(text) && /\bcreateLazyFile\b/.test(text)) failures.push(`${name}: Emscripten's glue under a name that is not the engine's engine.js`);
+    }
+    if (BUILD_FILES.test(name.replace(/^extension\//, ''))) {
+      failures.push(`${name}: the engine's build scripts and sources (engine/build/) in the VSIX`);
+    }
+  }
+  return failures;
+}
+
+/**
+ * The engine's notices describe the shipped engine: engine/engine-notices.json's build commits are the ones
+ * engine/engine-build.json records, so a package does not carry another engine's notices.
+ */
+export function noticesForEngine(entries, noticesFile = path.join(root, 'engine', 'engine-notices.json'), recordFile = path.join(root, 'engine', 'engine-build.json')) {
+  if (!entries.has(WASM)) {
+    return [];
+  }
+  const notices = JSON.parse(readFileSync(noticesFile, 'utf8'));
+  const record = JSON.parse(readFileSync(recordFile, 'utf8'));
+  const failures = [];
+  for (const [what, a, b] of [
+    ["TeX Live's commit", notices.build?.texLive?.commit, record.inputs?.texLive?.commit],
+    ["Emscripten's commit", notices.build?.emscripten?.commit, record.inputs?.emscripten?.commit],
+    ["the build scripts' commit", notices.build?.scripts?.commit, record.build?.scripts?.commit],
+    ["the build scripts' tree hash", notices.build?.scripts?.treeSha256, record.build?.scripts?.treeSha256],
+  ]) {
+    if (!a || a !== b) failures.push(`engine/engine-notices.json names ${what} ${a ?? '(none)'}, engine/engine-build.json ${b ?? '(none)'}: the notices describe another engine`);
+  }
+  return failures;
+}
+
+/**
+ * Check 8, the memory header: the build record's layout has the 64 MiB initial memory the worker restores after
+ * each program (HEADER_BYTES), the stack first and 8 MiB, and its data and static end below the header; the
+ * shipped wasm's own memory says the same.
+ */
+export function engineHeader(entries, recordFile) {
+  const wasm = entries.get(WASM);
+  if (!wasm) {
+    return [];
+  }
+  const { record } = pinnedEngineRecord(undefined, recordFile);
+  const mib = 2 ** 20;
+  const l = record.layout ?? {};
+  const failures = [];
+  if (l.initialMemory !== 64 * mib) failures.push(`engine/engine-build.json: initial memory ${l.initialMemory}, not 64 MiB (the worker's header)`);
+  if (l.stackFirst !== true) failures.push('engine/engine-build.json: the stack does not come first');
+  if (l.stackSize !== 8 * mib) failures.push(`engine/engine-build.json: stack ${l.stackSize}, not 8 MiB`);
+  if (!(l.dataEnd < l.initialMemory) || !(l.staticEnd < l.initialMemory)) failures.push(`engine/engine-build.json: data (${l.dataEnd}) or static data (${l.staticEnd}) ends past the header`);
+  const own = layout(readWasm(wasm));
+  if (own.memoryImported) failures.push(`${WASM}: its memory is imported, so its size is not the wasm's own`);
+  else if (own.initialMemory !== 64 * mib) failures.push(`${WASM}: initial memory ${own.initialMemory}, not 64 MiB`);
+  return failures;
+}
+
+/** Texts only the data packages ship, for some of their TeX packages (scripts/build.mjs leaves them out). */
+export const DATA_ONLY_TEXTS = ['AGPL-3.0.txt', 'MakeIndex.txt'];
+
+/** The extension's own package holds none of the texts only the data packages ship: nothing in it is under them. */
+export function dataOnlyTexts(entries) {
+  if (!entries.has('extension/dist/extension.js')) {
+    return [];
+  }
+  return DATA_ONLY_TEXTS.map((t) => `extension/dist/licenses/${t}`)
+    .filter((n) => entries.has(n))
+    .map((n) => `${n}: a licence text only the data packages ship; nothing in the extension is under it`);
 }
 
 /**
  * The licence texts every package must carry (build gate 1, G1S-04): the notices and the licence folder; with the
- * engine, the notice of every part TeXlyre's build links into it (engineNoticeFiles); in a test copy the licences
- * of the TeX image and the DejaVu fonts.
+ * engine, the notice of every part linked into it (engineNoticeFiles); in a test copy, its core data's licence
+ * folder.
  */
 export function missingNotices(entries) {
   const required = [];
@@ -145,15 +314,13 @@ export function missingNotices(entries) {
       'extension/THIRD_PARTY_NOTICES.md',
       'extension/dist/licenses/INDEX.txt',
       'extension/dist/licenses/GPL-3.0.txt',
-      'extension/dist/licenses/AGPL-3.0.txt',
       'extension/dist/licenses/LGPL-3.0.txt',
       'extension/dist/licenses/Apache-2.0.txt',
       'extension/dist/licenses/LPPL-1.3c.txt',
     );
   }
-  // The engine: the notices of everything TeXlyre's build links into it (engine/engine-notices.json; the licence
-  // gate, L-01 and M2), ICU's and MakeIndex's among them.
-  if (entries.has('extension/dist/engine/busytex.wasm')) {
+  // The engine: the notices of every part linked into it (engine/engine-notices.json; the licence gate, L-01 and M2).
+  if (entries.has(WASM)) {
     required.push(...engineNoticeFiles());
   }
   for (const folder of ['templates', 'examples/presets']) {
@@ -161,11 +328,9 @@ export function missingNotices(entries) {
       required.push(`extension/${folder}/LICENSE.md`, 'extension/dist/licenses/CC0-1.0.txt');
     }
   }
-  if (entries.has('extension/dist/data/texlive-extra.data')) {
-    required.push('extension/dist/data/licenses/TeX-Live-LICENSE.TL.txt', 'extension/dist/data/licenses/TeX-Live-LICENSE.CTAN.txt', 'extension/dist/data/licenses/lppl.tex');
-  }
-  if ([...entries.keys()].some((n) => /^extension\/dist\/data\/fonts\/.*\.ttf$/.test(n))) {
-    required.push('extension/dist/data/fonts/LICENSE');
+  // A test copy's core data: the licence folder of the core-data package it came from (stage-engine.mjs --data).
+  if (entries.has('extension/dist/data/manifest.json')) {
+    required.push('extension/dist/data/LICENSES/INDEX');
   }
   return [...new Set(required)]
     .filter((n) => !entries.has(n) && !(n === 'extension/LICENSE.txt' && entries.has('extension/LICENSE')))
@@ -194,21 +359,6 @@ export function cc0Headers(entries) {
   return failures;
 }
 
-/**
- * The engine glue in a package must be the patched glue pinned in engine/pins.json (G1S-08): a glue without one
- * of the patches (no shell, no remote fetch) changes no watched name, so only its hash shows it.
- */
-export function unpinnedGlue(entries, file = path.join(root, 'engine', 'pins.json')) {
-  const glue = entries.get('extension/dist/engine/busytex.js');
-  if (!glue) {
-    return [];
-  }
-  const pins = JSON.parse(readFileSync(file, 'utf8'));
-  const want = pins.sources.find((s) => s.id === 'texlyre-busytex')?.patchedGlue?.sha256;
-  const have = createHash('sha256').update(glue).digest('hex');
-  return want === have ? [] : [`extension/dist/engine/busytex.js: SHA-256 ${have} is not the pinned patched glue (${want ?? 'none pinned'})`];
-}
-
 export function loadAllowlist(file = path.join(root, 'security', 'vsix-scan-allowlist.json')) {
   return JSON.parse(readFileSync(file, 'utf8')).entries;
 }
@@ -226,7 +376,9 @@ export function scanEntries(entries, allowlist, markers, pinned = new Map(), { d
   const jsFiles = [];
   const wasmFiles = [];
   const pinnedFiles = [];
+  const imageFiles = [];
   const used = new Set();
+  const images = dataImages(entries);
 
   for (const entry of allowlist) {
     if (entry.match === 'child_process') {
@@ -246,6 +398,20 @@ export function scanEntries(entries, allowlist, markers, pinned = new Map(), { d
     }
     if (/\.wasm$/i.test(name)) {
       wasmFiles.push({ name, bytes: data.length });
+    }
+    // A data image: its files, one by one through its index, not its compressed bytes (scanImage).
+    if (images.has(name)) {
+      try {
+        const { index, manifest } = images.get(name);
+        const image = scanImage(name, data, entries.get(index), markers, markerValues, packageFiles(manifest));
+        imageFiles.push({ name, files: image.files, packageFiles: image.packageFiles });
+        for (const f of image.findings) {
+          failures.push(`${f.file}:${f.line}:${f.column}: private marker (${f.marker})`);
+        }
+      } catch (err) {
+        failures.push(`${name}: the data image cannot be read through its index (${err instanceof Error ? err.message : err})`);
+      }
+      continue;
     }
     const pin = data.length > LARGE ? pinned.get(createHash('sha256').update(data).digest('hex')) : undefined;
     if (pin) {
@@ -309,7 +475,101 @@ export function scanEntries(entries, allowlist, markers, pinned = new Map(), { d
       failures.push(`stale allow-list entry ${e.file}:${e.line} (${e.match}): no such hit any more; review the file again`);
     }
   });
-  return { files: entries.size, jsFiles, wasmFiles, pinnedFiles, hits, failures };
+  return { files: entries.size, jsFiles, wasmFiles, pinnedFiles, imageFiles, hits, failures };
+}
+
+/**
+ * The data images of a package: each image a data manifest names (data/manifest.json in a data package,
+ * dist/data/manifest.json in a test copy), as image entry -> { index: its index's entry, manifest: the manifest }.
+ */
+export function dataImages(entries) {
+  const out = new Map();
+  for (const [name, bytes] of entries) {
+    if (!/(^|\/)data\/manifest\.json$/.test(name)) continue;
+    let manifest;
+    try {
+      manifest = JSON.parse(bytes.toString('utf8'));
+    } catch {
+      continue;
+    }
+    const image = manifest?.image;
+    if (typeof image?.file !== 'string' || typeof image?.index !== 'string') continue;
+    const dir = name.slice(0, name.length - 'manifest.json'.length);
+    const data = `${dir}${path.posix.basename(image.file)}`;
+    const index = `${dir}${path.posix.basename(image.index)}`;
+    if (entries.has(data) && entries.has(index)) out.set(data, { index, manifest });
+  }
+  return out;
+}
+
+/**
+ * The image paths of TeX Live's own files in a data set: the files its manifest's package index lists for each
+ * package of the pinned snapshot (index.packages.*.files), under the image's root (the core's texmf tree, an
+ * add-on's top). The files the data builder wrote itself (ls-R, the font list, the formats, the language and map
+ * files) are not among them.
+ */
+export function packageFiles(manifest) {
+  const root = manifest?.core?.root ?? '';
+  const out = new Set();
+  for (const p of Object.values(manifest?.index?.packages ?? {})) {
+    for (const rel of p?.files ?? []) out.add(`${root}/${rel}`);
+  }
+  return out;
+}
+
+/** Kinds inside a data image that are not text: fonts, TeX's binary metrics and formats, pictures, archives. */
+const IMAGE_BINARY = /\.(pfb|pfm|otf|ttf|ttc|otc|woff2?|eot|cff|tfm|ofm|vf|ovf|pk|\d+pk|gf|fmt|png|jpe?g|gif|bmp|tiff?|pdf|zip|gz|xz|bz2|dvi|xdv|bin)$/i;
+
+/** A format's bytes after TeX's gzip compression is undone (the bytes as they are when they are not compressed). */
+function unpackedFormat(bytes) {
+  for (const unpack of [gunzipSync, inflateSync]) {
+    try {
+      return unpack(bytes);
+    } catch {
+      // not this kind
+    }
+  }
+  return bytes;
+}
+
+/**
+ * A data image's files, scanned for private markers one by one through the image's index instead of as compressed
+ * bytes, in which a marker can turn up by chance and a real one can be split by LZ4's back-references. Every file's
+ * path is scanned. A text file is scanned as a packaged text file is, and in the encoded forms too when its kind is
+ * one TEXT_FILE names. A binary file (a font, a format, a picture, an archive: by its kind, or a NUL byte in its first
+ * 4 KB) is scanned for path-like markers only (the laptop's user path, which a build could leave in any file), since
+ * a short text marker turns up in megabytes of binary by chance; a format is scanned after its gzip compression is
+ * undone. In TeX Live's own files (`packageFiles`: the files of the pinned snapshot's packages) the markers of kind
+ * "word" are left out: they are people's names, which TeX packages hold by coincidence, and a list of the files where
+ * they occur would narrow down the names. Every other marker is still searched there, and every marker in every file
+ * the index does not list, the files the data builder wrote among them. Returns the number of files, of TeX Live's own files, and the findings, each file named
+ * "<image entry>!<path in the image>".
+ */
+export function scanImage(name, data, indexBytes, markers, markerValues = [], ownFiles = new Set()) {
+  const index = JSON.parse(indexBytes.toString('utf8'));
+  const reader = openImageBytes(data, index.compressed);
+  const pathMarkers = markers.filter((m) => m.kind === 'user-path');
+  const notWords = markers.filter((m) => m.kind !== 'word');
+  const valuesNotWords = markerValues.filter((m) => m.kind !== 'word');
+  const files = index.metadata?.files ?? [];
+  const findings = [];
+  let ofPackages = 0;
+  for (const f of files) {
+    const file = `${name}!${f.filename}`;
+    const own = ownFiles.has(f.filename);
+    if (own) ofPackages++;
+    const bytes = reader.read(f.start, f.end);
+    findings.push(...scanPath(file, own ? notWords : markers));
+    if (IMAGE_BINARY.test(f.filename) || bytes.subarray(0, 4096).includes(0)) {
+      const plain = /\.fmt$/i.test(f.filename) ? unpackedFormat(bytes) : bytes;
+      findings.push(...scanText(plain.toString('latin1'), file, pathMarkers, []));
+      continue;
+    }
+    const text = bytes.toString('latin1');
+    findings.push(...scanText(text, file, own ? notWords : markers, []));
+    if (TEXT_FILE.test(f.filename)) findings.push(...scanEncoded(text, file, own ? valuesNotWords : markerValues, []));
+  }
+  return { files: files.length, packageFiles: ofPackages, findings };
 }
 
 function run(cmd, args) {
@@ -336,7 +596,8 @@ async function main(argv) {
       throw new Error('the test copy is built without extensionDependencies (docs/DESIGN.md#testing, V0)');
     }
     if (withEngine) {
-      console.log(stageEngine({ data: testCopy }).join('\n'));
+      const at = argv.indexOf('--data-package');
+      console.log(stageEngine({ data: testCopy, dataPackage: at >= 0 ? path.resolve(argv[at + 1]) : process.env.LIVEMD2TEX_CORE_DATA || null }).join('\n'));
     }
     mkdirSync(path.join(root, 'out', 'vsix'), { recursive: true });
     const suffix = testCopy ? '-testcopy' : withEngine ? '-engine' : '';
@@ -350,7 +611,7 @@ async function main(argv) {
   const dataOnly = argv.includes('--data');
   const markerValues = loadMarkerValues();
   const result = scanEntries(entries, loadAllowlist(), loadMarkers(), loadPinnedHashes(), { dataOnly, markerValues });
-  result.failures.push(...missingNotices(entries), ...cc0Headers(entries), ...unpinnedGlue(entries), ...engineLinksLibpaper(entries), ...engineLinksLuaffiCode(entries), ...wrongNotices(entries));
+  result.failures.push(...missingNotices(entries), ...cc0Headers(entries), ...dataOnlyTexts(entries), ...pinnedEngine(entries), ...engineByContent(entries), ...noticesForEngine(entries), ...engineStrings(entries), ...(await engineImports(entries)), ...engineHeader(entries), ...wrongNotices(entries));
   const unpacked = [...entries.values()].reduce((n, b) => n + b.length, 0);
   const report = {
     vsix: path.basename(vsixPath),
@@ -364,7 +625,10 @@ async function main(argv) {
     `${(unpacked / 1048576).toFixed(2)} MB unpacked, ${result.files} files, ${result.jsFiles.length} JavaScript files scanned.`);
   console.log(`WASM files: ${result.wasmFiles.map((w) => `${w.name} (${w.bytes} B)`).join(', ') || 'none'}`);
   for (const p of result.pinnedFiles) {
-    console.log(`Pinned third-party file, byte-identical: ${p.name} = ${p.pinned} (${p.bytes} B)`);
+    console.log(`Pinned file, byte-identical: ${p.name} = ${p.pinned} (${p.bytes} B)`);
+  }
+  for (const i of result.imageFiles) {
+    console.log(`Data image, scanned file by file through its index: ${i.name} (${i.files} files, ${i.packageFiles} of them TeX Live's own)`);
   }
   for (const h of result.hits) {
     console.log(`  ${h.status.padEnd(12)} ${h.file}:${h.line}  ${h.kind} ${h.match}`);

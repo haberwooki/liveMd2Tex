@@ -53,7 +53,7 @@ export function includesFile(text: string, name: string): boolean {
 }
 
 export interface EngineChoice {
-  engine: Exclude<EngineName, 'luahbtex-ini'>;
+  engine: EngineName;
   reason: string;
 }
 

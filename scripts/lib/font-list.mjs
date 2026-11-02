@@ -4,9 +4,12 @@
 // 207-300 at TeX Live 6a300188).
 //
 // Ours (the liveMd2Tex authors), GPL-3.0-or-later. Written from fontconfig 2.13.96's src/fcfreetype.c
-// (FcFreeTypeQueryAll, FcFreeTypeQueryFaceInternal, FcSfntNameTranscode, the weight, width and slant tables) and
-// src/fcweight.c, which were read, not copied; and from the OpenType specification (the name, OS/2, head, fvar
-// tables) and the WOFF 1.0 specification.
+// (FcFreeTypeQueryAll, FcFreeTypeQueryFaceInternal, FcSfntNameTranscode) and src/fcweight.c, which were read and
+// written anew in JavaScript, and from the OpenType specification (the name, OS/2, head, fvar tables) and the WOFF 1.0
+// specification. The weight, width and slant tables below (WEIGHT_MAP, WEIGHT_WORDS, WIDTH_WORDS, SLANT_WORDS) follow
+// fontconfig's (fcweight.c's map; fcfreetype.c's weightConsts, widthConsts and slantConsts) entry by entry, so
+// fontconfig's notice is kept beside this file: scripts/lib/fontconfig-notice.txt (THIRD_PARTY_NOTICES.md, "Code that
+// follows other projects' code").
 //
 // What it follows, as fontconfig 2.13.96 built with its default options (no iconv) and TeX Live's FreeType
 // (built --without-brotli, so WOFF2 files cannot be opened):
@@ -464,10 +467,12 @@ export function describeFile(bytes, file) {
   if (opened.faces.length === 0) return { faces: [], skipped: opened.reason };
   const base = file.slice(file.lastIndexOf('/') + 1);
   const faces = [];
+  let variable = false;
   opened.faces.forEach((tables, faceIndex) => {
     if (!scalable(tables)) return;
     const recs = nameRecords(tables.get('name'));
     const fvar = fvarInfo(tables.get('fvar'));
+    if (fvar) variable = true;
     const push = (index, mode) => faces.push({ file, index, ...describe(tables, recs, base, mode, fvar) });
     push(faceIndex, null);
     if (fvar && fvar.instances.length > 0) {
@@ -482,7 +487,7 @@ export function describeFile(bytes, file) {
       if (varies) push(faceIndex, 'variable');
     }
   });
-  return { faces };
+  return { faces, variable };
 }
 
 const SEP = '\x1f';

@@ -1,7 +1,7 @@
 // The package index of a data set (docs/DESIGN.md#architecture, #engine-and-data): which package each file name belongs to, and
-// which files each package's .sty and .cls files load. B1 writes it into each data package; until then
-// scripts/stage-engine.mjs builds it from TeXlyre's interim image (dist/data/packages.json) and
-// scripts/lib/extra-standin.mjs from the stand-in add-on. Pure; no VS Code, no file access.
+// which files each package's .sty and .cls files load. The data builder writes it into each data package
+// (scripts/lib/package-index.mjs, which a unit test keeps equal to this file), and scripts/lib/extra-standin.mjs
+// into the engine tests' made-up add-on. Pure; no VS Code, no file access.
 
 /** The index format this code reads (scripts/lib/package-index.mjs writes the same). */
 export const INDEX_FORMAT = 1;
@@ -132,4 +132,14 @@ export function isPackageIndex(value: unknown): value is PackageIndex {
     typeof v.files === 'object' &&
     v.files !== null
   );
+}
+
+/**
+ * The file names an add-on's package index shares with the core's. Mounted, the add-on is searched before the core,
+ * so such a file would change the core's for every document: the extension does not use an add-on that has one
+ * (src/extension/engine/dataResolver.ts), and the data builder stops on one (scripts/build-bundle.mjs, through
+ * scripts/lib/package-index.mjs's filesBothHold, which a unit test keeps equal to this one).
+ */
+export function filesBothHold(core: PackageIndex | null, addOn: PackageIndex): string[] {
+  return core ? Object.keys(addOn.files).filter((f) => f in core.files) : [];
 }

@@ -16,6 +16,7 @@ import type { TestApi } from '../../src/extension/extension';
 import { COMMAND_PREFIX } from '../../src/shared/identity';
 import { removeLink } from '../support/helpers';
 import { pdfText } from '../support/pdfText';
+import { missingInput } from '../support/missingData';
 import { activateExtension, engineStubArgs } from './support';
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -40,7 +41,11 @@ describe('gate 1 in VS Code: previews, saves, links and encodings', function () 
   before(async function () {
     const ws = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
     api = await activateExtension();
-    if (!ws || !api.engineAvailable()) {
+    if (!ws) {
+      this.skip();
+    }
+    if (!api.engineAvailable()) {
+      missingInput('the staged engine and core data (node scripts/stage-engine.mjs --data)');
       this.skip();
     }
     api.setEngineExecArgv(engineStubArgs);

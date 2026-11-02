@@ -34,12 +34,11 @@ describe('B1: the public corpus on the built bundle', function () {
     return new EngineService({
       modulePath: path.join(root, 'dist', 'engine-host.js'),
       assets: () => ({
-        glue: path.join(engineDir, 'busytex.js'),
-        wasm: path.join(engineDir, 'busytex.wasm'),
+        glue: path.join(engineDir, 'engine.js'),
+        wasm: path.join(engineDir, 'engine.wasm'),
         cnfOverride: path.join(engineDir, 'texmf-override.cnf'),
-        fontsConf: path.join(engineDir, 'fonts.conf'),
         data: path.join(coreDir, manifest.file),
-        loader: path.join(coreDir, manifest.index),
+        index: path.join(coreDir, manifest.index),
       }),
       idleMinutes: () => 0,
       log: () => undefined,

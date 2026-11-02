@@ -57,7 +57,8 @@ describe('GitHub Actions workflows (G0 preparation)', () => {
     assert.match(text, /xvfb-run -a npm run test:integration/);
     assert.match(text, /key: engine-assets-\$\{\{ hashFiles\('engine\/pins\.json'\) \}\}/);
     assert.match(text, /npm ci --omit=optional/);
-    assert.ok(text.includes('!out/vsix/*-standin.vsix'));
+    // The test copy, which holds the core data, is never uploaded.
+    assert.ok(text.includes('!out/vsix/*-testcopy.vsix'));
     assert.ok(text.includes('libnss3 libgbm1'));
     assert.ok(text.includes('npm pkg set "engines.vscode=^$VSCODE_VERSION"'));
     // No workflow input inside a run line (G2R-05), and the marker secret only on the scan step (G2E-R2).
@@ -127,6 +128,12 @@ describe('GitHub Actions workflows (G0 preparation)', () => {
       }
     }
     assert.equal(jobs.build.steps.find((s) => s.with?.name === 'bundle-packages')?.with?.['retention-days'], 3);
+    // Our engine needs no patch, and the builder needs no engine image: the build job stages no data, and no
+    // workflow runs the earlier engine's glue patch.
+    assert.doesNotMatch(run('build'), /stage-engine\.mjs --data/);
+    for (const f of readdirSync(folder).filter((x) => x.endsWith('.yml'))) {
+      assert.doesNotMatch(readFileSync(path.join(folder, f), 'utf8'), /engine-patch/, f);
+    }
     // The packages' SHA-256 goes into the job summary in the build job, before any other job runs.
     assert.match(run('build'), /sha256sum \.\/\*\.vsix[\s\S]*GITHUB_STEP_SUMMARY/);
     // The closure test: core first, sharded over a matrix, on the packages as they ship (GB1E-03).

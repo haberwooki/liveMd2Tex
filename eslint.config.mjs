@@ -99,6 +99,10 @@ const BASE_SYNTAX = [
     `MemberExpression[object.name=/^(globalThis|window|self|global)$/][property.name=/^(${NETWORK_GLOBALS.join('|')})$/]`,
     'No network API in the extension (docs/DESIGN.md#rules).',
   ),
+  syntax(
+    'MemberExpression[property.name=/^(FS_)?(createLazyFile|createPreloadedFile|preloadFile)$/], MemberExpression[property.value=/^(FS_)?(createLazyFile|createPreloadedFile|preloadFile)$/]',
+    "A lazy or preloaded file makes the engine's glue read a URL, under Node from the real disk; mount images and write files instead (docs/DEVELOPING.md, \"The rules the checks enforce\").",
+  ),
 ];
 const NO_DYNAMIC_IMPORT = syntax('ImportExpression', 'Dynamic import() would hide a module from the import rules.');
 

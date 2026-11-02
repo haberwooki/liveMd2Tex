@@ -13,7 +13,7 @@ import { DISPLAY_NAME } from '../../src/shared/identity';
 import { root } from '../support/helpers';
 import { nodeFs } from '../support/nodeFs';
 import { docstripWith } from '../support/prepareV0Workspace';
-import { record, writeResults } from './support';
+import { record, stagedEngine, writeResults } from './support';
 
 const SECRET = 'PRIVATE-KEY-MATERIAL-THAT-MUST-NEVER-BE-READ';
 
@@ -35,8 +35,8 @@ describe('M2-A (engine level): confinement, watched files, quick passes, cold st
   let projects: CorpusProject[] = [];
 
   before(async function () {
-    if (!bundledEngineAssets(root)) {
-      this.skip();
+    if (!stagedEngine(this)) {
+      return;
     }
     tmp = mkdtempSync(path.join(os.tmpdir(), 'livemd2tex-m2a-'));
     engine = service();

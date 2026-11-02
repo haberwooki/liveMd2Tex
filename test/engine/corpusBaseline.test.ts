@@ -1,5 +1,5 @@
 // G0's acceptance check, prepared on the laptop (docs/DESIGN.md#testing): the public corpus, compiled through
-// the extension's route with TeXlyre's pinned image, gives the same page counts and the same missing-package
+// the extension's route with the core image, gives the same page counts and the same missing-package
 // lists on every CI runner as on the laptop's copy of the same image (same SHA-256).
 //
 // The laptop writes the baseline once: LIVEMD2TEX_WRITE_CORPUS_BASELINE=1 npm run test:engine. Every other run
@@ -19,6 +19,7 @@ import { materializeCorpus, type CorpusProject } from '../support/corpusProjects
 import { root } from '../support/helpers';
 import { nodeFs } from '../support/nodeFs';
 import { docstripWith } from '../support/prepareV0Workspace';
+import { stagedEngine } from './support';
 
 const BASELINE = path.join(root, 'test', 'baselines', 'corpus.json');
 
@@ -33,8 +34,8 @@ describe('G0 check: corpus page counts and missing-package lists against the lap
   let tmp = '';
 
   before(function () {
-    if (!bundledEngineAssets(root) || !existsSync(path.join(root, 'dist', 'data', 'packages.json'))) {
-      this.skip();
+    if (!stagedEngine(this)) {
+      return;
     }
     engine = new EngineService({ modulePath: path.join(root, 'dist', 'engine-host.js'), assets: () => bundledEngineAssets(root), idleMinutes: () => 0, log: () => undefined });
     engine.execArgv = ['--require', path.join(root, 'test', 'stubs', 'register-engine-host.cjs')];

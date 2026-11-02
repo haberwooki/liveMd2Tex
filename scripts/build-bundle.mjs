@@ -10,7 +10,7 @@
 //   node scripts/build-bundle.mjs --stage closure [--closure core|extra|all] [--shard 0/4] [--hosts 3]   (core by default)
 //   (no --stage: fetch, build and closure in one run)
 // Common options: --out ../bundle-out, --cache ../bundle-cache, --local DIR, --curl-config FILE, --pins FILE,
-// --sets FILE, --licences FILE (engine/bundle-licences.json), --allow-missing, --engine-assets DIR, --engine-image DIR.
+// --sets FILE, --licences FILE (engine/bundle-licences.json), --allow-missing, --engine-assets DIR.
 //
 // --local DIR: the snapshot's files as the workflow downloaded them, in the mirror's layout
 // (tlpkg/texlive.tlpdb.xz, archive/<name>.tar.xz, and the <name>.doc.tar.xz and <name>.source.tar.xz archives that
@@ -21,9 +21,9 @@
 // --curl-config FILE (fetch stage, with --local): lists every archive that is missing or wrong in DIR as a curl
 // config (url and output pairs), instead of failing; the workflow downloads them with curl and runs the stage again.
 //
-// Before the build and closure stages: node scripts/engine-assets.mjs, node scripts/engine-patch.mjs,
-// node scripts/build.mjs, npm run compile and node scripts/stage-engine.mjs --data (the engine, its host, the client
-// in out/, and the engine build's image, whose support files the core image takes).
+// Before the build and closure stages: node scripts/engine-assets.mjs --source livemd2tex-engine, node
+// scripts/build.mjs and npm run compile (the engine of engine/pins.json, its host, and the client in out/). The core
+// image is the TeX tree, the generated files and the formats: the engine needs no other file of its own.
 //
 // The stages:
 //  pin      The tlpdb from the snapshot, checked against TeX Live's signed SHA-512. The workflow verifies the
@@ -55,12 +55,10 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
-import { archiveFile, CORE_ROOT, coreImageFiles, engineSupportFiles, extraImageFiles, fetchArchive, generatedFiles, isGplFamily, isProgramFile, licenceGroup, licenceOf, overlap, packType1, selectSets, sizeBreakdown, sha256, sha512, sizeTable, snapshotArchives, unpackPackage } from './lib/bundle.mjs';
+import { archiveFile, CORE_ROOT, coreImageFiles, extraImageFiles, fetchArchive, generatedFiles, isGplFamily, isProgramFile, licenceGroup, licenceOf, overlap, packType1, selectSets, sizeBreakdown, sha256, sha512, sizeTable, snapshotArchives, unpackPackage } from './lib/bundle.mjs';
 import { buildDataImage } from './lib/data-image.mjs';
-import { pinnedGluePath } from './lib/derived-glue.mjs';
 import { archiveTexts, classifyFonts, gplChanges, gplChangesPaths, isLicenceFile, licenceArchives, licenceFolder, loadTexts } from './lib/licence-texts.mjs';
-import { openImage } from './lib/image-files.mjs';
-import { buildPackageIndex } from './lib/package-index.mjs';
+import { buildPackageIndex, filesBothHold } from './lib/package-index.mjs';
 import { licenceClass, parseTlpdb, texmfPath } from './lib/tlpdb.mjs';
 import { unxz } from './lib/xz.mjs';
 
@@ -167,13 +165,6 @@ async function getFile(pins, local, rel, fetchImpl) {
     }
   }
   throw new Error(`${rel} could not be fetched: ${errors.join('; ')}`);
-}
-
-/** The pinned engine build's image files (texlive-extra.data with its index), by absolute path without "/". */
-function pinnedEngineImage(dir) {
-  const index = readJson(path.join(dir, 'texlive-extra.index.json'));
-  const reader = openImage(path.join(dir, 'texlive-extra.data'), index.compressed);
-  return new Map(index.metadata.files.map((f) => [f.filename.slice(1), reader.read(f.start, f.end)]));
 }
 
 /**
@@ -331,12 +322,14 @@ export async function main(argv, { fetchImpl = fetch, log = console.log } = {}) 
     report.missing = chosen.missing;
     report.dropped = chosen.dropped;
     report.moved = chosen.moved;
+    report.ownDocuments = chosen.ownDocuments;
     report.unclassified = { core: licenceList(db, chosen.core, sets.licenceReviews).none, extra: licenceList(db, chosen.extra, sets.licenceReviews).none };
     chosen.problems.forEach(fail);
     if (chosen.missing.length > 0 && !argv.includes('--allow-missing')) {
       chosen.missing.forEach((m) => fail(`not in the tlpdb: ${m}`));
     }
     say(`core-data: ${chosen.core.size} packages; extra-data: ${chosen.extra.size} (${chosen.dropped.length} left out: for their licence, or on purpose)`);
+    say(`core-data holds for the extension's own templates and presets: ${chosen.ownDocuments.map((o) => o.package).join(', ') || 'nothing more'}`);
     say(`no Catalogue licence (TeX Live's own files): core-data ${report.unclassified.core.length}, extra-data ${report.unclassified.extra.length}`);
     step('sets');
     if (report.problems.length > 0) {
@@ -465,13 +458,6 @@ export async function main(argv, { fetchImpl = fetch, log = console.log } = {}) 
     const generated = generatedFiles(db, chosen.core, chosen.extra, filesOf.core, filesOf.extra);
     report.maps = generated.mapProblems;
     generated.mapProblems.missing.forEach((m) => fail(`a font map the packages name is not there: ${m}`));
-    // The engine build's own files (ICU data, fontconfig's file, /etc, /bin), from its pinned image as
-    // scripts/stage-engine.mjs --data stages it into dist/data: every core build needs that image (GB1E-10).
-    const imageDir = arg('--engine-image', path.join(root, 'dist', 'data'));
-    const engineFiles = existsSync(path.join(imageDir, 'texlive-extra.index.json')) ? engineSupportFiles(pinnedEngineImage(imageDir)) : new Map();
-    if (engineFiles.size === 0) {
-      report.notes.push('no engine support files: the pinned engine build is not here (tests only)');
-    }
     step('generated');
 
     // The licence texts each data package ships: LICENSES/ beside data/, with LICENSES/INDEX (engine/bundle-licences.json;
@@ -520,7 +506,7 @@ export async function main(argv, { fetchImpl = fetch, log = console.log } = {}) 
         shipped.forEach((b, rel) => isLicenceFile(rel) && own.set(rel, b));
         return { name, licences: licenceOf(db.get(name), sets.licenceReviews), own, docs: docsOf.get(name), shipped, fontTexts: classified.texts.get(name), fontNotices: classified.notices.get(name) };
       });
-      const folder = licenceFolder(set, packages, licenceRules, licenceTextsById, key === 'core' ? [...engineFiles.keys()] : []);
+      const folder = licenceFolder(set, packages, licenceRules, licenceTextsById);
       folder.problems.forEach(fail);
       const dir = path.join(out, set, 'LICENSES');
       rmSync(dir, { recursive: true, force: true });
@@ -537,11 +523,11 @@ export async function main(argv, { fetchImpl = fetch, log = console.log } = {}) 
 
     const dirs = { core: path.join(out, 'core-data', 'data'), extra: path.join(out, 'extra-data', 'data'), stage: path.join(out, 'stage') };
     Object.values(dirs).forEach((d) => mkdirSync(d, { recursive: true }));
-    const assetsDir = arg('--engine-assets', path.join(root, '..', 'engine_assets', readJson(path.join(root, 'engine', 'pins.json')).sources.find((s) => s.id === 'texlyre-busytex').folder));
+    const assetsDir = arg('--engine-assets', enginePinDir());
     let formats = new Map();
     if (!skipEngine) {
       const { buildFormats, patternCost, startEngines } = await import('./lib/bundle-engine.mjs');
-      writeImage(dirs.stage, 'stage1', coreImageFiles(filesOf.core, generated.files, engineFiles), { compress: false, strictNames: false });
+      writeImage(dirs.stage, 'stage1', coreImageFiles(filesOf.core, generated.files), { compress: false, strictNames: false });
       const [builder] = await startEngines(root, engineAssets(assetsDir, path.join(dirs.stage, 'stage1.data'), path.join(dirs.stage, 'stage1.index.json')), 1);
       try {
         ({ formats } = await buildFormats(builder, generated.formats));
@@ -552,9 +538,21 @@ export async function main(argv, { fetchImpl = fetch, log = console.log } = {}) 
       step('formats');
     }
 
-    const abi = readJson(path.join(root, 'engine', 'pins.json')).sources.find((s) => s.id === 'texlyre-busytex').files.find((f) => f.name === 'busytex.wasm').sha256;
-    const coreTree = coreImageFiles(filesOf.core, generated.files, engineFiles, formats);
+    // The engine ABI: the pinned engine.wasm's SHA-256 (docs/DESIGN.md#store-and-packaging).
+    const abi = enginePin().files.find((f) => f.name === 'engine.wasm').sha256;
+    const coreTree = coreImageFiles(filesOf.core, generated.files, formats);
     const extraTree = extraImageFiles(filesOf.extra);
+    // The font lists XeTeX's fontconfig stand-in reads (scripts/lib/font-list.mjs), one in each image
+    // (FONT_LIST_IN_IMAGE in src/engine-host/engine/layout.ts): each set's faces ordered with its own fontOrder
+    // rules, by the paths the engine host mounts them at, and joined core first as the host joins them. A collision
+    // with no rule, a collision across the sets, and a rule that does not hold or decides nothing stop the build.
+    const lists = await fontLists(coreTree, extraTree, sets);
+    lists.problems.forEach(fail);
+    coreTree.set(`${CORE_ROOT}/fonts/xetex-fonts.tsv`, lists.core);
+    extraTree.set('fonts/xetex-fonts.tsv', lists.extra);
+    report.fontLists = lists.report;
+    say(`font lists: core ${lists.report.core.faces} faces in ${lists.report.core.files} files, extra ${lists.report.extra.faces} in ${lists.report.extra.files}; ${lists.report.collisions} collisions, each decided by one of ${lists.report.rules} rules`);
+    for (const d of lists.report.dropped) say(`font list: ${d.file} left out (${d.why}), as fontconfig leaves it out`);
     // The core's Type 1 fonts packed with t1c (font packing: decided by the maintainer, 2026-10-22), decided per font
     // by its own header (the licence step's classifyFonts; the t1c gate, T1S-01): a font is packed only when its
     // terms are the LPPL, the GUST Font License, the GPL or DejaVu's, and none of the packages core-data's
@@ -624,6 +622,14 @@ export async function main(argv, { fetchImpl = fetch, log = console.log } = {}) 
     const indexOf = (files) => buildPackageIndex([...files.keys()], (rel) => files.get(rel).toString('latin1'));
     const coreIndex = indexOf(filesOf.core);
     const extraIndex = indexOf(filesOf.extra);
+    // The extension does not use an add-on whose package index holds a file name the core's holds (it would be
+    // searched before the core), so such a name stops the build: the same rule, filesBothHold, as the extension's
+    // (src/shared/packageIndex.ts; a unit test keeps the two equal).
+    const shared = filesBothHold(coreIndex, extraIndex);
+    if (shared.length > 0) {
+      const owners = [...new Set(shared.map((f) => `${extraIndex.files[f]} (core: ${coreIndex.files[f]})`))];
+      fail(`extra-data holds ${shared.length} file name(s) core-data holds (${shared.slice(0, 5).join(', ')}), in its packages ${owners.join(', ')}: the extension would not use the add-on; leave the package out of one set`);
+    }
     // A package under the GPL, LGPL or AGPL, or with a packed font under the GPL, also gets its archives in the pinned
     // snapshot, with their SHA-512: the source of the version shipped, which CTAN stops keeping at its next update
     // (the licence gate, M6 and L-09).
@@ -720,7 +726,7 @@ export async function main(argv, { fetchImpl = fetch, log = console.log } = {}) 
     const extraDir = path.join(out, 'extra-data', 'data');
     const core = readJson(path.join(coreDir, 'manifest.json'));
     const extra = readJson(path.join(extraDir, 'manifest.json'));
-    const assetsDir = arg('--engine-assets', path.join(root, '..', 'engine_assets', readJson(path.join(root, 'engine', 'pins.json')).sources.find((s) => s.id === 'texlyre-busytex').folder));
+    const assetsDir = arg('--engine-assets', enginePinDir());
     const hosts = await startEngines(root, engineAssets(assetsDir, path.join(coreDir, core.image.file), path.join(coreDir, core.image.index)), Number(arg('--hosts', String(Math.max(1, Math.min(4, os.cpus().length - 1))))));
     step('engines');
     try {
@@ -750,14 +756,92 @@ export async function main(argv, { fetchImpl = fetch, log = console.log } = {}) 
 }
 
 /** The engine assets for the engine host, with the given core image. */
-function engineAssets(assetsDir, data, loader) {
+/** Where the engine host mounts the add-on's image (src/engine-host/engine/worker.ts, TEXMF_EXTRA). */
+const EXTRA_MOUNT = '/texmf-extra';
+
+/**
+ * The two sets' font lists (scripts/lib/font-list.mjs), as each image stores it: the core's paths are its image's
+ * file names, the add-on's are relative to its top (the host puts its mount root in front). The faces are described
+ * and ordered by the paths the host mounts them at, so the sets' fontOrder rules (engine/bundle-sets.json) name the
+ * files as the font check and the host do.
+ */
+export async function fontLists(coreTree, extraTree, sets) {
+  const { describeFile, isListedFontPath, joinSets, listLine } = await import('./lib/font-list.mjs');
+  // The font check of our stand-in for fontconfig compared only static .otf and .ttf files with fontconfig, so a
+  // collection (.ttc, .otc), a web font (.woff, .woff2) or a variable font is refused until the check covers its kind.
+  // A file the list writer cannot read, or one with no outlines, is left out as fontconfig leaves it out, and listed.
+  const refused = [];
+  const dropped = [];
+  const faces = (tree, mountedAt) => {
+    const out = [];
+    let files = 0;
+    for (const [p, b] of [...tree].sort((x, y) => (x[0] < y[0] ? -1 : x[0] > y[0] ? 1 : 0))) {
+      if (isListedFontPath(p)) {
+        files++;
+        if (/\.(ttc|otc|woff2?)$/i.test(p)) {
+          refused.push(`${mountedAt(p)}: a font collection or web font`);
+          continue;
+        }
+        const d = describeFile(b, mountedAt(p));
+        if (d.variable) {
+          refused.push(`${mountedAt(p)}: a variable font`);
+          continue;
+        }
+        if (d.skipped) dropped.push({ file: mountedAt(p), why: d.skipped });
+        out.push(...d.faces);
+      }
+    }
+    return { faces: out, files };
+  };
+  const core = faces(coreTree, (p) => `/${p}`);
+  const extra = faces(extraTree, (p) => `${EXTRA_MOUNT}/${p}`);
+  const rules = [...(sets['core-data'].fontOrder ?? []), ...(sets['extra-data'].fontOrder ?? [])];
+  const joined = joinSets(
+    [
+      { name: 'core', faces: core.faces },
+      { name: 'extra', faces: extra.faces },
+    ],
+    rules,
+  );
+  const problems = [
+    ...refused.map((r) => `font list: ${r}, which the font check does not cover (static .otf and .ttf only); the builder refuses it`),
+    ...joined.collisions.filter((c) => !c.rule).map((c) => `font list (${c.set}): "${c.name}" (${c.kind}) is in ${c.first} and ${c.other}, and no fontOrder rule says which comes first`),
+    ...joined.crossSet.map((c) => `font lists: "${c.name}" (${c.kind}) is in ${c.firstSet} (${c.first}) and ${c.otherSet} (${c.other}); no rule of one set can decide that`),
+    ...joined.unmetRules.map((r) => `fontOrder rule "${r.name}": ${r.first} should come first, but ${r.firstNow} does`),
+    ...joined.staleRules.map((r) => `fontOrder rule "${r.name}" (${r.first}) decides nothing: ${r.why}`),
+  ];
+  const text = (list) => Buffer.from(list.length > 0 ? `${list.join('\n')}\n` : '');
+  const inSet = (f, mount) => (mount ? f.file.startsWith(`${mount}/`) : !f.file.startsWith(`${EXTRA_MOUNT}/`));
   return {
-    glue: pinnedGluePath(path.join(root, '..', 'engine_assets'), readJson(path.join(root, 'engine', 'pins.json'))),
-    wasm: path.join(assetsDir, 'busytex.wasm'),
+    core: text(joined.faces.filter((f) => inSet(f, null)).map((f) => listLine(f))),
+    extra: text(joined.faces.filter((f) => inSet(f, EXTRA_MOUNT)).map((f) => listLine({ ...f, file: f.file.slice(EXTRA_MOUNT.length) }))),
+    problems,
+    report: { core: { files: core.files, faces: core.faces.length }, extra: { files: extra.files, faces: extra.faces.length }, collisions: joined.collisions.length, rules: rules.length, dropped },
+  };
+}
+
+/** The engine release engine/pins.json pins (livemd2tex-engine). */
+function enginePin() {
+  const pin = readJson(path.join(root, 'engine', 'pins.json')).sources.find((s) => s.id === 'livemd2tex-engine');
+  if (!pin) {
+    throw new Error('engine/pins.json pins no livemd2tex-engine source');
+  }
+  return pin;
+}
+
+/** Where scripts/engine-assets.mjs puts the pinned engine's files. */
+function enginePinDir() {
+  return path.join(root, '..', 'engine_assets', enginePin().folder);
+}
+
+/** The engine host's assets: the pinned engine, our texmf.cnf, and an image with its index. */
+function engineAssets(assetsDir, data, index) {
+  return {
+    glue: path.join(assetsDir, 'engine.js'),
+    wasm: path.join(assetsDir, 'engine.wasm'),
     data,
-    loader,
+    index,
     cnfOverride: path.join(root, 'engine', 'texmf-override.cnf'),
-    fontsConf: path.join(root, 'engine', 'fonts.conf'),
   };
 }
 

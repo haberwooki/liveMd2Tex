@@ -1,99 +1,35 @@
 {
-  "about": "Pinned inputs for S1 (docs/DESIGN.md#engine-and-data). Files are fetched by scripts/engine-assets.mjs into ../engine_assets/<folder>/ (outside the repository) and checked by size and SHA-256. Never commit the files themselves.",
+  "about": "Pinned inputs (docs/DESIGN.md#engine-and-data): our engine release and the CTAN files the tests and templates use. Files are fetched by scripts/engine-assets.mjs into ../engine_assets/<folder>/ (outside the repository) and checked by size and SHA-256. Never commit the files themselves.",
   "sources": [
     {
-      "id": "texlyre-busytex",
-      "folder": "texlyre-busytex-build-46ebb62",
-      "release": "https://github.com/TeXlyre/texlyre-busytex-build/releases/tag/build_wasm_46ebb6216a5c1fe63dd1dc885831d1a8cef2dc86_31802832436_1",
-      "tag": "build_wasm_46ebb6216a5c1fe63dd1dc885831d1a8cef2dc86_31802832436_1",
-      "published": "2026-08-14T13:56:30Z",
-      "licence": "TeXlyre-BusyTeX (its build scripts, its C files in busytex.wasm and its glue busytex.js): AGPL-3.0, Copyright (c) 2026 Fares Abawi, based on BusyTeX (MIT); every part it links: engine/engine-notices.json; engines: pdfTeX, dvipdfmx GPL-2.0-or-later, XeTeX MIT/X11, bibtex8 GPL-1.0-or-later, kpathsea LGPL-2.1-or-later; TeX Live data under each package licence (docs/DESIGN.md#store-and-packaging).",
-      "note": "SHA-256 values are GitHub release-asset digests, rechecked after download.",
+      "id": "livemd2tex-engine",
+      "folder": "livemd2tex-engine-6a30018-4",
+      "release": "https://github.com/haberwooki/liveMd2Tex/releases/tag/engine-6a30018-4",
+      "tag": "engine-6a30018-4",
+      "published": "2026-11-02",
+      "commit": "2594ca2e05764e77580ce19c7403d75fac1907ae",
+      "licence": "liveMd2Tex's TeX engine (pdfTeX, XeTeX, xdvipdfmx and bibtex8 with kpathsea, built from TeX Live's source by engine/build/ with Emscripten): GPL-3.0 as a whole, each part under its own terms (engine/engine-notices.json; the release's NOTICE); our own code GPL-3.0-or-later; TeX Live data under each package licence (docs/DESIGN.md#store-and-packaging).",
+      "note": "Our engine release, built by .github/workflows/engine.yml at the commit above; engine-build.json records the build, and a WSL build of the same commit gave the same engine.wasm and engine.js (scripts/engine-compare.mjs). published is the date the owner published the release. It is an immutable release, so its files cannot change: scripts/engine-assets.mjs downloads them anonymously from the addresses below and checks each one's size and SHA-256.",
       "files": [
         {
-          "name": "busytex.wasm",
-          "url": "https://github.com/TeXlyre/texlyre-busytex-build/releases/download/build_wasm_46ebb6216a5c1fe63dd1dc885831d1a8cef2dc86_31802832436_1/busytex.wasm",
-          "size": 32507525,
-          "sha256": "8d1988fc58cd1611c3cbd6bd986c3e607e5ff44f1d94252207ff7aae4cee72e0"
+          "name": "engine.wasm",
+          "url": "https://github.com/haberwooki/liveMd2Tex/releases/download/engine-6a30018-4/engine.wasm",
+          "size": 26819862,
+          "sha256": "ae9dbba0960d658f96f6f593a9434227e83f8ed56fc26eff359894e83e02f87e"
         },
         {
-          "name": "busytex.js",
-          "url": "https://github.com/TeXlyre/texlyre-busytex-build/releases/download/build_wasm_46ebb6216a5c1fe63dd1dc885831d1a8cef2dc86_31802832436_1/busytex.js",
-          "size": 271047,
-          "sha256": "875b87795162cb26b15bd93cffa2e8739bcb900d623ab904029b39402508a1a4"
+          "name": "engine.js",
+          "url": "https://github.com/haberwooki/liveMd2Tex/releases/download/engine-6a30018-4/engine.js",
+          "size": 155993,
+          "sha256": "4fc08dd4c837334afa553951a66dc914dfcf0a95f9631310aeb505d40920dceb"
         },
         {
-          "name": "busytex_pipeline.js",
-          "url": "https://github.com/TeXlyre/texlyre-busytex-build/releases/download/build_wasm_46ebb6216a5c1fe63dd1dc885831d1a8cef2dc86_31802832436_1/busytex_pipeline.js",
-          "size": 36266,
-          "sha256": "4855e8fec24e8df952e1080d902791752bcdf283f4fae15811c371dd3ba3389e"
-        },
-        {
-          "name": "busytex_worker.js",
-          "url": "https://github.com/TeXlyre/texlyre-busytex-build/releases/download/build_wasm_46ebb6216a5c1fe63dd1dc885831d1a8cef2dc86_31802832436_1/busytex_worker.js",
-          "size": 3123,
-          "sha256": "80eca56a2eb015bdfbebff26e539dd793407b73b6c1cd351170e6fdb6e17c39a"
-        },
-        {
-          "name": "texlive-extra.data",
-          "url": "https://github.com/TeXlyre/texlyre-busytex-build/releases/download/build_wasm_46ebb6216a5c1fe63dd1dc885831d1a8cef2dc86_31802832436_1/texlive-extra.data",
-          "size": 341568560,
-          "sha256": "9ae117b8fd7eacc13430296278d63603070f083c6f1e647937a6866874c726ae"
-        },
-        {
-          "name": "texlive-extra.js",
-          "url": "https://github.com/TeXlyre/texlyre-busytex-build/releases/download/build_wasm_46ebb6216a5c1fe63dd1dc885831d1a8cef2dc86_31802832436_1/texlive-extra.js",
-          "size": 7345232,
-          "sha256": "6c935b358ababde879aa2c62b48601d6e6be4ee7f3f9ed86c7f49136b803d618"
-        },
-        {
-          "name": "texlive-extra.js.providespackage.txt",
-          "url": "https://github.com/TeXlyre/texlyre-busytex-build/releases/download/build_wasm_46ebb6216a5c1fe63dd1dc885831d1a8cef2dc86_31802832436_1/texlive-extra.js.providespackage.txt",
-          "size": 153961,
-          "sha256": "40e2ceb5b1ef0b401bc26e1148550cd44c4345b2d17fbc6aff81b4a95f7f365f"
-        },
-        {
-          "name": "texlive-extra.profile",
-          "url": "https://github.com/TeXlyre/texlyre-busytex-build/releases/download/build_wasm_46ebb6216a5c1fe63dd1dc885831d1a8cef2dc86_31802832436_1/texlive-extra.profile",
-          "size": 639,
-          "sha256": "fe9ce035e04dd2ff523606556ec2fc15e7419321e26f09590596c6c3f13281f5"
-        },
-        {
-          "name": "texlive-extra.txt",
-          "url": "https://github.com/TeXlyre/texlyre-busytex-build/releases/download/build_wasm_46ebb6216a5c1fe63dd1dc885831d1a8cef2dc86_31802832436_1/texlive-extra.txt",
-          "size": 1864342,
-          "sha256": "bc022d2fb45aad716847ac18299b84b6e4c7a5d12e399687cc9dbfcd40a7fb2c"
-        },
-        {
-          "name": "texmf.cnf",
-          "url": "https://github.com/TeXlyre/texlyre-busytex-build/releases/download/build_wasm_46ebb6216a5c1fe63dd1dc885831d1a8cef2dc86_31802832436_1/texmf.cnf",
-          "size": 43630,
-          "sha256": "a2e9447fc8b6dfa407fa8d0d710e59b039e22598e3f17de0bdf54daba478742c"
-        },
-        {
-          "name": "dvipdfmx.cfg",
-          "url": "https://github.com/TeXlyre/texlyre-busytex-build/releases/download/build_wasm_46ebb6216a5c1fe63dd1dc885831d1a8cef2dc86_31802832436_1/dvipdfmx.cfg",
-          "size": 8828,
-          "sha256": "01df8f6acdd516763b32f8621aa2d638ad756cc864b89f2081cad3d8ccbb5532"
-        },
-        {
-          "name": "updmap.cfg",
-          "url": "https://github.com/TeXlyre/texlyre-busytex-build/releases/download/build_wasm_46ebb6216a5c1fe63dd1dc885831d1a8cef2dc86_31802832436_1/updmap.cfg",
-          "size": 3887,
-          "sha256": "c5a3bc4582a863d5e139fea59c70604ced0cdcb9096158bf5e15f88f4de47f38"
-        },
-        {
-          "name": "versions.txt",
-          "url": "https://github.com/TeXlyre/texlyre-busytex-build/releases/download/build_wasm_46ebb6216a5c1fe63dd1dc885831d1a8cef2dc86_31802832436_1/versions.txt",
-          "size": 438,
-          "sha256": "6c7fc394e74e3cc9182c8f689dcb976970fcf9ad594b1749c61e085cf38bedc5"
+          "name": "engine-build.json",
+          "url": "https://github.com/haberwooki/liveMd2Tex/releases/download/engine-6a30018-4/engine-build.json",
+          "size": 39872,
+          "sha256": "c0621cac871eb4d5a5e9c8321635f358608b0107d848ec2b05a96e580f9530f9"
         }
-      ],
-      "patchedGlue": {
-        "file": "derived/04e79dfbb1e77b63/busytex.patched.js",
-        "sha256": "04e79dfbb1e77b6325f0a43f78cffd538fdf861b5b9f85399430aac2c955dcb8",
-        "note": "engine/patches/busytex-glue.mjs applied to busytex.js by scripts/engine-patch.mjs; stage-engine and the test-copy scan check it (build gate 1, G1S-08)"
-      }
+      ]
     },
     {
       "id": "ctan-revtex",

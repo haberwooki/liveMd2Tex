@@ -80,10 +80,8 @@ jobs:
           path: ${{ github.workspace }}/../engine_assets
           key: engine-assets-${{ hashFiles('engine/pins.json') }}
           enableCrossOsArchive: true
-      - name: Fetch and check the pinned engine inputs
+      - name: Fetch and check the pinned engine and inputs (our engine release; the CTAN files)
         run: node scripts/engine-assets.mjs
-      - name: Patch the engine glue (checked against its pinned SHA-256 when staged)
-        run: node scripts/engine-patch.mjs
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run test:unit
@@ -108,8 +106,10 @@ jobs:
         run: npm run test:integration
       # The private markers reach this step alone (build gate 2, G2E-R2). A pull request from a fork gets no
       # secret: its scan is left out with a notice, and the markers job scans again after the merge (G2R-03).
+      # The scans run whatever an earlier step did, so a red engine step hides no scan. The test copy needs the data
+      # packages: until engine/pins.json pins both, data-pins.mjs prints a notice and the test copy waits.
       - name: VSIX scans (plain package and test copy)
-        if: inputs.package
+        if: inputs.package && !cancelled()
         shell: bash
         env:
           LIVEMD2TEX_PRIVATE_MARKERS: ${{ secrets.LIVEMD2TEX_PRIVATE_MARKERS }}
@@ -120,9 +120,11 @@ jobs:
             exit 0
           fi
           node scripts/vsix-scan.mjs
-          node scripts/vsix-scan.mjs --test-copy
-      # The plain package and the scan reports only: the test copy (about 270 MB) would use up a private
-      # repository's artifact storage, and the stand-in add-on holds part of REVTeX, which stays test-only (G2S-08).
+          if node scripts/lib/data-pins.mjs; then
+            node scripts/vsix-scan.mjs --test-copy
+          fi
+      # The plain package and the scan reports only: the test copy (about 146 MB) would use up a private
+      # repository's artifact storage.
       - name: Keep the plain package and the scan reports
         if: inputs.package
         uses: actions/upload-artifact@v4
@@ -132,5 +134,4 @@ jobs:
             out/vsix/*.vsix
             out/vsix/*.scan.json
             !out/vsix/*-testcopy.vsix
-            !out/vsix/*-standin.vsix
           retention-days: 14

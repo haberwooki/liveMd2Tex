@@ -45,9 +45,8 @@ import type { InstalledSet, KnownSet } from '../project/packageScan';
  *            one build (build gate B1, GB1E-06).
  *   index    the package index (file name to package; each package's files and requires), inline or { file }
  *   core     (core-data, B1) { root, formats }: the core's mount root (/texlive/texmf-dist, the worker's
- *            TEXMFDIST) and each format's path and SHA-256 (G2E-R3). The core image also holds the engine build's
- *            own files (ICU data, fontconfig's file, /etc, /bin), taken from the engine build's pinned image, so
- *            every core build needs that image too (GB1E-10). The interim core (TeXlyre's image) has no "core".
+ *            TEXMFDIST) and each format's path and SHA-256 (G2E-R3). The core image is the TeX tree, its generated
+ *            files and the formats: the engine needs no other file of its own.
  *   elsewhere  (core only) the data sets this one knows of: their file lists, so a missing file can name the
  *            add-on that has it, and each package's requires, so the first message also names a dependency that
  *            no set has (build gate 2, G2S-04); B1's core manifest lists the real extra-data files and requires.

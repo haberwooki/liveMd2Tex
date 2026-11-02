@@ -9,8 +9,8 @@
 //   dist/viewer/          the webview page script, its CSS and the pdf.js runtime files, copied verbatim
 //   dist/web/extension.js browser bundle (built on the laptop, run only on CI from G0)
 //   dist/licenses/        the licence text of every npm package bundled into a shipped file (found through
-//                         esbuild's metafile), with an index, and the GPL-3, AGPL-3, LGPL-3, Apache-2.0, LPPL and
-//                         CC0 texts from LICENSES/ (build gate 1, G1S-04)
+//                         esbuild's metafile), with an index, and the licence texts of LICENSES/ (GPL-3, LGPL-3,
+//                         Apache-2.0, LPPL, CC0 and the rest; build gate 1, G1S-04)
 //
 // Usage: node scripts/build.mjs [--production | --speed-probe]
 //   --speed-probe builds the worker with the speed probe (docs/DEVELOPING.md, "Measuring speed"), for the speed
@@ -211,17 +211,20 @@ if (pakoDir) {
   writeFileSync(path.join(licences, 'pako.txt'), `${readFileSync(path.join(licences, 'pako.txt'), 'utf8')}\n\npako's port of zlib (lib/zlib/) is under the zlib licence, as its files state:\n\n${header}\n`);
 }
 cpSync(path.join(root, 'LICENSE'), path.join(licences, 'GPL-3.0.txt'));
-for (const text of readdirSync(path.join(root, 'LICENSES')).filter((f) => f.endsWith('.txt'))) {
+// LICENSES/ also holds texts that only the data packages ship, for some of their TeX packages (the AGPL-3.0, and
+// MakeIndex's notice for the makeindex package's index styles): nothing in the extension is under them, and the VSIX
+// scan fails an extension package that holds them (dataOnlyTexts).
+const DATA_ONLY_TEXTS = new Set(['AGPL-3.0.txt', 'MakeIndex.txt']);
+for (const text of readdirSync(path.join(root, 'LICENSES')).filter((f) => f.endsWith('.txt') && !DATA_ONLY_TEXTS.has(f))) {
   cpSync(path.join(root, 'LICENSES', text), path.join(licences, text));
 }
 // The notices of what the engine links (engine/engine-notices.json; THIRD_PARTY_NOTICES.md, "Inside the engine").
 cpSync(path.join(root, 'LICENSES', 'engine'), path.join(licences, 'engine'), { recursive: true });
 index.push(
   '',
-  'GPL-3.0.txt, GPL-2.0.txt, AGPL-3.0.txt, LGPL-3.0.txt, LGPL-2.1.txt, Apache-2.0.txt, MIT.txt, LPPL-1.3c.txt: the full licence texts.',
+  'GPL-3.0.txt, GPL-2.0.txt, LGPL-3.0.txt, LGPL-2.1.txt, Apache-2.0.txt, MIT.txt, LPPL-1.3c.txt: the full licence texts.',
   "ICU.txt: ICU's licence (the Unicode License V3 and its third-party notices), for the ICU built into the engine and its data.",
-  "MakeIndex.txt: MakeIndex's notice, for the MakeIndex built into the engine; THIRD_PARTY_NOTICES.md says where its source is.",
-  'engine/: the notices of the other parts built into the engine (TeXlyre-BusyTeX, LuaHBTeX, HarfBuzz, FreeType, Lua and more);',
+  "engine/: the notices of the other parts built into the engine (TeX Live's programs and libraries, Emscripten's system libraries and more);",
   "THIRD_PARTY_NOTICES.md's table \"Inside the engine\" names each part, its version, its licence and its files here.",
   'CC0-1.0.txt: CC0 1.0 Universal, under which the liveMd2Tex authors dedicate the starting documents (templates/)',
   'and the example presets (examples/presets/) to the public domain, because they are copied into your own folders.',

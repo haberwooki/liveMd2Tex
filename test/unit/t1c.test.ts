@@ -1,12 +1,12 @@
 // t1c, B1's lossless packing of Type 1 fonts (scripts/lib/t1c.mjs packs, src/engine-host/engine/t1c.ts unpacks in the engine
 // host; docs/DESIGN.md#engine-and-data): a made-up font with both kinds of encrypted data, the builder's packing
 // rule and its licence groups, the data package's licence text, the checks that refuse damaged or unknown packing
-// and the plain message they give, and, when the interim image is staged in dist/data, every Computer Modern and
-// AMS Type 1 font in it. The built core's fonts are checked on CI (test/engine/bundleCorpus.test.ts).
+// and the plain message they give. The built core's packed fonts are checked by the engine tests
+// (test/engine/bundleCorpus.test.ts).
 
 import * as assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import * as path from 'node:path';
 import { buildImageIndex, DamagedData, damagedMessage, packedMismatch } from '../../src/engine-host/engine/packageMeta';
 import { t1cUnpack } from '../../src/engine-host/engine/t1c';
@@ -170,7 +170,7 @@ describe('t1c: lossless packing of Type 1 fonts (B1, core-data)', () => {
 
   it("the data package's README and LICENSE.txt say how the fonts are stored, and quote the LPPL's clause 9 word for word", async () => {
     type Fonts = { lppl: string[]; vera?: string[]; gpl: string[]; kept: Record<string, string>; unpacked?: Record<string, { reason: string; files: string[] }[]>; gplChanges?: boolean };
-    const { licenceFile, readmeFiles } = await importScript<{ licenceFile(f: Fonts | undefined, s: { date: string; url: string; releases: string }): string; readmeFiles(y: string, p: boolean, g?: boolean): string }>('scripts/lib/bundle-package.mjs');
+    const { changesNote, licenceFile, readmeFiles } = await importScript<{ changesNote(project: string, core: boolean, packed: boolean): string; licenceFile(f: Fonts | undefined, s: { date: string; url: string; releases: string }): string; readmeFiles(y: string, p: boolean, g?: boolean): string }>('scripts/lib/bundle-package.mjs');
     const snapshot = { date: '2026/10/15', url: 'https://texlive.info/tlnet-archive/2026/10/15/tlnet/', releases: 'https://github.com/haberwooki/liveMd2Tex/releases' };
     // The groups come from each font's own terms (the t1c gate, T1S-02): DejaVu under its own terms, not the LPPL.
     const text = licenceFile({
@@ -220,6 +220,11 @@ describe('t1c: lossless packing of Type 1 fonts (B1, core-data)', () => {
     assert.match(withChanges, /\(version 2, section 2\(a\); version 3, section 5\(a\)\)\. LICENSES\/CHANGES-GPL lists every packed font under the GPL/);
     assert.match(readmeFiles('2026', true, true), /LICENSES\/CHANGES-GPL lists each font under the GNU GPL that is stored this way/);
     assert.doesNotMatch(readmeFiles('2026', true), /CHANGES-GPL/);
+    // TeX Live's licence asks a changed distribution to say so, and where to report problems (LICENSE.TL).
+    const project = 'https://github.com/haberwooki/liveMd2Tex';
+    assert.match(changesNote(project, true, true), /^liveMd2Tex builds this package from TeX Live with changes of its own: .*configuration files, formats, a file index \(ls-R\) and a font list that liveMd2Tex writes, and with the Type 1 fonts stored as described above\. Please report problems with it to liveMd2Tex \(https:\/\/github\.com\/haberwooki\/liveMd2Tex\), not to TeX Live\.$/);
+    assert.match(changesNote(project, false, false), /with a file index \(ls-R\) and a font list that liveMd2Tex writes\. Please report/);
+    assert.doesNotMatch(changesNote(project, false, false), /formats|Type 1/);
   });
 
   it("the engine host carries an index's packed list to its workers, and refuses a packing it does not know", () => {
@@ -269,7 +274,7 @@ describe('t1c: lossless packing of Type 1 fonts (B1, core-data)', () => {
   });
 
   it('a damaged font shows the plain message alone: no "engine stopped", no "cannot open" help, no add-on offered (t1c gate, S-3)', () => {
-    const log = '!pdfTeX error: /bin/busytex (file sfrm1000.pfb): cannot open Type 1 font file for reading\n';
+    const log = '!pdfTeX error: /bin/engine (file sfrm1000.pfb): cannot open Type 1 font file for reading\n';
     const fonts = { set: { id: 'livemd2tex-extra-data', label: 'Extra Packages add-on', index: { format: 1, packages: {}, files: { 'sfrm1000.pfb': 'cm-super' } } }, image: { id: 'livemd2tex-extra-data' } };
     const prepared = { job: { main: 'main.tex', files: [], dataImages: [] }, confinement: [], packages: { core: null, installed: [fonts], elsewhere: [] } } as unknown as PreparedCompile;
     const error = 'The core TeX data is damaged: the font file sfrm1000.pfb did not pass its check, so nothing was made from it. Reinstall the liveMd2Tex Core Packages extension.';
@@ -285,23 +290,5 @@ describe('t1c: lossless packing of Type 1 fonts (B1, core-data)', () => {
     assert.equal(messages[0], 'The engine stopped: pdflatex stopped');
     assert.ok(messages.some((m) => m.includes('cannot open Type 1 font file')), messages.join('\n'));
     assert.deepEqual(imagesForNotFound(missing, prepared), ['livemd2tex-extra-data']);
-  });
-
-  it('every Computer Modern and AMS Type 1 font of the interim image round-trips byte for byte', async function () {
-    const data = path.join(root, 'dist', 'data', 'texlive-extra.data');
-    if (!existsSync(data)) {
-      this.skip();
-    }
-    const { openImage } = await importScript<{ openImage(p: string, c: unknown): { read(s: number, e: number): Buffer } }>('scripts/lib/image-files.mjs');
-    const index = JSON.parse(readFileSync(path.join(root, 'dist', 'data', 'texlive-extra.index.json'), 'utf8')) as { compressed: unknown; metadata: { files: { filename: string; start: number; end: number }[] } };
-    const reader = openImage(data, index.compressed);
-    const fonts = index.metadata.files.filter((f) => /\/fonts\/type1\/public\/amsfonts\/.*\.pfb$/.test(f.filename));
-    assert.ok(fonts.length > 100, `${fonts.length} fonts`);
-    for (const f of fonts) {
-      const original = reader.read(f.start, f.end);
-      const packed = t1c.t1cPack(original);
-      assert.ok(packed, f.filename);
-      assert.ok(Buffer.from(t1cUnpack(packed)).equals(original), f.filename);
-    }
   });
 });

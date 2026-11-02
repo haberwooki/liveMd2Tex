@@ -109,8 +109,9 @@ export async function newDocument(extensionUri: vscode.Uri, id?: string, parent?
     throw err;
   }
   await vscode.window.showTextDocument(await vscode.workspace.openTextDocument(main), { viewColumn: vscode.ViewColumn.One, preview: false });
-  // The preview: a compile for LaTeX, the LaTeX preview for Markdown (both ask first in Restricted Mode). For a
-  // journal class, the compile's package scan names the class and offers the add-on; nothing more is said here.
+  // The preview: a compile for LaTeX, the LaTeX preview for Markdown (both ask first in Restricted Mode). Every
+  // starting document, the journal classes' among them, compiles with the core data alone (catalog.ts), so nothing
+  // more is said here.
   void vscode.commands.executeCommand(template.kind === 'tex' ? `${COMMAND_PREFIX}.compile` : `${COMMAND_PREFIX}.openLatexPreview`).then(undefined, () => undefined);
   return main;
 }

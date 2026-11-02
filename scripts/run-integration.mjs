@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Runs the integration tests: builds dist/, stages the engine and the interim data into dist/ when the engine
+// Runs the integration tests: builds dist/, stages the engine and the core data into dist/ when the engine
 // downloads are present (scripts/stage-engine.mjs), compiles the tests (and any private tests:
 // scripts/private-tests.mjs), lays out the V0 test documents as the
 // test window's workspace inside the throwaway profile folder (test/support/prepareV0Workspace.ts), runs
@@ -15,6 +15,7 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, 
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { dataPinned, UNPINNED_NOTICE } from './lib/data-pins.mjs';
 import { testVsCode } from './lib/test-vscode.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -66,15 +67,35 @@ if (projects) {
   console.log(`V0 workspace: ${projects.map((p) => p.id).join(', ')}`);
 } else {
   console.log('V0 workspace: not prepared (no staged engine); the V0 tests will skip');
+  // Without a staged engine the test window gets no workspace, so every suite that compiles skips at its first
+  // check. On CI that is allowed only while the data packages are not pinned (the rule of test/support/missingData.ts
+  // and scripts/lib/data-pins.mjs): before the pins the run says so once; after them it fails.
+  if (process.env.CI === 'true') {
+    if (dataPinned(JSON.parse(readFileSync(path.join(root, 'engine', 'pins.json'), 'utf8')))) {
+      console.error('The integration tests need the staged engine and core data: on CI they fail rather than skip once the data packages are pinned.');
+      rmSync(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 500 });
+      process.exit(1);
+    }
+    console.log(process.env.GITHUB_ACTIONS === 'true' ? `::notice::${UNPINNED_NOTICE}` : UNPINNED_NOTICE);
+  }
 }
-// M6: the stand-in Extra Packages add-on as a VSIX, which the test installs into the throwaway profile.
-try {
-  const { buildExtraStandin } = await import(pathToFileURL(path.join(root, 'scripts', 'build-extra-standin.mjs')).href);
-  const { vsix } = await buildExtraStandin();
-  env.LIVEMD2TEX_TEST_EXTRA_VSIX = vsix;
-  console.log(`M6: stand-in add-on ${path.basename(vsix)}`);
-} catch (err) {
-  console.log(`M6: no stand-in add-on (${err instanceof Error ? err.message.split('\n')[0] : String(err)}); its tests will skip`);
+// The Extra Packages add-on, which the M6 and V0 tests install into the throwaway profile as a user would: the
+// extra-data package LIVEMD2TEX_EXTRA_DATA names, built by the data builder for this engine. A .vsix is taken as
+// it is; for an unpacked package folder (the builder's <out>/extra-data/), the builder's .vsix beside it. Without
+// one the tests that need the add-on skip.
+const extraVsix = (() => {
+  const given = process.env.LIVEMD2TEX_EXTRA_DATA;
+  if (!given || !existsSync(given)) return null;
+  if (/\.vsix$/i.test(given)) return path.resolve(given);
+  const parent = path.dirname(path.resolve(given));
+  const found = readdirSync(parent).filter((n) => /^livemd2tex-extra-data-.*\.vsix$/.test(n));
+  return found.length === 1 ? path.join(parent, found[0]) : null;
+})();
+if (extraVsix) {
+  env.LIVEMD2TEX_TEST_EXTRA_VSIX = extraVsix;
+  console.log(`Extra Packages add-on: ${path.basename(extraVsix)}`);
+} else {
+  console.log('Extra Packages add-on: none given (LIVEMD2TEX_EXTRA_DATA); the tests that need it will skip');
 }
 // M2-B: LaTeX Workshop beside ours (docs/DESIGN.md#confinement-and-trust). --with-latex-workshop installs its VSIX, a pinned
 // development-only download kept outside the repository, into a second throwaway profile with VS Code's own

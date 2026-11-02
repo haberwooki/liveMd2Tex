@@ -3,10 +3,8 @@
 // engine.yml's release job from the build job's artifacts, before the draft release is made. The draft holds
 // everything the release will ever hold, because immutable releases cannot change once published:
 //   - engine.wasm, engine.js, engine-build.json and the build's logs, checked against the manifest;
-//   - the licence texts and notice files of every part (engine/engine-notices.next.json until it replaces
-//     engine/engine-notices.json), each checked against its pinned SHA-256; a file the manifest marks "release" is
-//     taken from a source archive (musl's COPYRIGHT of Emscripten 6.0.13, whose text differs from the 5.0.4 copy in
-//     LICENSES/engine that today's engine ships);
+//   - the licence texts and notice files of every part (engine/engine-notices.json), each checked against its
+//     pinned SHA-256;
 //   - a generated NOTICE (scripts/lib/engine-notices.mjs, releaseNotice);
 //   - TeX Live's and Emscripten's source archives, each checked against its commit's tree (release-sources.mjs,
 //     treeDifferences) and attached: the engine's corresponding source, with our scripts at the public commit;
@@ -41,7 +39,7 @@ const sha256 = (b) => createHash('sha256').update(b).digest('hex');
 /** A release tag: engine-<TeX Live's short commit>-<candidate>; a candidate that fails a later check stays as it is. */
 export const TAG = /^engine-[0-9a-f]{7}-[1-9][0-9]*$/;
 
-export function loadNext(file = path.join(root, 'engine', 'engine-notices.next.json')) {
+export function loadNotices(file = path.join(root, 'engine', 'engine-notices.json')) {
   return JSON.parse(readFileSync(file, 'utf8'));
 }
 
@@ -49,14 +47,8 @@ export function loadNext(file = path.join(root, 'engine', 'engine-notices.next.j
  * The engine's source archives as release-sources.mjs lists a group: the sources with an address (the third
  * source, our scripts, is the public commit itself, named in the release notes).
  */
-export function engineGroups(next) {
-  return { engine: next.sources.filter((s) => s.url).map((s) => ({ name: s.name, url: s.mirror ?? s.url, sha256: s.sha256, commit: s.commit, repository: s.repository, for: ["the engine's corresponding source"] })) };
-}
-
-/** A file inside a commit archive (.tar.gz), below its one top folder. */
-function fromArchive(archiveBytes, rel) {
-  const entry = readTar(gunzipSync(archiveBytes)).find((e) => e.type === 'file' && e.path.slice(e.path.indexOf('/') + 1) === rel);
-  return entry ? Buffer.from(entry.data) : null;
+export function engineGroups(notices) {
+  return { engine: notices.sources.filter((s) => s.url).map((s) => ({ name: s.name, url: s.mirror ?? s.url, sha256: s.sha256, commit: s.commit, repository: s.repository, for: ["the engine's corresponding source"] })) };
 }
 
 /**
@@ -64,15 +56,15 @@ function fromArchive(archiveBytes, rel) {
  * @param {object} manifest engine-build.json
  * @param {{ wasm: Buffer, glue: Buffer }} outputs
  */
-export function artifactProblems(manifest, outputs, next, pins, commit, treeSha256) {
+export function artifactProblems(manifest, outputs, notices, pins, commit, treeSha256) {
   const problems = [];
   if (manifest.outputs?.wasm?.sha256 !== sha256(outputs.wasm)) problems.push("engine.wasm is not the file engine-build.json records");
   if (manifest.outputs?.glue?.sha256 !== sha256(outputs.glue)) problems.push("engine.js is not the file engine-build.json records");
-  if (manifest.inputs?.texLive?.commit !== pins.texLive.commit || next.build.texLive.commit !== pins.texLive.commit) problems.push("TeX Live's commit differs between engine-build.json, engine-build-pins.json and engine-notices.next.json");
-  if (manifest.inputs?.emscripten?.commit !== pins.emscripten.commit || next.build.emscripten.commit !== pins.emscripten.commit) problems.push("Emscripten's commit differs between engine-build.json, engine-build-pins.json and engine-notices.next.json");
+  if (manifest.inputs?.texLive?.commit !== pins.texLive.commit || notices.build.texLive.commit !== pins.texLive.commit) problems.push("TeX Live's commit differs between engine-build.json, engine-build-pins.json and engine-notices.json");
+  if (manifest.inputs?.emscripten?.commit !== pins.emscripten.commit || notices.build.emscripten.commit !== pins.emscripten.commit) problems.push("Emscripten's commit differs between engine-build.json, engine-build-pins.json and engine-notices.json");
   for (const [key, want] of [['texLive', pins.texLive.commit], ['emscripten', pins.emscripten.commit]]) {
-    const s = next.sources.find((x) => x.commit === want);
-    if (!s) problems.push(`engine-notices.next.json lists no source archive of ${key}'s commit ${want}`);
+    const s = notices.sources.find((x) => x.commit === want);
+    if (!s) problems.push(`engine-notices.json lists no source archive of ${key}'s commit ${want}`);
   }
   if (manifest.build?.scripts?.commit !== commit) problems.push(`engine-build.json names the scripts' commit ${manifest.build?.scripts?.commit}, not this run's ${commit}`);
   if (manifest.build?.scripts?.treeSha256 !== treeSha256) problems.push("the scripts' tree hash in engine-build.json is not this checkout's (engine/build/ changed after the build)");
@@ -102,9 +94,9 @@ export function scriptsArchiveProblems(archiveBytes, treeSha256) {
 }
 
 /** The release notes: what the release holds and where its source is. */
-export function releaseNotes({ tag, commit, repository, manifest, next, attached, scriptsArchive }) {
-  const tl = next.sources.find((s) => s.commit === manifest.inputs.texLive.commit);
-  const em = next.sources.find((s) => s.commit === manifest.inputs.emscripten.commit);
+export function releaseNotes({ tag, commit, repository, manifest, notices, attached, scriptsArchive }) {
+  const tl = notices.sources.find((s) => s.commit === manifest.inputs.texLive.commit);
+  const em = notices.sources.find((s) => s.commit === manifest.inputs.emscripten.commit);
   const lines = [
     `# ${tag}`,
     '',
@@ -150,8 +142,8 @@ function main(argv) {
     console.error('usage: engine-release.mjs list --dir DIR | assemble --dir DIR --artifacts DIR --tag TAG --commit SHA [--repository URL]');
     return 2;
   }
-  const next = loadNext();
-  const groups = engineGroups(next);
+  const notices = loadNotices();
+  const groups = engineGroups(notices);
   if (argv[0] === 'list') {
     mkdirSync(dir, { recursive: true });
     writeFileSync(path.join(dir, 'sources.json'), `${JSON.stringify({ groups }, null, 1)}\n`);
@@ -184,7 +176,7 @@ function main(argv) {
   // The artifacts.
   const read = (f) => readFileSync(path.join(artifacts, f));
   const manifest = JSON.parse(read('engine-build.json'));
-  problems.push(...artifactProblems(manifest, { wasm: read('engine.wasm'), glue: read('engine.js') }, next, pins, commit, scriptsTree(root).treeSha256));
+  problems.push(...artifactProblems(manifest, { wasm: read('engine.wasm'), glue: read('engine.js') }, notices, pins, commit, scriptsTree(root).treeSha256));
   // The bytes the comparison matched, and no other (a release run builds again).
   if (sha256(read('engine.wasm')) !== expectWasm) problems.push(`engine.wasm is ${sha256(read('engine.wasm'))}, not the compared ${expectWasm}`);
   if (sha256(read('engine.js')) !== expectGlue) problems.push(`engine.js is ${sha256(read('engine.js'))}, not the compared ${expectGlue}`);
@@ -214,16 +206,8 @@ function main(argv) {
     copyFileSync(file, path.join(assets, s.name));
     names.set(s.name, 'source archive');
   }
-  for (const [file, f] of Object.entries(next.files)) {
-    let bytes;
-    if (f.release) {
-      const archive = archiveBytes.get(f.release.archive);
-      bytes = archive ? fromArchive(archive, f.release.path) : null;
-      if (!bytes) {
-        problems.push(`${file}: ${f.release.path} not found in ${f.release.archive}`);
-        continue;
-      }
-    } else bytes = readFileSync(path.join(root, file));
+  for (const [file, f] of Object.entries(notices.files)) {
+    const bytes = readFileSync(path.join(root, file));
     if (sha256(bytes) !== f.sha256) {
       problems.push(`${file}: SHA-256 ${sha256(bytes)} is not the pinned ${f.sha256}`);
       continue;
@@ -233,26 +217,26 @@ function main(argv) {
   // The licence texts the components name (GPL-2.0, GPL-3.0, LGPL-2.1, ICU, Apache-2.0, MIT): the repository's
   // copies, pinned in engine/bundle-licences.json's texts.
   const texts = Object.values(JSON.parse(readFileSync(path.join(root, 'engine', 'bundle-licences.json'), 'utf8')).texts);
-  for (const n of [...new Set(next.components.flatMap((c) => c.notices))].filter((x) => !(x in next.files)).sort()) {
+  for (const n of [...new Set(notices.components.flatMap((c) => c.notices))].filter((x) => !(x in notices.files)).sort()) {
     const t = texts.find((x) => x.file === n);
     if (!t) {
-      problems.push(`${n}: neither engine-notices.next.json nor engine/bundle-licences.json pins it`);
+      problems.push(`${n}: neither engine-notices.json nor engine/bundle-licences.json pins it`);
       continue;
     }
     const bytes = readFileSync(path.join(root, n));
     if (sha256(bytes) !== t.sha256) problems.push(`${n}: SHA-256 ${sha256(bytes)} is not the pinned ${t.sha256}`);
     else put(releaseAssetName(n), bytes, n);
   }
-  put('NOTICE', Buffer.from(releaseNotice(next)), 'scripts/lib/engine-notices.mjs');
+  put('NOTICE', Buffer.from(releaseNotice(notices)), 'scripts/lib/engine-notices.mjs');
   put(scriptsArchive.name, scriptsBytes, "our build scripts' archive");
   // Completeness, since a published release cannot change: every component's notice files are attached, and NOTICE names every component.
   const notice = readFileSync(path.join(assets, 'NOTICE'), 'utf8');
-  for (const c of next.components) {
+  for (const c of notices.components) {
     for (const n of c.notices) if (!names.has(releaseAssetName(n))) problems.push(`${c.id}: its notice ${n} is not attached`);
     if (!notice.includes(c.name)) problems.push(`NOTICE does not name ${c.name}`);
   }
   const attached = Object.fromEntries([...archiveBytes].map(([n, b]) => [n, sha256(b)]));
-  writeFileSync(path.join(dir, 'notes.md'), releaseNotes({ tag, commit, repository, manifest, next, attached, scriptsArchive }));
+  writeFileSync(path.join(dir, 'notes.md'), releaseNotes({ tag, commit, repository, manifest, notices, attached, scriptsArchive }));
   writeFileSync(path.join(dir, 'assets.txt'), `${[...names.keys()].sort().map((n) => path.join(assets, n)).join('\n')}\n`);
   for (const p of problems) console.error(p);
   console.log(problems.length === 0 ? `the release ${tag} is complete: ${names.size} files` : `${problems.length} problem(s); no release`);

@@ -8,7 +8,7 @@
 // and alias table are not kept. The "not found once, then the image is mounted" route is gate2.test.ts's.
 
 import * as assert from 'node:assert/strict';
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { prepareCompile } from '../../src/extension/compile/pipeline';
@@ -18,6 +18,7 @@ import { ENGINE_FORMATS, type CompileJob } from '../../src/shared/engineJobs';
 import { buildPackageIndex } from '../../src/shared/packageIndex';
 import { importScript, root } from '../support/helpers';
 import { nodeFs } from '../support/nodeFs';
+import { stagedEngine } from './support';
 
 const tex = (lines: string[]) => `${lines.join('\n')}\n`;
 const bytes = (s: string) => new TextEncoder().encode(s);
@@ -32,8 +33,8 @@ describe('lookups in the data images\' tree: from its ls-R, never a search on di
   let expected: Expected;
 
   before(async function () {
-    if (!bundledEngineAssets(root) || !existsSync(path.join(root, 'dist', 'data', 'packages.json'))) {
-      this.skip();
+    if (!stagedEngine(this)) {
+      return;
     }
     engine = new EngineService({ modulePath: path.join(root, 'dist', 'engine-host.js'), assets: () => bundledEngineAssets(root), idleMinutes: () => 0, log: () => undefined });
     engine.execArgv = ['--require', path.join(root, 'test', 'stubs', 'register-engine-host.cjs')];

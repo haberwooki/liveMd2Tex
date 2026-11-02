@@ -2,9 +2,9 @@
 // the repository, in any form (build gate 2, G2S-01): they live in a git-ignored file on the laptop and in a CI
 // secret. The ids match the real ones, so the allow-list rules (scripts/marker-allowlist.json) apply to them.
 
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
-import * as os from 'node:os';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import * as path from 'node:path';
+import { tempFolder } from './helpers';
 
 export const FAKE_MARKERS = [
   { id: 'surname', kind: 'text', value: 'Zebrowski' },
@@ -20,7 +20,7 @@ export const fake = (id: string) => (FAKE_MARKERS.find((m) => m.id === id) as { 
 
 /** A folder whose .private-markers.json holds the made-up markers (its parent folder holds none). */
 export function fakeMarkerFolder(): string {
-  const dir = path.join(mkdtempSync(path.join(os.tmpdir(), 'livemd2tex-markers-')), 'repo');
+  const dir = path.join(tempFolder('livemd2tex-markers-'), 'repo');
   mkdirSync(path.join(dir, 'scripts'), { recursive: true });
   writeFileSync(path.join(dir, '.private-markers.json'), JSON.stringify({ markers: FAKE_MARKERS }));
   return dir;

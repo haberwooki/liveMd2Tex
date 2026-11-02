@@ -759,8 +759,8 @@ describe('M5: the coverage measurement (pure parts)', () => {
   });
 
   it("guards the extension's engine: every engine file, a canary in every shard, a rejected compile not measured", () => {
-    assert.deepEqual(lib.ENGINE_FILES, ['busytex.js', 'busytex.wasm', 'texmf-override.cnf', 'fonts.conf']);
-    assert.deepEqual(lib.missingFiles(lib.ENGINE_FILES, (n) => n !== 'fonts.conf'), ['fonts.conf']);
+    assert.deepEqual(lib.ENGINE_FILES, ['engine.js', 'engine.wasm', 'texmf-override.cnf']);
+    assert.deepEqual(lib.missingFiles(lib.ENGINE_FILES, (n) => n !== 'engine.wasm'), ['engine.wasm']);
     assert.deepEqual(lib.missingFiles(lib.ENGINE_FILES, () => true), []);
     // The canary: both known-good documents, before and after; a shard without the record fails too.
     const healthy = { before: { pdflatex: true, xelatex: true }, after: { pdflatex: true, xelatex: true } };

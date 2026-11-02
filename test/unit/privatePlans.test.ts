@@ -17,7 +17,7 @@ export const PATTERNS: [string, RegExp][] = [
   ['a private plan', new RegExp(j('PLAN', '_[A-Za-z0-9]'))],
   ['a gate review', new RegExp(j('GATE', '_|FINAL', '_GATE'))],
   ['a report or summary', new RegExp(j('[A-Z0-9]+_', 'REPORT|', 'STAGE[0-9]+_|', 'SUMM', 'ARY_|', 'REVI', 'EW_'))],
-  ['a gate finding', new RegExp(j(edge, '(S[0-9]+', '-[SE]-N?[0-9]|S[0-9]+', '-[SE] N(OTE )?[0-9]|S[0-9]+', '-[0-9]{2}(?![0-9])|SP2?', '-[SE]-[0-9]|EP', '-?S2?-[0-9]|EP', '-S NOTE|EPE', '2?-[0-9N])'))],
+  ['a gate finding', new RegExp(j(edge, '(S[0-9]+[A-Z]?', '-[SE]-N?[0-9]|S[0-9]+', '-[SE] N(OTE )?[0-9]|S[0-9]+', '-[0-9]{2}(?![0-9])|SP2?', '-[SE]-[0-9]|EP', '-?S2?-[0-9]|EP', '-S NOTE|EPE', '2?-[0-9N])'))],
   ['a stage of the private plan', new RegExp(j(edge, 'B', '0(?![A-Za-z0-9])'))],
 ];
 
@@ -52,10 +52,10 @@ describe('no reference to the private plans', () => {
       p('BUILD_GA', 'TE_2_E.md'), p('FINAL_GA', 'TE_v4.md'), p('FINAL_GA', 'TE.md'), p('ST', 'AGE1_REP', 'ORT.md'), p('B', '0_REP', 'ORT.md'),
       p('SUMM', 'ARY_engine.md'), p('REVI', 'EW_LOG.md'), p('S1', '-S-03'), p('S1', '-E-N3'), p('S2', '-E-01'), p('x_S2', '-S-05'),
       p('S1', '-S NOTE 5'), p('S2', '-02'), p('SP', '-S-03'), p('SP2', '-E-11'), p('EP', '-S-02'), p('EP', '-S NOTE 13'), p('EPE', '-16'),
-      p('EPE2', '-04'), p('EPE', '-N4'), p('the B', '0 images'), p('(B', '0)'),
+      p('EPE2', '-04'), p('EPE', '-N4'), p('the B', '0 images'), p('(B', '0)'), p('S3', 'A-S-01'), p('(S3', 'B-E-08)'),
     ];
     for (const s of found) assert.ok(hitsOf(s).length > 0, s);
-    const publicForms = ['GB1E-08', 'G2S-01', 'G2E-02', 'F2-M1', 'L5-01', 'b0, b1', '0xB0', 'B00', 'AB0', 'S2', 'page 2-02', 'the planned order', 'PLANS'];
+    const publicForms = ['GB1E-08', 'G2S-01', 'G2E-02', 'F2-M1', 'L5-01', 'b0, b1', '0xB0', 'B00', 'AB0', 'S2', 'page 2-02', 'the planned order', 'PLANS', 'S3A', 'S3B-01'];
     for (const s of publicForms) assert.deepEqual(hitsOf(s), [], s);
   });
 

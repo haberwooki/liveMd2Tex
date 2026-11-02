@@ -1,7 +1,9 @@
 // Workspace Trust in VS Code (docs/DESIGN.md#confinement-and-trust; build gate 1, G1S-15). scripts/run-integration.mjs runs this file
 // in a window of its own with Workspace Trust on and a workspace nobody trusted, so the window is in Restricted
 // Mode (test-cli always passes --disable-workspace-trust, so this window is started without it). In the trusted
-// windows of the other runs the file skips.
+// windows of the other runs the file skips. The two cases that compile need the staged engine and core data: without
+// them they skip, on CI with one notice until the data packages are pinned and as a failure after
+// (test/support/missingData.ts). The other two need no engine and always run.
 //
 //   - Nothing compiles by itself: not on typing, not on save, not for a Markdown file whose front matter asks.
 //   - The compile command asks first. A dismissal compiles nothing and the next command asks again; a yes
@@ -16,6 +18,7 @@ import * as vscode from 'vscode';
 import type { TestApi } from '../../src/extension/extension';
 import { COMMAND_PREFIX } from '../../src/shared/identity';
 import { activateExtension, engineStubArgs } from '../integration/support';
+import { missingInput } from '../support/missingData';
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const BS = '\\';
@@ -39,6 +42,14 @@ describe('Restricted Mode (Workspace Trust) in VS Code', function () {
     api?.setRestrictedAnswer(null);
   });
 
+  /** A case that compiles needs the staged engine and core data (the rule of test/support/missingData.ts). */
+  function needEngine(ctx: Mocha.Context): void {
+    if (!api.engineAvailable()) {
+      missingInput('the staged engine and core data (node scripts/stage-engine.mjs --data)');
+      ctx.skip();
+    }
+  }
+
   async function open(name: string, text: string): Promise<vscode.TextEditor> {
     const file = path.join(ws, name);
     writeFileSync(file, text);
@@ -54,9 +65,9 @@ describe('Restricted Mode (Workspace Trust) in VS Code', function () {
     }
   }
 
-  it('is a window in Restricted Mode, with the extension active', () => {
+  it('is a window in Restricted Mode, with the extension active and the engine staged', function () {
     assert.equal(vscode.workspace.isTrusted, false);
-    assert.ok(api.engineAvailable(), 'the engine is not staged (node scripts/stage-engine.mjs --data)');
+    needEngine(this);
   });
 
   it('compiles nothing by itself: typing, saving, a Markdown file that asks for typesetting', async () => {
@@ -71,7 +82,8 @@ describe('Restricted Mode (Workspace Trust) in VS Code', function () {
     assert.equal(api.compileRecords().length, before, 'something compiled in Restricted Mode');
   });
 
-  it('asks before a compile command: a dismissal compiles nothing, a yes compiles and holds', async () => {
+  it('asks before a compile command: a dismissal compiles nothing, a yes compiles and holds', async function () {
+    needEngine(this);
     const editor = await open('asked.tex', `${BS}documentclass{article}\n${BS}begin{document}\nAsked first.\n${BS}end{document}\n`);
     const before = api.compileRecords().length;
 

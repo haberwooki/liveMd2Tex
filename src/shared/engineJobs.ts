@@ -3,8 +3,8 @@
 
 import type { StubReport } from './engineProtocol';
 
-/** pdflatex and xelatex use the formats in the bundle; luahbtex-ini runs LuaHBTeX with no format (fixtures). */
-export type EngineName = 'pdflatex' | 'xelatex' | 'luahbtex-ini';
+/** The engines a compile runs: pdfLaTeX and XeLaTeX, each with its format from the core data. */
+export type EngineName = 'pdflatex' | 'xelatex';
 
 export interface ProjectFile {
   /** Path relative to the project root, with "/" separators. */
@@ -60,9 +60,7 @@ export interface CompileJob {
   /** TeX passes in all; 1 is the quick pass of docs/DESIGN.md#live-behaviour. */
   maxPasses: number;
   synctex: boolean;
-  /** Fixtures only: LuaHBTeX with --socket instead of --nosocket, to test the glue's socket patch on its own. */
-  allowLuaSocketLibrary?: boolean;
-  /** Fixtures only: -shell-escape instead of -no-shell-escape, to test the glue's no-shell patch on its own. */
+  /** Fixtures only: -shell-escape instead of -no-shell-escape, to test the engine's stubs on their own. */
   forceShellEscape?: boolean;
   /**
    * Explicit tool runs instead of the recipe (each an argv without the program name), for builds such as
@@ -176,8 +174,6 @@ export interface CompileResult {
   timings: CompileTimings;
   /** The worker thread's own stub record (null when no stub is loaded, as in production). */
   stubs: StubReport | null;
-  /** Engine-internal: a fontconfig cache made by this compile; the engine host keeps it and removes it here. */
-  fontCache?: { name: string; data: Uint8Array }[];
   /** The speed probe's figures for the worker's own phases, ms (speedProbe.ts); absent unless it is built in and on. */
   probe?: Record<string, number>;
 }
@@ -203,16 +199,21 @@ export function failedResult(id: number, error: string, stubs: StubReport | null
 }
 
 export interface EngineAssetPaths {
-  /** The patched glue (busytex.patched.js). */
+  /** The engine's JavaScript glue (engine.js, Emscripten's own output). */
   glue: string;
+  /** The engine (engine.wasm). */
   wasm: string;
-  /** The file_packager image (.data) and its loader (.js), whose metadata is read as data, never run. */
+  /** The core data image (.data) and its index (.index.json, Emscripten's file_packager metadata as JSON). */
   data: string;
-  loader: string;
+  index: string;
   /** Our texmf.cnf override (engine/texmf-override.cnf). */
   cnfOverride: string;
-  /** Our fontconfig file (engine/fonts.conf). */
-  fontsConf: string;
+  /**
+   * Variables set over the engine's environment in every compile worker, for a tool that compares runs or a test:
+   * only LIVEMD2TEX_FONT_LIST_CHECK and the fixed dates (ENV_OVERRIDES, src/engine-host/engine/layout.ts), never
+   * shell escape; the engine host refuses any other. The extension sets none.
+   */
+  env?: Record<string, string>;
 }
 
 export interface EngineInitInfo {

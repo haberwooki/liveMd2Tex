@@ -6,7 +6,7 @@
 import { imageKey, type CompileJob, type CompileResult, type DataImageRef, type ProjectFile } from '../../shared/engineJobs';
 import { latexToMarkdownLine } from '../../converter/markdownToLatex';
 import { parseBlg, parseTexLog, type TexDiagnostic } from '../diagnostics/logParser';
-import { collectProject, collectReferenced, fingerprint, folderOf, type CollectLimits, type ProjectFs } from '../project/collect';
+import { collectProject, collectReferenced, fingerprint, type CollectLimits, type ProjectFs } from '../project/collect';
 import { insideProject, scanGraphicsPaths, scanReferences } from '../project/confine';
 import {
   makeglossariesLine,
@@ -310,11 +310,6 @@ export async function prepareMarkdownCompile(options: {
   limits?: CollectLimits;
   packages?: PackageContext;
   mountSets?: ReadonlySet<string>;
-  /**
-   * Files the generated LaTeX needs from outside the project folder: the notes template's DejaVu fonts until
-   * B1 (engine/interimFonts.ts). A project file of the same name wins.
-   */
-  extraFiles?: ProjectFile[];
   /** For SyncTeX (M2-A), carried in the result's markdown origin. */
   bodyStartLine?: number;
   appendix?: { file: string; map: number[] };
@@ -333,15 +328,6 @@ export async function prepareMarkdownCompile(options: {
     packages: options.packages,
     mountSets: options.mountSets,
   });
-  // Beside the generated main file, where XeTeX finds a font by its file name (its working folder).
-  const dir = folderOf(mainRel);
-  for (const extra of options.extraFiles ?? []) {
-    const path = dir ? `${dir}/${extra.path}` : extra.path;
-    if (!prepared.job.files.some((f) => f.path === path)) {
-      prepared.job.files.push({ path, data: extra.data });
-      prepared.bytes += extra.data.length;
-    }
-  }
   return {
     ...prepared,
     markdown: { source: options.markdownRel, lineMap: options.lineMap, bodyStartLine: options.bodyStartLine, latex: options.latex, appendix: options.appendix },

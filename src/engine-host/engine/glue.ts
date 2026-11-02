@@ -1,6 +1,7 @@
-// Loads the patched Emscripten glue (a CommonJS module) by its absolute path. This is the one file in src/ that
-// may use node:module (eslint.config.mjs): loading the engine glue is the only dynamic module load the
-// extension makes, and the glue it loads is the patched copy whose diff is reviewed in engine/patches/.
+// Loads the engine's glue (engine.js, Emscripten's own output, a CommonJS module) by its absolute path. This is the
+// one file in src/ that may use node:module (eslint.config.mjs): loading the engine glue is the only dynamic module
+// load the extension makes. The glue is unpatched; its pinned SHA-256 and the VSIX scan's checks of its lines are
+// what vouch for it (docs/DEVELOPING.md, "The TeX engine").
 
 import { createRequire } from 'node:module';
 
@@ -20,7 +21,8 @@ export interface EmscriptenModule {
   HEAPU8: Uint8Array;
   HEAP32: Int32Array;
   callMain(args: string[]): number;
-  _flush_streams?: () => void;
+  /** Our dispatcher's export: ends stdout's and stderr's last lines and flushes them, after each program. */
+  _flush_streams: () => void;
 }
 
 export interface EmscriptenFS {
@@ -32,7 +34,6 @@ export interface EmscriptenFS {
   isDir(mode: number): boolean;
   writeFile(path: string, data: Uint8Array | string): void;
   readFile(path: string, opts?: { encoding: 'binary' | 'utf8' }): Uint8Array | string;
-  analyzePath(path: string): { exists: boolean };
   chdir(path: string): void;
   unlink(path: string): void;
   /** The error a file operation throws to return an errno to the program (29: EIO). */

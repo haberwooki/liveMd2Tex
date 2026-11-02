@@ -225,7 +225,7 @@ describe('B1 bundle builder, without the engine (scripts/build-bundle.mjs)', fun
   });
 
   const run = (args: string[], tlnet = snapshot, pins = pinsFile) =>
-    build.main(['--local', tlnet, '--pins', pins, '--sets', setsFile, '--out', path.join(tmp, 'out'), '--cache', path.join(tmp, 'cache'), '--engine-assets', path.join(tmp, 'none'), '--engine-image', path.join(tmp, 'none'), '--stage', 'build', '--skip-engine', '--no-package', ...args], { log: () => undefined });
+    build.main(['--local', tlnet, '--pins', pins, '--sets', setsFile, '--out', path.join(tmp, 'out'), '--cache', path.join(tmp, 'cache'), '--engine-assets', path.join(tmp, 'none'), '--stage', 'build', '--skip-engine', '--no-package', ...args], { log: () => undefined });
 
   it('builds both sets: packages, generated files, images and manifests', async () => {
     const { status, report } = await run([]);
@@ -297,7 +297,10 @@ describe('B1 bundle builder, without the engine (scripts/build-bundle.mjs)', fun
     assert.ok(!index.metadata.files.some((f: { filename: string }) => f.filename === '/texlive/texmf-dist/texmf-var/ls-R'));
     assert.ok(!index.metadata.files.some((f: { filename: string }) => f.filename.includes('tlpkg')), 'tlpkg/ is left out');
     const extraIndex = JSON.parse(readFileSync(path.join(out, 'extra-data', 'data', 'extra.index.json'), 'utf8'));
-    assert.deepEqual(extraIndex.metadata.files.map((f: { filename: string }) => f.filename), ['/fonts/map/dvips/extrapkg/extra.map', '/ls-R', '/tex/latex/extrapkg/extrapkg.sty']);
+    assert.deepEqual(extraIndex.metadata.files.map((f: { filename: string }) => f.filename), ['/fonts/map/dvips/extrapkg/extra.map', '/fonts/xetex-fonts.tsv', '/ls-R', '/tex/latex/extrapkg/extrapkg.sty']);
+    // Each image holds its font list (empty here: these sets have no OpenType or TrueType font), where the engine
+    // host looks for it (src/engine-host/engine/layout.ts, FONT_LIST_IN_IMAGE).
+    assert.equal(get('/texlive/texmf-dist/fonts/xetex-fonts.tsv'), '');
     const licences = JSON.parse(readFileSync(path.join(out, 'core-data', 'data', 'licences.json'), 'utf8'));
     assert.deepEqual(licences.amsfonts, { licence: ['ofl'], ctan: '/fonts/amsfonts', revision: 0 });
     // A package under the GPL also gets its archives in the pinned snapshot, with the tlpdb's SHA-512 (M6): the source
@@ -366,35 +369,13 @@ describe('B1 bundle builder, without the engine (scripts/build-bundle.mjs)', fun
     assert.deepEqual(lt.licenceArchives('makeindex', pkg([], true), ['other-free'], rules), [], 'a package whose notice the rules hold');
   });
 
-  it("gives the engine build's files their licence texts (ICU's data), and stops on a file no rule covers", async () => {
-    const lt = await importScript<{
-      licenceFolder(set: string, packages: unknown[], rules: unknown, texts: Map<string, Buffer>, engineFiles?: string[]): { files: Map<string, Buffer>; index: string; problems: string[] };
-      loadTexts(root: string, rules: unknown, fromArchives?: Map<string, Buffer>): { texts: Map<string, Buffer>; problems: string[] };
-    }>('scripts/lib/licence-texts.mjs');
-    const rules = JSON.parse(readFileSync(path.join(root, 'engine', 'bundle-licences.json'), 'utf8'));
-    const { texts } = lt.loadTexts(root, rules, new Map([['TeX-Live-LICENSE.TL', Buffer.from('TL')], ['TeX-Live-LICENSE.CTAN', Buffer.from('CTAN')]]));
-    const folder = lt.licenceFolder('core-data', [], rules, texts, ['/texlive/icudt78l.dat', '/texlive/texmf.cnf', '/bin/busytex', '/texlive/tex/generic/tex-ini-files/xetex.ini']);
-    assert.deepEqual(folder.problems, []);
-    const rows = folder.index.split('\n').filter((l) => l && !l.startsWith('#'));
-    assert.deepEqual(rows, [
-      'bin/busytex\t(engine build)\t-',
-      'texlive/icudt78l.dat\t(engine build)\ttexts/ICU.txt',
-      'texlive/tex/generic/tex-ini-files/xetex.ini\t(engine build)\t-',
-      'texlive/texmf.cnf\t(engine build)\ttexts/TeX-Live-LICENSE.TL.txt texts/TeX-Live-LICENSE.CTAN.txt',
-    ]);
-    assert.ok(folder.files.get('texts/ICU.txt')?.equals(readFileSync(path.join(root, 'LICENSES', 'ICU.txt'))));
-    assert.deepEqual(lt.licenceFolder('core-data', [], rules, texts, ['/texlive/unknown.bin']).problems, [
-      'core-data: texlive/unknown.bin, from the engine build\'s image, matches no rule in engine/bundle-licences.json ("engineFiles")',
-    ]);
-  });
-
   it('ships the licence texts each package needs, and stops when one is missing or not the pinned text', async () => {
     const sets = JSON.parse(readFileSync(setsFile, 'utf8'));
     const build1 = async (name: string, extraPackages: string[], licencesFile?: string) => {
       const file = path.join(tmp, `sets-${name}.json`);
       writeFileSync(file, JSON.stringify({ ...sets, 'extra-data': { ...sets['extra-data'], packages: [...sets['extra-data'].packages, ...extraPackages] } }));
       const outDir = path.join(tmp, `out-${name}`);
-      const result = await build.main(['--local', snapshot, '--pins', pinsFile, '--sets', file, '--out', outDir, '--engine-assets', path.join(tmp, 'none'), '--engine-image', path.join(tmp, 'none'), '--stage', 'build', '--skip-engine', '--no-package', ...(licencesFile ? ['--licences', licencesFile] : [])], { log: () => undefined });
+      const result = await build.main(['--local', snapshot, '--pins', pinsFile, '--sets', file, '--out', outDir, '--engine-assets', path.join(tmp, 'none'), '--stage', 'build', '--skip-engine', '--no-package', ...(licencesFile ? ['--licences', licencesFile] : [])], { log: () => undefined });
       return { ...result, outDir };
     };
     // "other-free": the terms a README states (the README ships), or that the package's own file states.
@@ -432,7 +413,7 @@ describe('B1 bundle builder, without the engine (scripts/build-bundle.mjs)', fun
     const withSkip = async (name: string, t1cSkip: Record<string, string>) => {
       const file = path.join(tmp, `sets-${name}.json`);
       writeFileSync(file, JSON.stringify({ ...sets, 'core-data': { ...sets['core-data'], t1cSkip } }));
-      return build.main(['--local', snapshot, '--pins', pinsFile, '--sets', file, '--out', path.join(tmp, `out-${name}`), '--engine-assets', path.join(tmp, 'none'), '--engine-image', path.join(tmp, 'none'), '--stage', 'build', '--skip-engine', '--no-package'], { log: () => undefined });
+      return build.main(['--local', snapshot, '--pins', pinsFile, '--sets', file, '--out', path.join(tmp, `out-${name}`), '--engine-assets', path.join(tmp, 'none'), '--stage', 'build', '--skip-engine', '--no-package'], { log: () => undefined });
     };
     // Without t1cSkip, amsfonts' font (its header states nothing; its package is under the OFL) is still stored as it
     // is, with the reason: the build decides per font (the t1c gate, T1S-01).
@@ -469,7 +450,7 @@ describe('B1 bundle builder, without the engine (scripts/build-bundle.mjs)', fun
     sets['extra-data'].packages.push('no-such-package');
     const other = path.join(tmp, 'sets-missing.json');
     writeFileSync(other, JSON.stringify(sets));
-    const missing = await build.main(['--local', snapshot, '--pins', pinsFile, '--sets', other, '--out', path.join(tmp, 'out2'), '--engine-assets', path.join(tmp, 'none'), '--engine-image', path.join(tmp, 'none'), '--stage', 'build', '--skip-engine', '--no-package'], { log: () => undefined });
+    const missing = await build.main(['--local', snapshot, '--pins', pinsFile, '--sets', other, '--out', path.join(tmp, 'out2'), '--engine-assets', path.join(tmp, 'none'), '--stage', 'build', '--skip-engine', '--no-package'], { log: () => undefined });
     assert.equal(missing.status, 1);
     assert.ok(missing.report.problems.some((p) => p.includes('no-such-package')));
   });
@@ -560,13 +541,13 @@ describe('B1 bundle builder, without the engine (scripts/build-bundle.mjs)', fun
     sets['extra-data'].packages.push('pytool');
     const withPy = path.join(tmp, 'sets-pytool.json');
     writeFileSync(withPy, JSON.stringify(sets));
-    const r = await build.main(['--local', snapshot, '--pins', pinsFile, '--sets', withPy, '--out', path.join(tmp, 'out-pytool'), '--engine-image', path.join(tmp, 'none'), '--stage', 'build', '--skip-engine', '--no-package'], { log: () => undefined });
+    const r = await build.main(['--local', snapshot, '--pins', pinsFile, '--sets', withPy, '--out', path.join(tmp, 'out-pytool'), '--stage', 'build', '--skip-engine', '--no-package'], { log: () => undefined });
     assert.equal(r.status, 1);
     assert.deepEqual(r.report.problems, ['extra-data: pytool holds tex/latex/pytool/helper.py, a program file; a data set may not ship one (leave the package out with its reason)']);
     // Left out with its reason, the package is listed and the build goes on.
     sets['extra-data'].exclude = { pytool: 'a program in a data set: helper.py' };
     writeFileSync(withPy, JSON.stringify(sets));
-    const ok = await build.main(['--local', snapshot, '--pins', pinsFile, '--sets', withPy, '--out', path.join(tmp, 'out-pytool'), '--engine-image', path.join(tmp, 'none'), '--stage', 'build', '--skip-engine', '--no-package'], { log: () => undefined });
+    const ok = await build.main(['--local', snapshot, '--pins', pinsFile, '--sets', withPy, '--out', path.join(tmp, 'out-pytool'), '--stage', 'build', '--skip-engine', '--no-package'], { log: () => undefined });
     assert.deepEqual(ok.report.problems, []);
     assert.ok(ok.report.dropped.some((d) => d.package === 'pytool'));
   });
@@ -594,6 +575,24 @@ describe('B1 bundle builder, without the engine (scripts/build-bundle.mjs)', fun
     assert.deepEqual([...r.core], ['fontspec']);
     assert.deepEqual([...r.extra].sort(), ['tipa', 'xunicode']);
     assert.deepEqual(r.moved.map((m) => [m.package, m.inExtra]), [['xunicode', true], ['tipa', true]]);
+  });
+
+  it("keeps in core-data the packages the extension's own documents load (forOwnDocuments), and stops when one is left out", async () => {
+    type Db = Map<string, unknown>;
+    const { parseTlpdb } = await importScript<{ parseTlpdb(text: string): Db }>('scripts/lib/tlpdb.mjs');
+    const { selectSets } = await importScript<{
+      selectSets(db: Db, sets: unknown): { core: Set<string>; extra: Set<string>; ownDocuments: { package: string; inCore: boolean }[]; problems: string[] };
+    }>('scripts/lib/bundle.mjs');
+    const record = (name: string, ...lines: string[]) => [`name ${name}`, ...lines].join('\n');
+    const db = parseTlpdb([record('base', 'category Package', 'catalogue-license lppl1.3c'), record('parskip', 'category Package', 'catalogue-license lppl1.3c'), record('collection-latexextra', 'category Collection', 'depend parskip')].join('\n\n') + '\n');
+    const sets = (core: Record<string, unknown>) => ({ 'core-data': { packages: ['base'], licence: 'free', forOwnDocuments: { parskip: 'the preset' }, ...core }, 'extra-data': { collections: ['collection-latexextra'], licence: 'free' } });
+    const r = selectSets(db, sets({}));
+    assert.deepEqual(r.problems, []);
+    assert.deepEqual([...r.core].sort(), ['base', 'parskip']);
+    assert.deepEqual([...r.extra], [], 'parskip is in core-data, so not in extra-data');
+    assert.deepEqual(r.ownDocuments, [{ package: 'parskip', reason: 'the preset', inCore: true }]);
+    const left = selectSets(db, sets({ toExtra: { parskip: 'moved' } }));
+    assert.deepEqual(left.problems, ["core-data: parskip, which the extension's own documents load (the preset), is not in core-data"]);
   });
 
   it('judges the closure test with its rules: expected failures with reasons, setup preambles, stale entries', async () => {
@@ -652,7 +651,7 @@ describe('B1 bundle builder, without the engine (scripts/build-bundle.mjs)', fun
     writeFileSync(other, JSON.stringify(sets));
     const outDir = path.join(tmp, 'out-error');
     await assert.rejects(
-      build.main(['--local', snapshot, '--pins', pinsFile, '--sets', other, '--out', outDir, '--engine-image', path.join(tmp, 'none'), '--stage', 'build', '--skip-engine', '--no-package'], { log: () => undefined }),
+      build.main(['--local', snapshot, '--pins', pinsFile, '--sets', other, '--out', outDir, '--stage', 'build', '--skip-engine', '--no-package'], { log: () => undefined }),
       /fmtutil-hdr\.cnf/,
     );
     const saved = JSON.parse(readFileSync(path.join(outDir, 'report-build.json'), 'utf8'));

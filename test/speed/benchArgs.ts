@@ -1,6 +1,6 @@
 // The benchmark's options and its start-load report (docs/DEVELOPING.md, "Measuring speed"). They live apart from
-// bench.ts, which uses today's engine files, so that they and their unit test import nothing the engine's own build
-// deletes.
+// the benchmark itself (bench.ts), which starts the engine's files by name, so that they and their unit test know no
+// engine file name.
 
 import * as path from 'node:path';
 import { defaultOut } from './common';

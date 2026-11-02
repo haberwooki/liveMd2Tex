@@ -1,0 +1,9 @@
+% Fixture (CC0, written by the project): a runaway macro that recurses through expand() until TeX's own
+% expand_depth (10,000) stops it. \romannumeral makes each level a deep C recursion (scan_int expands the next
+% \a before it returns), so the worker's stack must hold it. With Node's default 4 MB, a second pdfLaTeX run ends
+% with a RangeError, and at -O3, the shipped level, a first XeLaTeX run too; with the worker's 16 MiB every run ends
+% with TeX's message (src/engine-host/engine/core.ts, WORKER_STACK_MB).
+\documentclass{article}
+\begin{document}
+\def\a{\romannumeral\a}\a
+\end{document}

@@ -13,6 +13,7 @@ import * as path from 'node:path';
 import * as vscode from 'vscode';
 import type { TestApi } from '../../src/extension/extension';
 import { COMMAND_PREFIX } from '../../src/shared/identity';
+import { missingInput } from '../support/missingData';
 import { activateExtension, engineStubArgs } from './support';
 
 const BS = '\\';
@@ -25,7 +26,11 @@ describe('build gate 1: SyncTeX data goes with its PDF, and links open through V
   before(async function () {
     api = await activateExtension();
     const folder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-    if (!folder || !api.engineAvailable()) {
+    if (!folder) {
+      this.skip();
+    }
+    if (!api.engineAvailable()) {
+      missingInput('the staged engine and core data (node scripts/stage-engine.mjs --data)');
       this.skip();
     }
     ws = folder as string;

@@ -2,9 +2,8 @@
 // The starting documents in templates/markdown (CC0) are converted by the extension's own converter with the
 // class's template (src/converter/classes.ts) and compiled with pdfLaTeX and bibtex8, with each class and its
 // .bst file from the pinned CTAN set (../engine_assets, docs/DESIGN.md#testing; elsarticle and acmart built from their
-// .dtx by docstrip inside the engine). acmart needs fonts (libertine, newtxmath, inconsolata) that the interim
-// TeXlyre image lacks; its test records the missing files instead of a PDF until the data packages carry them
-// (B1 / extra-data). Results (numbers only) go to ../s1_runs/, outside the repository.
+// .dtx by docstrip inside the engine). acmart needs fonts (libertine, newtxmath, inconsolata); its test records any
+// missing files instead of a PDF. Results (numbers only) go to ../s1_runs/, outside the repository.
 
 import * as assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -95,8 +94,8 @@ describe('class templates typeset their documents on the bundled engine (C0b)', 
 
   it('acmart (class built by docstrip in the engine, ACM-Reference-Format.bst)', async () => {
     const r = await typeset('acmart', 'acmart.md', await classFiles('acmart'));
-    // The interim image has no Libertine: acmart then keeps Computer Modern (its fonts arrive with the data
-    // packages, B1). Recorded, not a failure.
+    // acmart's fonts (Libertine, newtx, Inconsolata) are in core-data; any font warning acmart still gives is
+    // recorded, not a failure.
     const fonts = [...new Set([...r.result.log.matchAll(/Class acmart Warning: ([^\n]*font[^\n]*)/gi)].map((m) => m[1]))];
     record('template-acmart-font-warnings', fonts);
     assertTypeset('acmart', r);

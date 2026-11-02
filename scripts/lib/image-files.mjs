@@ -1,8 +1,8 @@
-// Development tool: reads files out of TeXlyre's LZ4 file_packager image (texlive-extra.data) without running
-// any of its JavaScript. The image is the uncompressed file contents cut into 2048-byte chunks, each stored
-// LZ4-compressed (a plain LZ4 block) or raw; the index (made by scripts/stage-engine.mjs from the loader's
-// metadata) gives each chunk's offset, size and whether it is compressed, and each file's start and end in the
-// uncompressed stream. Used to build the interim manifest's package index (docs/DESIGN.md#architecture, #engine-and-data).
+// Development tool: reads files out of a data set's LZ4 image (Emscripten's file_packager layout: a .data file and its
+// .index.json, scripts/lib/data-image.mjs). The image is the uncompressed file contents cut into 2048-byte chunks,
+// each stored LZ4-compressed (a plain LZ4 block) or raw; the index gives each chunk's offset, size and whether it is
+// compressed, and each file's start and end in the uncompressed stream. The builder's checks and the tests use it
+// (docs/DESIGN.md#engine-and-data).
 
 import { readFileSync } from 'node:fs';
 
@@ -58,7 +58,11 @@ export function lz4Block(input, output) {
  * Returns read(start, end) -> Buffer of the uncompressed bytes [start, end).
  */
 export function openImage(dataPath, compressed) {
-  const data = readFileSync(dataPath);
+  return openImageBytes(readFileSync(dataPath), compressed);
+}
+
+/** The same, on the image's bytes in memory (a package entry, for the VSIX scan). */
+export function openImageBytes(data, compressed) {
   const { offsets, sizes, successes } = compressed;
   let cachedIndex = -1;
   const cached = Buffer.alloc(CHUNK_SIZE);

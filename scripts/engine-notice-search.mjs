@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 // Development tool for the engine's notices (engine/engine-notices.json, "search"; THIRD_PARTY_NOTICES.md,
-// "Inside the engine"; the licence gates, F2-M1 to L5-01). A library on TeXlyre's link line can hold code by other
-// authors under terms of their own, and the link-line test cannot see below the archive. This tool helps a person
-// find that code; it is an aid to reading, not a proof. It reads the engine's pinned source archives and searches
-// the compiled sources of every linked library for licence clauses, written out or stated by reference: each of
+// "Inside the engine"; the licence gates, F2-M1 to L5-01). A library the engine links (engine-build.json's link map,
+// by part) can hold code by other authors under terms of their own, and the link check cannot see below the
+// archive. This tool helps a person find that code; it is an aid to reading, not a proof. It reads the engine's
+// pinned source archives and searches the compiled sources of every linked library for licence clauses, written
+// out or stated by reference: each of
 // the patterns in "clauses" ("Permission is hereby granted", "Redistribution and use in source and binary forms",
 // "Released under", "licensed under", "SPDX-License-Identifier", "public domain" and others).
 //
@@ -25,13 +26,15 @@
 // A file that is neither covered nor named, and a rule that names no flagged file, are problems. Known limits, which
 // the person's reading is for: a clause split over three lines or more; a holder more than 25 lines above its
 // clause; a denial of a dedication in other words; and a second author's grant of the same kind, with no copyright
-// line of its own, which is checked against the first author's holder above it. On every engine pin change a
-// person runs it, reads every new hit (--since the recorded report, engine/engine-notice-search.report.json)
-// and every problem, and writes the rules before a release (docs/DEVELOPING.md, "When the engine pin changes").
+// line of its own, which is checked against the first author's holder above it. Whenever the engine is rebuilt
+// from new sources (TeX Live's or Emscripten's archives, engine/engine-notices.json's "sources"), a person runs it,
+// reads every new hit (--since the recorded report, engine/engine-notice-search.report.json) and every problem, and
+// writes the rules before a release (docs/DEVELOPING.md, "Licences, notices and releases").
 //
 //   node scripts/engine-notice-search.mjs --archives DIR [--report FILE] [--since FILE]
-// DIR holds the archives of engine/engine-notices.json's "sources", by their names. --since lists the files whose
-// hits are new or changed since an earlier report. It starts no program and opens no connection. Exit code 0 when
+// DIR holds the archives of engine/engine-notices.json's "sources" (TeX Live's and Emscripten's commit archives), by
+// their names; each folder of "search" names its archive. --since lists the files whose hits are new or changed
+// since an earlier report. It starts no program and opens no connection. Exit code 0 when
 // every hit is accounted for; 1 with the problems.
 
 import { readFileSync, writeFileSync } from 'node:fs';

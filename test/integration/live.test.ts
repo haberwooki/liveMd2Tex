@@ -12,6 +12,7 @@ import type { TestApi } from '../../src/extension/extension';
 import { COMMAND_PREFIX, DISPLAY_NAME } from '../../src/shared/identity';
 import type { CorpusProject } from '../support/corpusProjects';
 import { responseFigure } from '../support/corpusProjects';
+import { missingInput } from '../support/missingData';
 import { activateExtension, engineStubArgs, ownAttempts, stubState } from './support';
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -46,7 +47,11 @@ describe('M2-A: live preview in VS Code', function () {
   before(async function () {
     const folder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
     api = await activateExtension();
-    if (!folder || !existsSync(path.join(folder, 'v0-corpus.json')) || !api.engineAvailable()) {
+    if (!folder || !existsSync(path.join(folder, 'v0-corpus.json'))) {
+      this.skip();
+    }
+    if (!api.engineAvailable()) {
+      missingInput('the staged engine and core data (node scripts/stage-engine.mjs --data)');
       this.skip();
     }
     projects = JSON.parse(readFileSync(path.join(folder as string, 'v0-corpus.json'), 'utf8')) as CorpusProject[];

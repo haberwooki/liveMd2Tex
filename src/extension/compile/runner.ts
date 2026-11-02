@@ -15,7 +15,6 @@ import { pdfProblem } from '../../shared/pdfCheck';
 import { withErrorHelp } from '../diagnostics/errorHelp';
 import type { DataResolver } from '../engine/dataResolver';
 import { EngineUnavailableError, type EngineService } from '../engine/engineService';
-import { interimFontsFolder, readInterimFonts } from '../engine/interimFonts';
 import type { ConversionService, DocumentConversion } from '../markdown/conversion';
 import { publishConverterProblems } from '../markdown/problems';
 import { fingerprint } from '../project/collect';
@@ -119,7 +118,6 @@ export class CompileRunner {
       limits: target.limits,
       packages: await this.o.data.get(),
       mountSets: this.mountSets.get(target.key),
-      extraFiles: await readInterimFonts(interimFontsFolder(this.o.extensionPath), conversion.fontFiles),
       bodyStartLine: conversion.bodyStartLine,
       appendix: conversion.appendixMap && conversion.appendixFile ? { file: conversion.appendixFile, map: conversion.appendixMap } : undefined,
     });

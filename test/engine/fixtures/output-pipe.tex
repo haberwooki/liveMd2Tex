@@ -1,0 +1,10 @@
+% Fixture (CC0, written by the project): an output pipe must not start anything (docs/DESIGN.md#rules). With shell
+% escape on, TeX passes the command to popen(), which the engine's stub refuses, so the pipe is never opened.
+\documentclass{article}
+\begin{document}
+Before.
+\immediate\openout1=|"echo out-pipe-was-here > out-pipe-was-here.txt"
+\immediate\write1{to the pipe}
+\immediate\closeout1
+After.
+\end{document}

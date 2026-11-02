@@ -1,5 +1,5 @@
 // V0 exit criteria at Node level (docs/DESIGN.md#testing): every document goes through the same pipeline the save
-// handler uses (src/extension/compile/pipeline.ts) and the same engine service, with the engine and the interim
+// handler uses (src/extension/compile/pipeline.ts) and the same engine service, with the engine and the core
 // data staged where the extension looks (dist/engine, dist/data), the stubs in every process, and the PDF
 // written next to the source. A second compile with the first one's state stands for a second save. The VS Code
 // test (test/integration/v0.test.ts) repeats this through real saves in a window.
@@ -12,12 +12,11 @@ import * as path from 'node:path';
 import { convertMarkdown } from '../../src/converter/markdownToLatex';
 import { diagnosticsFor, generatedMainFor, nextState, prepareCompile, prepareMarkdownCompile } from '../../src/extension/compile/pipeline';
 import { bundledEngineAssets, EngineService } from '../../src/extension/engine/engineService';
-import { interimFontsFolder, readInterimFonts } from '../../src/extension/engine/interimFonts';
 import type { ProjectFs } from '../../src/extension/project/collect';
 import { materializeCorpus, type CorpusProject } from '../support/corpusProjects';
 import { docstripWith } from '../support/prepareV0Workspace';
 import { root, stubState } from '../support/helpers';
-import { record, writeResults } from './support';
+import { record, stagedEngine, testPackages, writeResults } from './support';
 
 function nodeFs(folder: string): ProjectFs {
   return {
@@ -38,9 +37,8 @@ describe('V0 compile route (Node): a PDF next to the source for every document',
   let tmp = '';
 
   before(async function () {
-    if (!bundledEngineAssets(root)) {
-      // Needs node scripts/stage-engine.mjs --data after the build.
-      this.skip();
+    if (!stagedEngine(this)) {
+      return;
     }
     service = new EngineService({
       modulePath: path.join(root, 'dist', 'engine-host.js'),
@@ -68,7 +66,7 @@ describe('V0 compile route (Node): a PDF next to the source for every document',
         this.skip();
       }
       const project = p as CorpusProject;
-      const prepared = await prepareCompile({ fs: nodeFs(project.folder), mainRel: project.main, engineSetting: 'pdflatex' });
+      const prepared = await prepareCompile({ fs: nodeFs(project.folder), mainRel: project.main, engineSetting: 'pdflatex', packages: await testPackages() });
       const { result, engineStartMs } = await service.compile(prepared.job);
       const diagnostics = diagnosticsFor(result, prepared);
       assert.ok(result.pdf, `${id}: no PDF (${result.error ?? ''})\n${result.log.split('\n').slice(-25).join('\n')}`);
@@ -99,6 +97,7 @@ describe('V0 compile route (Node): a PDF next to the source for every document',
         mainRel: project.main,
         engineSetting: 'pdflatex',
         previous: nextState(result, prepared),
+        packages: await testPackages(),
       });
       const second = await service.compile(again.job);
       assert.ok(second.result.pdf, `${id}: no PDF on the second compile`);
@@ -176,8 +175,6 @@ describe('V0 compile route (Node): a PDF next to the source for every document',
       lineMap: conversion.lineMap,
       engine: conversion.engine,
       previous,
-      // The notes template's DejaVu fonts (interim, until B1), as the controller adds them.
-      extraFiles: await readInterimFonts(interimFontsFolder(root), conversion.fontFiles),
     });
     const { result } = await service.compile(prepared.job);
     return { conversion, prepared, result, diagnostics: diagnosticsFor(result, prepared) };

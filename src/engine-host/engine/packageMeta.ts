@@ -1,6 +1,5 @@
-// Reads the metadata of an Emscripten file_packager image from its loader script WITHOUT running the script:
-// the loader embeds two JSON objects, `var compressedData = {...}` (the LZ4 chunk table) and the final
-// `loadPackage({"files": [...], ...})` argument (the file list with byte ranges). Both are parsed as JSON.
+// The metadata of an Emscripten file_packager image, read from its index (.index.json: the file list with byte
+// ranges and the LZ4 chunk table), and the checks on it: the packed fonts' list against the data set's manifest.
 
 import { T1C } from './t1c';
 
@@ -82,50 +81,6 @@ export interface CompressedTable {
   offsets: number[];
   sizes: number[];
   successes: number[];
-}
-
-/** The JSON value that starts at the first "{" at or after `from`, by brace counting outside strings. */
-function balancedJsonAt(source: string, from: number): unknown {
-  const start = source.indexOf('{', from);
-  if (start < 0) {
-    throw new Error('No JSON object found.');
-  }
-  let depth = 0;
-  let inString = false;
-  for (let i = start; i < source.length; i++) {
-    const c = source[i];
-    if (inString) {
-      if (c === '\\') {
-        i++;
-      } else if (c === '"') {
-        inString = false;
-      }
-    } else if (c === '"') {
-      inString = true;
-    } else if (c === '{') {
-      depth++;
-    } else if (c === '}') {
-      depth--;
-      if (depth === 0) {
-        return JSON.parse(source.slice(start, i + 1));
-      }
-    }
-  }
-  throw new Error('Unbalanced JSON object.');
-}
-
-export function readPackageMetadata(loaderSource: string): { metadata: PackageMetadata; compressed: CompressedTable } {
-  const compressedAt = loaderSource.indexOf('var compressedData = ');
-  const filesAt = loaderSource.lastIndexOf('loadPackage({"files"');
-  if (compressedAt < 0 || filesAt < 0) {
-    throw new Error('Not a file_packager loader with LZ4 data (markers not found).');
-  }
-  const compressed = balancedJsonAt(loaderSource, compressedAt) as CompressedTable;
-  const metadata = balancedJsonAt(loaderSource, filesAt) as PackageMetadata;
-  if (!Array.isArray(metadata.files) || !Array.isArray(compressed.offsets)) {
-    throw new Error('Unexpected file_packager metadata.');
-  }
-  return { metadata, compressed };
 }
 
 /**

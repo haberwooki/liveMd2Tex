@@ -83,8 +83,8 @@ const sets = [
     files: ['pgfmanual-en-tutorial.tex'],
   },
   {
-    // M6 (docs/DESIGN.md#engine-and-data): a real .dtx and .ins package that the interim image lacks, built by
-    // "Add a package from a file" with the bundled engine.
+    // M6 (docs/DESIGN.md#engine-and-data): a real .dtx and .ins package that core-data lacks (the Extra Packages
+    // add-on has it), built by "Add a package from a file" with the bundled engine.
     id: 'ctan-tensor',
     package: 'tensor 2.2',
     licence: 'LPPL 1.3c or later (M6 .dtx/.ins test; 2023/07/18 v2.2)',

@@ -4,8 +4,10 @@
 
 import * as assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import * as path from 'node:path';
 import { gzipSync } from 'node:zlib';
-import { importScript } from '../support/helpers';
+import { importScript, root } from '../support/helpers';
 
 interface Compare {
   IGNORABLE: { field: string; why: string }[];
@@ -16,20 +18,20 @@ interface Component {
   name: string;
   notices: string[];
 }
-interface Next {
+interface Manifest {
   components: Component[];
-  files: Record<string, { sha256: string; release?: unknown }>;
+  files: Record<string, { sha256: string }>;
   build: { texLive: { commit: string }; emscripten: { commit: string; release: string } };
   sources: { name: string; commit: string }[];
 }
 interface Notices {
-  releaseNotice(m: Next): string;
+  releaseNotice(m: Manifest): string;
   releaseAssetName(p: string): string;
 }
 interface Release {
   TAG: RegExp;
-  loadNext(): Next;
-  artifactProblems(manifest: unknown, outputs: { wasm: Buffer; glue: Buffer }, next: Next, pins: unknown, commit: string, tree: string): string[];
+  loadNotices(): Manifest;
+  artifactProblems(manifest: unknown, outputs: { wasm: Buffer; glue: Buffer }, notices: Manifest, pins: unknown, commit: string, tree: string): string[];
 }
 
 const sha = (b: Buffer) => createHash('sha256').update(b).digest('hex');
@@ -59,7 +61,7 @@ describe('the engine release and the comparison of two builds', () => {
   });
 
   it('the release\'s notice files have distinct names, and NOTICE names every part with its files', () => {
-    const next = rel.loadNext();
+    const next = rel.loadNotices();
     const names = Object.keys(next.files).map(notices.releaseAssetName);
     assert.equal(new Set(names).size, names.length, names.join(' '));
     assert.equal(notices.releaseAssetName('LICENSE'), 'GPL-3.0.txt');
@@ -69,8 +71,9 @@ describe('the engine release and the comparison of two builds', () => {
       for (const n of c.notices) assert.ok(text.includes(notices.releaseAssetName(n)), `${c.id}: ${n}`);
       for (const n of c.notices) assert.ok(n in next.files || n === 'LICENSE' || /^LICENSES\/[^/]+\.txt$/.test(n), `${c.id}: ${n} is pinned or a licence text`);
     }
-    // musl's COPYRIGHT of 6.0.13 comes from Emscripten's archive while LICENSES/engine holds today's engine's copy.
-    assert.ok(next.files['LICENSES/engine/musl-COPYRIGHT.txt'].release);
+    // musl's COPYRIGHT is Emscripten 6.0.13's (system/lib/libc/musl/COPYRIGHT), as the engine release holds it.
+    assert.equal(next.files['LICENSES/engine/musl-COPYRIGHT.txt'].sha256, 'b870108ec5e7790e9f9919064f1b9421d62d5f9b0e6c230c6adf7ea2da62e97b');
+    assert.equal(sha(readFileSync(path.join(root, 'LICENSES', 'engine', 'musl-COPYRIGHT.txt'))), next.files['LICENSES/engine/musl-COPYRIGHT.txt'].sha256);
     assert.match(text, /musl-file-notices\.txt/);
   });
 
@@ -110,7 +113,7 @@ describe('the engine release and the comparison of two builds', () => {
   });
 
   it('checks the artifacts against the manifest, the pins and the checkout before a draft is made', () => {
-    const next = rel.loadNext();
+    const next = rel.loadNotices();
     const wasm = Buffer.from('wasm');
     const glue = Buffer.from('glue');
     const pins = { texLive: { commit: next.build.texLive.commit }, emscripten: { commit: next.build.emscripten.commit } };

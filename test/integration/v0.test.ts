@@ -2,7 +2,9 @@
 // the save compiles it with the engine inside the extension, the PDF appears beside the editor, lands next to
 // the source, and the log's problems reach the Problems panel. The stubs are loaded in the extension host and
 // in the engine host. scripts/run-integration.mjs prepares the workspace (test/support/prepareV0Workspace.ts)
-// and opens it in the test window; without the staged engine and data these tests skip.
+// and opens it in the test window; without the staged engine and data these tests skip. P4 (mwe) and P7 (memoir,
+// biblatex) need the Extra Packages add-on, as for a user: it is installed for these tests when
+// scripts/run-integration.mjs is given one (LIVEMD2TEX_EXTRA_DATA), and they skip without it.
 
 import * as assert from 'node:assert/strict';
 import { existsSync, readFileSync, statSync } from 'node:fs';
@@ -11,9 +13,12 @@ import * as vscode from 'vscode';
 import type { CompileRecord } from '../../src/extension/compile/controller';
 import type { TestApi } from '../../src/extension/extension';
 import type { CorpusProject } from '../support/corpusProjects';
-import { activateExtension, engineStubArgs, ownAttempts, reportBlocked, stubState } from './support';
+import { missingInput } from '../support/missingData';
+import { activateExtension, engineStubArgs, installAddOn, ownAttempts, reportBlocked, stubState, uninstallAddOn } from './support';
 
 const CORPUS_LIST = 'v0-corpus.json';
+/** The corpus documents whose packages are in the Extra Packages add-on. */
+const NEEDS_ADD_ON = new Set(['P4', 'P7']);
 
 function withTimeout<T>(promise: Promise<T>, ms: number, what: string): Promise<T> {
   return Promise.race([promise, new Promise<T>((_, reject) => setTimeout(() => reject(new Error(`${what}: no result after ${ms} ms`)), ms))]);
@@ -37,25 +42,39 @@ describe('V0: compile on save in VS Code', function () {
   this.timeout(120000);
   let api: TestApi;
   let projects: CorpusProject[] = [];
+  let addOn = false;
   const blockedBefore = { count: 0 };
+  /** Skips a test whose document needs the add-on when the run has none. */
+  const needsAddOn = (ctx: Mocha.Context, id: string) => {
+    if (NEEDS_ADD_ON.has(id) && !addOn) {
+      console.log(`      ${id} needs the Extra Packages add-on (LIVEMD2TEX_EXTRA_DATA); skipped`);
+      ctx.skip();
+    }
+  };
 
   before(async function () {
     const folder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
     api = await activateExtension();
-    if (!folder || !existsSync(path.join(folder, CORPUS_LIST)) || !api.engineAvailable()) {
-      console.log('      V0 workspace or engine not prepared (run through scripts/run-integration.mjs with the engine staged); skipped');
+    if (!folder || !existsSync(path.join(folder, CORPUS_LIST))) {
+      console.log('      V0 workspace not prepared (run through scripts/run-integration.mjs); skipped');
+      this.skip();
+    }
+    if (!api.engineAvailable()) {
+      missingInput('the staged engine and core data (node scripts/stage-engine.mjs --data)');
       this.skip();
     }
     projects = JSON.parse(readFileSync(path.join(folder as string, CORPUS_LIST), 'utf8')) as CorpusProject[];
     api.setEngineExecArgv(engineStubArgs);
+    addOn = await installAddOn();
     blockedBefore.count = stubState().blocked.length;
     reportBlocked('before the V0 tests');
   });
 
-  after(() => {
+  after(async () => {
     if (projects.length > 0) {
       reportBlocked('after the V0 tests');
     }
+    await uninstallAddOn();
   });
 
   for (const id of ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P8', 'T1', 'T2', 'T3', 'T4', 'T5']) {
@@ -64,6 +83,7 @@ describe('V0: compile on save in VS Code', function () {
       if (!project) {
         this.skip();
       }
+      needsAddOn(this, id);
       const p = project as CorpusProject;
       const main = path.join(p.folder, p.main);
       const pdf = main.replace(/\.tex$/i, '.pdf');
@@ -255,6 +275,7 @@ describe('V0: compile on save in VS Code', function () {
     if (!p) {
       this.skip();
     }
+    needsAddOn(this, 'P7');
     const folder = (p as CorpusProject).folder;
     const record = await editAndSave(api, path.join(folder, 'chap1.tex'), path.join(folder, (p as CorpusProject).main));
     assert.equal(record.main, (p as CorpusProject).main);

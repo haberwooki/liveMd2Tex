@@ -342,16 +342,14 @@ describe('the engine build tools (engine/build/tools)', () => {
       assert.ok(both.failures.some((f) => f.startsWith('__main_argc_argv: defined by the loaded members')), both.failures.join('\n'));
     });
 
-    it('the draft notices (engine/engine-notices.next.json) link each component to exactly its parts of the map, and pin every file', () => {
-      const next = JSON.parse(readFileSync(path.join(root, 'engine', 'engine-notices.next.json'), 'utf8')) as {
+    it('the notices (engine/engine-notices.json) link each component to exactly its parts of the map, and pin every file', () => {
+      const notices = JSON.parse(readFileSync(path.join(root, 'engine', 'engine-notices.json'), 'utf8')) as {
         components: { id: string; links: string[] }[];
-        files: Record<string, { sha256: string; release?: { archive: string; path: string } }>;
+        files: Record<string, { sha256: string }>;
       };
-      for (const c of next.components) assert.deepEqual(c.links, lr.LINK_PARTS[c.id] ?? [], c.id);
-      for (const id of Object.keys(lr.LINK_PARTS)) assert.ok(next.components.some((c) => c.id === id), id);
-      for (const [file, f] of Object.entries(next.files)) {
-        // A file the release takes from a source archive (musl's COPYRIGHT of 6.0.13) is pinned there.
-        if (f.release) continue;
+      for (const c of notices.components) assert.deepEqual(c.links, lr.LINK_PARTS[c.id] ?? [], c.id);
+      for (const id of Object.keys(lr.LINK_PARTS)) assert.ok(notices.components.some((c) => c.id === id), id);
+      for (const [file, f] of Object.entries(notices.files)) {
         assert.equal(createHash('sha256').update(readFileSync(path.join(root, file))).digest('hex'), f.sha256, file);
       }
     });

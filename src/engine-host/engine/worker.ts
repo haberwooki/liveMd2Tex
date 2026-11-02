@@ -18,6 +18,7 @@ import { STUB_STATE_KEY, type StubReport } from '../../shared/engineProtocol';
 import { pdfProblem } from '../../shared/pdfCheck';
 import { t1cUnpack } from './t1c';
 import { loadGlue, type EmscriptenModule } from './glue';
+import { checkEnvOverrides, FONT_LIST_IN_IMAGE, fontListText, HEADER_BYTES, headerProblem } from './layout';
 import { lsR } from './lsR';
 import { damagedMessage, type ImageIndex } from './packageMeta';
 import * as speed from './speedProbe';
@@ -30,12 +31,6 @@ interface FsNode {
   atime: number;
   mtime: number;
   ctime: number;
-}
-
-/** A file of fontconfig's cache, made by the first XeTeX run and reused by later compiles. */
-export interface CacheFile {
-  name: string;
-  data: Uint8Array;
 }
 
 /** A data extension's image (CompileJob.dataImages), read by the engine host. */
@@ -55,29 +50,39 @@ export interface WorkerSetup {
   extras?: ExtraImage[];
   gluePath: string;
   cnfOverride: string;
-  fontsConf: string;
-  fontCache: CacheFile[];
+  /**
+   * Variables set over the engine's environment (createInstance), for a tool that compares runs or a test; only those
+   * layout.ts's ENV_OVERRIDES names (never shell escape), and the extension sets none. They win over the speed
+   * probe's fixed dates.
+   */
+  env?: Record<string, string>;
   createdAt: number;
 }
 
 /**
- * Every mounted folder and file gets this time stamp, so a fontconfig cache made in one worker stays valid
- * in the next (fontconfig compares each folder's mtime with the one recorded in its cache).
+ * Every mounted folder and file gets this time stamp, so a file's date (\pdffilemoddate, the .fls) does not change
+ * from one run to the next.
  */
 const IMAGE_TIME = Date.UTC(2026, 0, 1);
 
 const FORMATS = ENGINE_FORMATS;
 const PROJECT = '/project';
 const CNF_DIR = '/engine/cnf';
-const FONTS_CONF = '/engine/fonts.conf';
-const FC_CACHE = '/engine/fc-cache';
+/** The program path TeX is given (argv[0]): kpathsea derives SELFAUTOLOC from it. An empty file at mount. */
+const PROGRAM = '/bin/engine';
+/**
+ * The font list XeTeX's fontconfig stand-in reads (engine/build/fontlist; LIVEMD2TEX_FONT_LIST): the mounted
+ * images' own lists (FONT_LIST_IN_IMAGE), core first, then the add-ons in mount order, each line's path with the
+ * image's mount root in front (docs/DESIGN.md, "Engine and data").
+ */
+const FONT_LIST = '/engine/fonts.list';
+/** Where each mounted image's own list is kept (one file per image, in mount order), outside the TeX trees. */
+const FONT_LISTS = '/engine/font-lists';
 const TEXMFLOG = '/tmp/texmf.log';
 /** The user's own package files (CompileJob.texmfFiles). */
 const TEXMFHOME = '/texmf-home';
 /** Where data extension images are mounted (G2E-02): a texmf tree searched after TEXMFHOME, before the bundle. */
 const TEXMF_EXTRA = '/texmf-extra';
-/** The memory restored after each tool: its first 64 MiB, as BusyTeX's busytex_pipeline.js does (MIT). */
-const HEADER_BYTES = 2 ** 26;
 // Requests for another pass in the log. Not the word "rerunfilecheck" alone: hyperref loads that package, so its
 // name is in every such log; its warning itself says "Rerun to get outlines right".
 const RERUN = /Rerun to get|Rerun LaTeX|Please rerun LaTeX|Label\(s\) may have changed/;
@@ -88,8 +93,19 @@ function stubReport(): StubReport | null {
   return state ? state.report() : null;
 }
 
+/** Whether a path exists in the engine's file system (FS.stat throws for one that does not). */
+function exists(M: EmscriptenModule, path: string): boolean {
+  try {
+    M.FS.stat(path);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function createInstance(setup: WorkerSetup, print: (line: string) => void): Promise<EmscriptenModule> {
   const factory = loadGlue(setup.gluePath);
+  checkEnvOverrides(setup.env);
   const env: Record<string, string> = {
     // Our texmf.cnf first: its values (no shell escape, no mktex*) win over TeX Live's.
     TEXMFCNF: `${CNF_DIR}:/texlive/texmf-dist/web2c`,
@@ -101,11 +117,8 @@ async function createInstance(setup: WorkerSetup, print: (line: string) => void)
     // the user's folder has no ls-R and keeps its disk search.
     TEXMFHOME: `{${TEXMFHOME},!!${TEXMF_EXTRA}}`,
     TEXMFLOG,
-    // Our fonts.conf (engine/fonts.conf), not the image's, which also lists the Type 1 folder.
-    FONTCONFIG_PATH: '/engine',
-    FONTCONFIG_FILE: FONTS_CONF,
-    ICU_DATA: '/texlive/',
-    TEXLIVE_REMOTE_ENDPOINT: '',
+    // The font list XeTeX's fontconfig stand-in reads (writeFontList).
+    LIVEMD2TEX_FONT_LIST: FONT_LIST,
     MKTEXPK: '0',
     MKTEXTFM: '0',
     MKTEXMF: '0',
@@ -114,9 +127,10 @@ async function createInstance(setup: WorkerSetup, print: (line: string) => void)
     shell_escape: 'f',
     HOME: '/home/web_user',
     ...speed.probeEnv(),
+    ...setup.env,
   };
   return factory({
-    thisProgram: '/bin/busytex',
+    thisProgram: PROGRAM,
     noInitialRun: true,
     print,
     printErr: print,
@@ -136,9 +150,10 @@ async function createInstance(setup: WorkerSetup, print: (line: string) => void)
  * Mounts the image's files as LZ4 nodes (decompressed only when read). Equivalent to the glue's
  * LZ4.loadPackage, but each folder is created once and each file node is made directly under its parent,
  * which takes the 23,883-file image from about 14 s to well under a second. `owner` is the data extension's id,
- * or null for the core image: a packed file that fails its check names it (damagedMessage).
+ * or null for the core image: a packed file that fails its check names it (damagedMessage). The image's own font
+ * list (FONT_LIST_IN_IMAGE) is not mounted in the tree but at `listAs`: two add-ons' lists share one path.
  */
-function mountImage(M: EmscriptenModule, image: SharedArrayBuffer, index: ImageIndex, root = '', owner: string | null = null): void {
+function mountImage(M: EmscriptenModule, image: SharedArrayBuffer, index: ImageIndex, root: string, owner: string | null, listAs: string): void {
   const L = M.LZ4;
   L.init();
   const data = new Uint8Array(image);
@@ -168,8 +183,9 @@ function mountImage(M: EmscriptenModule, image: SharedArrayBuffer, index: ImageI
     return node;
   };
   const names = index.names.split('\n');
+  const ownList = owner === null ? FONT_LIST_IN_IMAGE.core : FONT_LIST_IN_IMAGE.extra;
   for (let i = 0; i < names.length; i++) {
-    const name = `${root}${names[i]}`;
+    const name = names[i] === ownList ? listAs : `${root}${names[i]}`;
     const slash = name.lastIndexOf('/');
     const parent = folder(slash <= 0 ? '/' : name.slice(0, slash));
     if (parent.contents[name.slice(slash + 1)]) {
@@ -266,6 +282,25 @@ function damagedReport(): string {
     .join(' ');
 }
 
+/** The images mounted in this worker, in mount order: each one's mount root and where its font list is kept. */
+const mounted: { root: string; list: string }[] = [];
+
+/** Mounts an image and records it for the font list. */
+function mount(M: EmscriptenModule, image: SharedArrayBuffer, index: ImageIndex, root: string, owner: string | null): void {
+  const list = `${FONT_LISTS}/${mounted.length}.tsv`;
+  mountImage(M, image, index, root, owner, list);
+  mounted.push({ root, list });
+}
+
+/**
+ * Writes FONT_LIST from the mounted images' own lists (fontListText). An image without a list adds nothing; with no
+ * list at all the stand-in finds no font by name, and XeTeX still starts.
+ */
+function writeFontList(M: EmscriptenModule): void {
+  const lists = mounted.filter(({ list }) => exists(M, list)).map(({ root, list }) => ({ root, text: M.FS.readFile(list, { encoding: 'utf8' }) as string }));
+  M.FS.writeFile(FONT_LIST, fontListText(lists));
+}
+
 /** The data images mounted in this worker, by id. */
 const mountedExtras = new Set<string>();
 /** Their files, relative to TEXMF_EXTRA: the list its ls-R holds. */
@@ -277,15 +312,15 @@ const extraFiles = new Set<string>();
  */
 const DATABASE_FILES = ['/ls-R', '/ls-r', '/aliases'];
 
-/** Mounts the images not mounted yet, and writes the tree's ls-R again. */
+/** Mounts the images not mounted yet, and writes the tree's ls-R and the font list again. */
 function mountExtras(M: EmscriptenModule, extras: ExtraImage[]): void {
   let added = false;
   for (const extra of extras) {
     if (!mountedExtras.has(extra.key)) {
-      mountImage(M, extra.image, extra.index, TEXMF_EXTRA, extra.id);
+      mount(M, extra.image, extra.index, TEXMF_EXTRA, extra.id);
       mountedExtras.add(extra.key);
       for (const name of extra.index.names.split('\n')) {
-        if (name.length > 1 && !DATABASE_FILES.includes(name)) {
+        if (name.length > 1 && !DATABASE_FILES.includes(name) && name !== FONT_LIST_IN_IMAGE.extra) {
           extraFiles.add(name.slice(1));
         }
       }
@@ -294,7 +329,7 @@ function mountExtras(M: EmscriptenModule, extras: ExtraImage[]): void {
   }
   if (added) {
     writeExtrasLsR(M);
-    stampFolders(M, TEXMF_EXTRA, extrasTime([...mountedExtras]));
+    writeFontList(M);
   }
 }
 
@@ -309,57 +344,26 @@ function mountExtras(M: EmscriptenModule, extras: ExtraImage[]): void {
  */
 function writeExtrasLsR(M: EmscriptenModule): void {
   for (const name of DATABASE_FILES) {
-    if (M.FS.analyzePath(`${TEXMF_EXTRA}${name}`).exists) {
+    if (exists(M, `${TEXMF_EXTRA}${name}`)) {
       M.FS.unlink(`${TEXMF_EXTRA}${name}`);
     }
   }
   M.FS.writeFile(`${TEXMF_EXTRA}/ls-R`, lsR(extraFiles));
 }
 
-/**
- * The time stamp of the data images' folders: one per set of mounted images. fontconfig keeps its cache per
- * folder and rescans a folder whose time stamp changed, so the add-on's fonts are found by name once it is
- * mounted, and found again after it is updated; the same images give the same stamp, so a kept cache stays valid.
- */
-export function extrasTime(keys: string[]): number {
-  let h = 0;
-  for (const c of [...keys].sort().join('\n')) {
-    h = (Math.imul(h, 31) + c.charCodeAt(0)) | 0;
-  }
-  return IMAGE_TIME + 1000 * (1 + (Math.abs(h) % 1_000_000));
-}
-
-/** Gives a folder and every folder below it the time stamp `time`. */
-function stampFolders(M: EmscriptenModule, top: string, time: number): void {
-  const walk = (node: FsNode) => {
-    node.atime = node.mtime = node.ctime = time;
-    for (const child of Object.values(node.contents ?? {})) {
-      // Folders only: an image file's node keeps its chunk table in contents.
-      if ((child.mode & 0o170000) === 0o040000) {
-        walk(child);
-      }
-    }
-  };
-  walk(M.FS.lookupPath(top).node as FsNode);
-}
-
-/** Everything that does not depend on the job: the image, our texmf.cnf and fonts.conf, fontconfig's cache. */
+/** Everything that does not depend on the job: the images, our texmf.cnf, the program file and the font list. */
 function mountStatic(M: EmscriptenModule, setup: WorkerSetup): void {
-  mountImage(M, setup.image, setup.index);
+  M.FS.mkdirTree(FONT_LISTS);
+  mount(M, setup.image, setup.index, '', null);
   M.FS.mkdirTree(TEXMF_EXTRA);
   mountExtras(M, setup.extras ?? []);
+  writeFontList(M);
   M.FS.mkdirTree(CNF_DIR);
   M.FS.writeFile(`${CNF_DIR}/texmf.cnf`, setup.cnfOverride);
-  M.FS.writeFile(FONTS_CONF, setup.fontsConf);
-  M.FS.mkdirTree(FC_CACHE);
-  writeFontCache(M, setup.fontCache);
+  // The program path is a file, as on a TeX installation; kpathsea reads only its name.
+  M.FS.mkdirTree(posix.dirname(PROGRAM));
+  M.FS.writeFile(PROGRAM, '');
   M.FS.mkdirTree('/tmp');
-}
-
-function writeFontCache(M: EmscriptenModule, files: CacheFile[]): void {
-  for (const file of files) {
-    M.FS.writeFile(`${FC_CACHE}/${file.name}`, file.data);
-  }
 }
 
 function mountProject(M: EmscriptenModule, job: CompileJob): void {
@@ -429,16 +433,11 @@ function newProjectFiles(M: EmscriptenModule, job: CompileJob): ProjectFile[] {
 }
 
 function readText(M: EmscriptenModule, path: string): string | null {
-  return M.FS.analyzePath(path).exists ? (M.FS.readFile(path, { encoding: 'utf8' }) as string) : null;
+  return exists(M, path) ? (M.FS.readFile(path, { encoding: 'utf8' }) as string) : null;
 }
 
 function readBytes(M: EmscriptenModule, path: string): Uint8Array | null {
-  return M.FS.analyzePath(path).exists ? (M.FS.readFile(path, { encoding: 'binary' }) as Uint8Array) : null;
-}
-
-/** Whether two byte arrays hold the same bytes (an absent one is never the same). */
-function sameBytes(a: Uint8Array | undefined, b: Uint8Array): boolean {
-  return a !== undefined && a.length === b.length && a.every((v, i) => v === b[i]);
+  return exists(M, path) ? (M.FS.readFile(path, { encoding: 'binary' }) as Uint8Array) : null;
 }
 
 // Everything the tools print, for the result's transcript. A worker runs one job, so one buffer serves.
@@ -465,22 +464,27 @@ interface Prepared {
  * It starts as soon as the worker starts, so a worker the host keeps on standby (core.ts) is ready before the
  * next edit's job arrives, and the job pays only for its own files and the TeX run.
  */
+/** What the worker is doing with the engine's file system, for a failure's message (describeError). */
+let fsStep = 'starting the engine';
+
 async function prepare(setup: WorkerSetup): Promise<Prepared> {
   const workerBootMs = Date.now() - setup.createdAt;
   const t0 = performance.now();
   const M = await createInstance(setup, push);
   const t1 = performance.now();
+  fsStep = 'mounting the core data and writing its file lists (/engine/fonts.list, the add-ons\' ls-R)';
   mountStatic(M, setup);
   speed.install(M);
+  // The header is all of memory: everything live must be inside the part each program's restore brings back.
+  headerProblem(M.HEAPU8.length);
   const header = M.HEAPU8.slice(0, HEADER_BYTES);
   const t2 = performance.now();
   return { M, header, workerBootMs, instantiateMs: Math.round(t1 - t0), mountMs: Math.round(t2 - t1), readyAt: t2 };
 }
 
-/** The job message: the job, fontconfig's cache when the host got it after this worker started, and data images. */
+/** The job message: the job, and data images. */
 export interface WorkerJob {
   job: CompileJob;
-  fontCache?: CacheFile[];
   /** Data images the host read after this worker started, which the job needs (mounted before the job). */
   extras?: ExtraImage[];
 }
@@ -527,14 +531,12 @@ async function compile(setup: WorkerSetup, message: WorkerJob): Promise<CompileR
   const prepared = await preparing;
   const { M, header } = prepared;
   const warm = prepared.readyAt <= arrived;
-  // A newer cache than the one this worker started with (another run added folders to it).
-  if (message.fontCache) {
-    writeFontCache(M, message.fontCache);
-  }
-  const givenCache = new Map([...setup.fontCache, ...(message.fontCache ?? [])].map((f) => [f.name, f.data]));
   const t1 = performance.now();
+  fsStep = 'mounting the add-on images the job needs';
   mountExtras(M, message.extras ?? []);
+  fsStep = `writing the project's files into ${PROJECT}`;
   mountProject(M, job);
+  fsStep = 'running the job';
   const t2 = performance.now();
 
   // TeX gets the main file's own name ("Paper.TEX" stays as it is; the in-memory file system is case-sensitive),
@@ -561,7 +563,7 @@ async function compile(setup: WorkerSetup, message: WorkerJob): Promise<CompileR
     const lazyMs = heapDirty ? restoreHeap() : 0;
     heapDirty = false;
     push(`$ ${argv.join(' ')}`);
-    if (M.FS.analyzePath(TEXMFLOG).exists) {
+    if (exists(M, TEXMFLOG)) {
       M.FS.unlink(TEXMFLOG);
     }
     const before = speed.snapshot();
@@ -576,7 +578,7 @@ async function compile(setup: WorkerSetup, message: WorkerJob): Promise<CompileR
     }
     const ran = performance.now();
     const cpu1 = speed.threadCpuMs();
-    M._flush_streams?.();
+    M._flush_streams();
     const texmflog = readText(M, TEXMFLOG);
     if (texmflog) {
       push(`[TEXMFLOG] ${texmflog}`);
@@ -608,9 +610,6 @@ async function compile(setup: WorkerSetup, message: WorkerJob): Promise<CompileR
         return ['pdflatex', shell, '-interaction=nonstopmode', '-file-line-error', '-recorder', synctex, `-jobname=${base}`, '-fmt', FORMATS.pdflatex, mainName];
       case 'xelatex':
         return ['xelatex', shell, '-interaction=nonstopmode', '-file-line-error', '-recorder', synctex, '-no-pdf', `-jobname=${base}`, '-fmt', FORMATS.xelatex, mainName];
-      case 'luahbtex-ini':
-        // docs/DESIGN.md#rules: any LuaTeX call passes --nosocket (a fixture may leave it out on purpose).
-        return ['luahbtex', '-ini', shell, job.allowLuaSocketLibrary ? '--socket' : '--nosocket', '-interaction=nonstopmode', mainName];
     }
   };
 
@@ -641,7 +640,7 @@ async function compile(setup: WorkerSetup, message: WorkerJob): Promise<CompileR
   let bibtexRan = false;
   const aux = readText(M, `${base}.aux`) ?? '';
   const bibliographyMayHaveChanged = !hadBbl || job.bibChanged === true || citations(aux) !== citations(previousAux);
-  if (!job.steps && job.bibtex === 'auto' && job.engine !== 'luahbtex-ini' && aux.includes('\\bibdata') && bibliographyMayHaveChanged) {
+  if (!job.steps && job.bibtex === 'auto' && aux.includes('\\bibdata') && bibliographyMayHaveChanged) {
     step(['bibtex8', '--8bit', `${base}.aux`]);
     bibtexRan = true;
   }
@@ -674,12 +673,6 @@ async function compile(setup: WorkerSetup, message: WorkerJob): Promise<CompileR
         : undefined;
   const log = readText(M, `${base}.log`) ?? '';
   const finalAux = readText(M, `${base}.aux`) ?? '';
-  // The fontconfig cache files this run made or changed (fontconfig keeps one per folder: the first XeTeX run
-  // writes them all, a run with a newly mounted add-on writes its folders' ones) go back to the host.
-  const fontCache: CacheFile[] = M.FS.readdir(FC_CACHE)
-    .filter((n) => n !== '.' && n !== '..')
-    .map((name) => ({ name, data: readBytes(M, `${FC_CACHE}/${name}`) ?? new Uint8Array() }))
-    .filter((f) => !sameBytes(givenCache.get(f.name), f.data));
   return {
     id: job.id,
     ok: pdf !== null,
@@ -694,7 +687,7 @@ async function compile(setup: WorkerSetup, message: WorkerJob): Promise<CompileR
     readFiles: job.steps ? [] : filesRead(readText(M, `${base}.fls`) ?? '', finalAux, job),
     ...(damaged.size > 0 ? { damaged: [...damaged.keys()] } : {}),
     rerunRequested: !job.steps && RERUN.test(log),
-    bibtexNeeded: !job.steps && !bibtexRan && job.engine !== 'luahbtex-ini' && aux.includes('\\bibdata') && bibliographyMayHaveChanged,
+    bibtexNeeded: !job.steps && !bibtexRan && aux.includes('\\bibdata') && bibliographyMayHaveChanged,
     readBack: Object.fromEntries((job.readBack ?? []).map((p) => [p, readText(M, p)]).filter((e): e is [string, string] => e[1] !== null)),
     newFiles: job.returnNewFiles ? newProjectFiles(M, job) : undefined,
     transcript: out.join('\n'),
@@ -708,7 +701,6 @@ async function compile(setup: WorkerSetup, message: WorkerJob): Promise<CompileR
       warm,
     },
     stubs: stubReport(),
-    fontCache: fontCache.length > 0 ? fontCache : undefined,
     ...(speed.PROBE
       ? {
           probe: {
@@ -724,6 +716,21 @@ async function compile(setup: WorkerSetup, message: WorkerJob): Promise<CompileR
   };
 }
 
+/** A thrown value as text: an Error with its stack, or the engine file system's errno, which is not an Error. */
+/** Emscripten's numbers for the file system errors a mount or a write meets (its errno table). */
+const ERRNO_NAMES: Record<number, string> = { 2: 'permission denied', 20: 'the file exists', 28: 'invalid argument', 31: 'a folder is in the way', 44: 'no such file or folder', 51: 'no space left', 54: 'a path part is not a folder', 55: 'the folder is not empty' };
+
+function describeError(err: unknown): string {
+  if (err instanceof Error) {
+    return `${err.message}\n${err.stack}`;
+  }
+  if (typeof err === 'object' && err !== null && 'errno' in err) {
+    const errno = Number((err as { errno: unknown }).errno);
+    return `The engine's file system failed while ${fsStep}: ${ERRNO_NAMES[errno] ?? 'an error'} (errno ${errno}). Reinstall the extension if this repeats.`;
+  }
+  return String(err);
+}
+
 const setup = workerData as WorkerSetup;
 const preparing = prepare(setup);
 // A failed preparation is reported by the job that waits for it.
@@ -736,7 +743,7 @@ parentPort?.once('message', (message: WorkerJob) => {
       parentPort?.postMessage(result, transfer);
     },
     (err: unknown) => {
-      parentPort?.postMessage(failedResult(job.id, err instanceof Error ? `${err.message}\n${err.stack}` : String(err), stubReport()));
+      parentPort?.postMessage(failedResult(job.id, describeError(err), stubReport()));
     },
   );
 });

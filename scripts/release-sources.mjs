@@ -2,19 +2,21 @@
 // Release tool, run on GitHub's runners by .github/workflows/release-sources.yml (docs/DEVELOPING.md, "Licences,
 // notices and releases"; the licence gates, M1, M4, M6, F2-S1, F2-S2, L2-01, L2-03 and L2-06). Each release carries
 // the sources of what its packages ship, so the offer of the source does not depend on another project's server:
-//   - a package with the engine (extension/dist/engine/busytex.wasm): the engine's corresponding source, the archives
-//     engine/engine-notices.json lists (TeXlyre's tree at its commit, TeX Live's source tree at its commit, Expat,
-//     fontconfig), each with its SHA-256;
+//   - a package with the engine (extension/dist/engine/engine.wasm): the engine's corresponding source, the archives
+//     engine/engine-notices.json lists (TeX Live's source tree and Emscripten's, each at its commit), each with its
+//     SHA-256, and our build scripts (buildManifestDifferences): the engine is the one engine/engine-build.json at
+//     this tag records and engine/pins.json pins, built from those two commits, and if this tag's engine/build/ and
+//     engine-build-pins.json still give the build's tree hash, this tag is the scripts' source; if not, the engine
+//     release that built it is;
 //   - a data package (extension/data/licences.json): the archives of the pinned TeX Live snapshot that its
 //     licences.json lists for each package under the GPL, LGPL or AGPL, or with a packed font under the GPL. Each
 //     address must be under a mirror of engine/bundle-pins.json's snapshot, and each SHA-512 must be the one the
 //     pinned package database (tlpkg/texlive.tlpdb.xz, checked against its pinned SHA-256) gives.
 // The checks on the archives:
 //   - each archive's bytes against its hash;
-//   - each archive GitHub makes from a commit (TeXlyre's, TeX Live's): its files against the commit's tree, from
+//   - each archive GitHub makes from a commit (TeX Live's, Emscripten's): its files against the commit's tree, from
 //     "git ls-tree -r" that the workflow writes to DIR/trees/<name>.ls-tree. GitHub promises the same contents for a
-//     commit, not the same bytes: when only the bytes differ, the archive passes with a note and its new SHA-256;
-//   - TeXlyre's archive: its Makefile has the SHA-256 the manifest records, and the link lines the manifest copies.
+//     commit, not the same bytes: when only the bytes differ, the archive passes with a note and its new SHA-256.
 // A package of the extension itself (extension/dist/extension.js) must be released under the tag v<version>, its
 // package.json's version, and its README.md must name that tag of this repository as the source of the version, so
 // its source pointer finds this tree.
@@ -29,6 +31,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gunzipSync } from 'node:zlib';
+import { scriptsTree } from '../engine/build/tools/scripts-tree.mjs';
 import { readTar } from './lib/tar.mjs';
 import { parseTlpdb } from './lib/tlpdb.mjs';
 import { unxz } from './lib/xz.mjs';
@@ -66,7 +69,7 @@ export function snapshotMirrors(bundlePins) {
  * different bytes.
  * @param {Map<string, Map<string, Buffer>>} packages
  * @param {string} tag
- * @param {{ sources: { name: string, url: string, sha256: string, mirror?: string, commit?: string, repository?: string }[] }} engineNotices
+ * @param {{ sources: { name: string, url?: string, sha256?: string, mirror?: string, commit?: string, repository?: string }[] }} engineNotices
  * @param {{ snapshot: string, mirrors: string[] }} bundlePins
  */
 export function releaseSources(packages, tag, engineNotices, bundlePins) {
@@ -98,8 +101,10 @@ export function releaseSources(packages, tag, engineNotices, bundlePins) {
         throw new Error(`${file}: README.md does not name the tag ${tag} of ${REPOSITORY} as the source of this version`);
       }
     }
-    if (entries.has('extension/dist/engine/busytex.wasm')) {
-      for (const s of engineNotices.sources) {
+    if (entries.has('extension/dist/engine/engine.wasm')) {
+      // The archives; the third source, our build scripts, is the tag's own tree (or the engine release's copy, as
+      // buildManifestDifferences decides), not an archive to download.
+      for (const s of engineNotices.sources.filter((x) => x.url)) {
         // A fixed copy in a release of our own (s.mirror), once there is one, comes before the upstream address.
         add('engine', { name: s.name, url: s.mirror ?? s.url, sha256: s.sha256, ...(s.commit ? { commit: s.commit, repository: s.repository } : {}) }, `${file}: the engine`);
       }
@@ -193,24 +198,41 @@ export function treeDifferences(tarEntries, lsTree) {
   return problems;
 }
 
-/** TeXlyre's archive: its Makefile is the one the manifest records, and holds the link lines the manifest copies. */
-export function makefileDifferences(tarEntries, makefile) {
-  const entry = tarEntries.find((e) => e.type === 'file' && e.path.slice(e.path.indexOf('/') + 1) === 'Makefile');
-  if (!entry) {
-    return ['the archive has no Makefile at its top'];
-  }
+/**
+ * The engine a package ships against the build record at the release's tag (engine/engine-build.json), the pin
+ * (engine/pins.json, livemd2tex-engine) and the source archives (engine/engine-notices.json): the wasm's SHA-256 is
+ * the record's output, which is the pin's; the record's TeX Live and Emscripten commits are the archives' commits.
+ * Those are `problems`. `scriptsSource` says where our build scripts' source is: this tag's tree when its
+ * engine/build/ and engine-build-pins.json give the record's tree hash, else (the scripts changed after the build,
+ * without a rebuild) the engine release that built the engine, at the record's commit; the release notes name it.
+ * @param {string} wasmSha256 the packaged engine.wasm's SHA-256
+ * @param {object} record engine/engine-build.json at the tag
+ * @param {{ sources: object[] }} pins engine/pins.json at the tag
+ * @param {{ commit?: string }[]} sources engine/engine-notices.json's sources
+ * @param {string} treeSha256 the tag's scripts tree hash (engine/build/tools/scripts-tree.mjs)
+ */
+export function buildManifestDifferences(wasmSha256, record, pins, sources, treeSha256) {
   const problems = [];
-  const have = sha('sha256', entry.data);
-  if (have !== makefile.sha256) {
-    problems.push(`Makefile: SHA-256 ${have} is not the manifest's ${makefile.sha256}`);
+  const pin = pins.sources.find((s) => s.id === 'livemd2tex-engine');
+  const pinned = pin?.files.find((f) => f.name === 'engine.wasm')?.sha256;
+  if (wasmSha256 !== record.outputs?.wasm?.sha256) {
+    problems.push(`the packaged engine.wasm (${wasmSha256}) is not the one engine/engine-build.json records (${record.outputs?.wasm?.sha256})`);
   }
-  const lines = Buffer.from(entry.data).toString('utf8').split('\n');
-  for (const [n, text] of Object.entries(makefile.lines)) {
-    if (lines[Number(n) - 1] !== text) {
-      problems.push(`Makefile line ${n} is not the manifest's copy`);
+  if (record.outputs?.wasm?.sha256 !== pinned) {
+    problems.push(`engine/engine-build.json's engine.wasm (${record.outputs?.wasm?.sha256}) is not the one engine/pins.json pins (${pinned ?? 'none'})`);
+  }
+  const commits = new Set(sources.map((s) => s.commit).filter(Boolean));
+  for (const [what, commit] of [["TeX Live's", record.inputs?.texLive?.commit], ["Emscripten's", record.inputs?.emscripten?.commit]]) {
+    if (!commits.has(commit)) {
+      problems.push(`engine/engine-build.json names ${what} commit ${commit}, which no source archive of engine/engine-notices.json is`);
     }
   }
-  return problems;
+  const scripts = record.build?.scripts ?? {};
+  const scriptsSource =
+    scripts.treeSha256 === treeSha256
+      ? { from: 'tag' }
+      : { from: 'engine release', release: pin?.release ?? null, tag: pin?.tag ?? null, commit: scripts.commit ?? null, why: `this tag's engine/build/ and engine-build-pins.json give the tree hash ${treeSha256}, the build's was ${scripts.treeSha256}` };
+  return { problems, scriptsSource };
 }
 
 /** The pinned tlpdb's SHA-512 for an archive file name (<pkg>.tar.xz, <pkg>.doc.tar.xz, <pkg>.source.tar.xz). */
@@ -224,9 +246,8 @@ function tlpdbChecksum(db, name) {
 }
 
 /**
- * The files that are missing or whose bytes are not the listed ones, and the notes. `context`: the manifest (for
- * TeXlyre's Makefile) and the bundle pins (for the tlpdb). A commit archive whose bytes differ passes when its files
- * are the commit's.
+ * The files that are missing or whose bytes are not the listed ones, and the notes. `context`: the bundle pins (for
+ * the tlpdb). A commit archive whose bytes differ passes when its files are the commit's.
  * @returns {{ problems: string[], notes: string[] }}
  */
 export function checkSources(groups, dir, context = {}) {
@@ -258,11 +279,8 @@ export function checkSources(groups, dir, context = {}) {
       if (g !== 'engine' && db && tlpdbChecksum(db, s.name) !== s.sha512) {
         problems.push(`${g}/${s.name}: its SHA-512 in licences.json is not the pinned tlpdb's`);
       }
-      let entries;
-      if (s.commit || (context.manifest && s.name === texlyreArchive(context.manifest))) {
-        entries = readTar(gunzipSync(bytes));
-      }
       if (s.commit) {
+        const entries = readTar(gunzipSync(bytes));
         const listing = path.join(dir, 'trees', `${s.name}.ls-tree`);
         const diff = existsSync(listing) ? treeDifferences(entries, readFileSync(listing, 'utf8')) : [`no tree listing of commit ${s.commit} (trees/${s.name}.ls-tree)`];
         if (diff.length > 0) {
@@ -275,16 +293,10 @@ export function checkSources(groups, dir, context = {}) {
       if (got !== want && !(s.commit && s.attachedSha256)) {
         problems.push(`${g}/${s.name}: ${algo.toUpperCase()} ${got} is not the listed ${want} (${s.url})`);
       }
-      if (context.manifest && s.name === texlyreArchive(context.manifest)) {
-        problems.push(...makefileDifferences(entries, context.manifest.makefile).map((d) => `${g}/${s.name}: ${d}`));
-      }
     }
   }
   return { problems, notes };
 }
-
-/** The name of TeXlyre's archive among the manifest's sources: the one of its build commit. */
-const texlyreArchive = (manifest) => manifest.sources.find((s) => s.commit === manifest.build.texlyre.commit)?.name;
 
 function main(argv) {
   const arg = (name) => {
@@ -307,8 +319,22 @@ function main(argv) {
     }
     const packages = new Map(files.map((f) => [path.basename(f), readZip(readFileSync(f))]));
     const groups = releaseSources(packages, tag, manifest, bundlePins);
+    // The engine against its build record at this tag, and where our build scripts' source is.
+    let scripts;
+    const wasm = [...packages.values()].map((e) => e.get('extension/dist/engine/engine.wasm')).find(Boolean);
+    if (wasm) {
+      const record = JSON.parse(readFileSync(path.join(root, 'engine', 'engine-build.json'), 'utf8'));
+      const pins = JSON.parse(readFileSync(path.join(root, 'engine', 'pins.json'), 'utf8'));
+      const checked = buildManifestDifferences(sha('sha256', wasm), record, pins, manifest.sources, scriptsTree(root).treeSha256);
+      if (checked.problems.length > 0) {
+        checked.problems.forEach((p) => console.error(p));
+        return 1;
+      }
+      scripts = checked.scriptsSource;
+      console.log(scripts.from === 'tag' ? "engine: our build scripts' source is this tag" : `engine: our build scripts' source is the engine release ${scripts.tag} (commit ${scripts.commit}): ${scripts.why}`);
+    }
     mkdirSync(dir, { recursive: true });
-    writeFileSync(path.join(dir, 'sources.json'), `${JSON.stringify({ tag, groups }, null, 1)}\n`);
+    writeFileSync(path.join(dir, 'sources.json'), `${JSON.stringify({ tag, groups, ...(scripts ? { scripts } : {}) }, null, 1)}\n`);
     writeFileSync(path.join(dir, 'sources.curl'), curlConfig(groups, dir, bundlePins));
     writeFileSync(path.join(dir, 'git.tsv'), gitList(groups));
     for (const [g, list] of Object.entries(groups)) {
@@ -317,7 +343,7 @@ function main(argv) {
     return 0;
   }
   const listed = JSON.parse(readFileSync(path.join(dir, 'sources.json'), 'utf8'));
-  const { problems, notes } = checkSources(listed.groups, dir, { manifest, bundlePins });
+  const { problems, notes } = checkSources(listed.groups, dir, { bundlePins });
   notes.forEach((n) => console.log(`note: ${n}`));
   problems.forEach((p) => console.error(p));
   // The list as attached: with the SHA-256 of any commit archive that GitHub made again.

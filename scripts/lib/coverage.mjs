@@ -465,7 +465,7 @@ export class Pacer {
 }
 
 /** The engine files coverageRun hands to the engine service (dist/engine/): all must be there before a compile. */
-export const ENGINE_FILES = ['busytex.js', 'busytex.wasm', 'texmf-override.cnf', 'fonts.conf'];
+export const ENGINE_FILES = ['engine.js', 'engine.wasm', 'texmf-override.cnf'];
 
 /** Which of `names` are missing, by `exists(name)`. */
 export function missingFiles(names, exists) {

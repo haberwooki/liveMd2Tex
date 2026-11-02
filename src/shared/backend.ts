@@ -1,6 +1,6 @@
 // The compile backend (docs/DESIGN.md#engine-and-data; build gate 1, G1E-06): what the compile loop needs of an engine, so
 // that a second backend (a Tectonic build, or a web worker for a browser version) can sit behind the same calls. EngineService
-// (src/extension/engine/engineService.ts) is the first implementation: the forked engine host with busytex.
+// (src/extension/engine/engineService.ts) is the first implementation: the forked engine host with our TeX engine (engine/build/).
 //
 // - capabilities(): what this backend can do at all.
 // - canCompile(job): whether it can compile this job now, and if not, why (missing engine files, a failed

@@ -5,7 +5,7 @@
   "version": "0.0.1",
   "publisher": "haberwooki",
   "author": "the liveMd2Tex authors",
-  "license": "GPL-3.0-or-later AND AGPL-3.0-only",
+  "license": "GPL-3.0-or-later",
   "repository": {
     "type": "git",
     "url": "https://github.com/haberwooki/liveMd2Tex"
@@ -388,7 +388,7 @@
           {
             "id": "missingPackage",
             "title": "When a package is missing",
-            "description": "What the extension says, and three ways to get a package.\n[Make a Physical Review paper](command:livemd2tex.newDocument?%5B%22tex-revtex%22%5D)",
+            "description": "What the extension says when a document needs a package it does not carry, and three ways to get one.",
             "media": {
               "markdown": "walkthrough/missing-package.md"
             },
@@ -424,11 +424,9 @@
     "check:stores": "node scripts/check-store-names.mjs",
     "hooks": "node scripts/install-hooks.mjs",
     "engine:assets": "node scripts/engine-assets.mjs",
-    "engine:patch": "node scripts/engine-patch.mjs",
     "test:engine": "node scripts/build.mjs && node scripts/stage-engine.mjs --data --if-present && node scripts/clean-out.mjs && tsc -p tsconfig.json && node scripts/private-tests.mjs && mocha --config .mocharc.engine.cjs",
     "stage:engine": "node scripts/stage-engine.mjs --data",
-    "package:testcopy": "node scripts/vsix-scan.mjs --test-copy",
-    "package:extra-standin": "node scripts/build-extra-standin.mjs"
+    "package:testcopy": "node scripts/vsix-scan.mjs --test-copy"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

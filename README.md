@@ -1,8 +1,9 @@
 # liveMd2Tex
 
 A VS Code extension that shows a real LaTeX PDF of a `.tex` or `.md` file beside the editor and updates it as you
-type. The TeX engines run inside the extension, so you need no TeX installation. Licence:
-`GPL-3.0-or-later AND AGPL-3.0-only` (see Licence below, `LICENSE` and `THIRD_PARTY_NOTICES.md`).
+type. The TeX engines run inside the extension, so you need no TeX installation. Licence: `GPL-3.0-or-later`
+for our own code; the TeX engine's parts keep their own terms (see Licence below, `LICENSE` and
+`THIRD_PARTY_NOTICES.md`).
 
 Status: a development version, not published yet. `.tex` files compile as you type and on save, Markdown files
 are converted and typeset when asked, and a click in the PDF goes to the source line. This page is for users, and
@@ -54,8 +55,8 @@ can use them for anything.
 
 ## What you install
 
-The plan for the first release is three store items. Until the data packages are built (before that release), the
-core data is inside the extension itself.
+The plan for the first release is three store items. Until the data packages are released, the core data comes
+only with the development test copy.
 
 | Item | What it holds | Size |
 |---|---|---|
@@ -148,6 +149,9 @@ shares measure package coverage, not papers. The method is written down in `docs
 - Packages that need an outside program (listed above), and anything else that needs shell escape.
 - LuaLaTeX: the engines are pdfLaTeX and XeLaTeX. biblatex runs with its bibtex8 backend, since Biber is not
   included.
+- The LaTeX development release (`latex-dev`) and the `mmap` package are left out of the Extra Packages add-on,
+  because their files have the same names as files of the core data. The `cmap` package, which the core data
+  holds, makes the PDF's text searchable and copyable.
 - In Markdown: CSL styles and citeproc (natbib or biblatex is used instead), grid, simple and multiline tables,
   example lists, letter and Roman list markers, and Markdown to Beamer slides. Each gives one plain warning.
 
@@ -172,29 +176,54 @@ with TeX Live. Report problems and missing packages at https://github.com/haberw
 
 ## Licence
 
-liveMd2Tex is free software under GPL-3.0-or-later (`LICENSE`). TeXlyre's BusyTeX build (its JavaScript glue and
-the engine WebAssembly) keeps its AGPL-3.0 terms inside the combined work, so `package.json` declares
-`GPL-3.0-or-later AND AGPL-3.0-only`. Copyright (C) 2026 the liveMd2Tex authors; `AUTHORS.md` in the repository
-says who they are. The parts by others and their licences are in `THIRD_PARTY_NOTICES.md`. The licence texts and
-the notices of the engine's parts ship in `dist/licenses/`.
+liveMd2Tex is free software. Our own code is GPL-3.0-or-later (`LICENSE`), and `package.json` declares
+`GPL-3.0-or-later`. The TeX engine as a whole can be passed on under GPL-3.0, because one of its parts, xpdf,
+allows GPL-2.0 or GPL-3.0 and no later version. Each part of the engine keeps its own terms. No program code under
+the AGPL ships, but some TeX packages in the Extra Packages add-on stay under the AGPL. Copyright (C) 2026 the
+liveMd2Tex authors; `AUTHORS.md` in the repository says who they are. The parts by others and their licences are
+in `THIRD_PARTY_NOTICES.md`. The licence texts and the notices of the engine's parts ship in `dist/licenses/`.
 
 The source code of each release is the tag of its version in this repository: for this version, the tag `v0.0.1`
 of https://github.com/haberwooki/liveMd2Tex. The tag is `v` and the version, its tree holds the whole source, and
-each release's page links it. Our changes to the engine's JavaScript glue are in its `engine/patches/` folder. The
-glue ships as readable JavaScript, so the shipped file is its own source.
+each release's page links it.
 
-The engine is built from these sources: TeXlyre's build scripts at commit
-46ebb6216a5c1fe63dd1dc885831d1a8cef2dc86 (https://github.com/TeXlyre/texlyre-busytex-build, release
-`build_wasm_46ebb6216a5c1fe63dd1dc885831d1a8cef2dc86_31802832436_1`), TeX Live's source tree at tag texlive-2026.0
-(commit f26cc5ed05a1f784d1e694fe5b9cfc3ce992c03d, https://github.com/TeX-Live/texlive-source), Expat 2.5.0 and
-fontconfig 2.13.96, compiled with Emscripten 5.0.4. `THIRD_PARTY_NOTICES.md` ("The engine's source") gives each
-archive's address and SHA-256. Each release that ships the engine carries a copy of these archives, attached
-before the release is published, so they stay available.
+The engine is built by this repository from TeX Live's source at commit `6a300188` with Emscripten 6.0.13.
+`engine/build/` holds the build, and `THIRD_PARTY_NOTICES.md` ("The engine's source") gives each source archive's
+address and SHA-256. Each release that ships the engine carries a copy of these archives, attached before the
+release is published, so they stay available.
 
-Credits. liveMd2Tex is built on TeX Live and its TeX engines; on BusyTeX (Vadim Kantorov) and TeXlyre's build of
-it (Fares Abawi); on PDF.js (Mozilla), markdown-it and isomorphic-git; and on the libraries inside the engine,
-which `THIRD_PARTY_NOTICES.md` lists. Portions of this software are copyright © 2025 The FreeType Project
-(https://freetype.org). All rights reserved.
+liveMd2Tex's engine and data packages are built from TeX Live 2026 with changes of our own. The engine's programs
+are linked with our own stubs for `system()` and `popen()` and our own stand-in for fontconfig, and without
+libpaper. The data packages hold a selection of TeX Live's packages, without their documentation, sources and
+scripts, with configuration files and formats that we write, and with most Type 1 fonts of the core data stored
+packed. `docs/DEVELOPING.md` describes each change. Please report problems with them to us, not to TeX Live.
+
+Thanks. liveMd2Tex is built on the work of many people:
+
+- Donald E. Knuth, who wrote TeX, and the authors of the engine's programs: pdfTeX (Hàn Thế Thành), XeTeX
+  (Jonathan Kew and SIL International), e-TeX's extensions in both (Peter Breitenlohner and the NTS team),
+  dvipdfmx (Jin-Hwan Cho, Matthias Franz and Shunsaku Hirata, after Mark A. Wicks's dvipdfm) and bibtex8 (Niel
+  Kempson and Alejandro Aguilar-Sierra, after Oren Patashnik's BibTeX).
+- TeX Live, developed as a joint effort by all TeX user groups (https://tug.org/texlive/). The engine's programs
+  come from its source. Please consider joining a TeX user group: https://tug.org/usergroups.html.
+- The authors of the packages on CTAN (https://ctan.org), whose classes, packages and fonts fill the data
+  packages.
+- BusyTeX, by Vadim Kantorov. Our engine follows its design, TeX's tools in one WebAssembly program, and holds
+  a few of its lines. Earlier development versions of liveMd2Tex ran TeXlyre's build of BusyTeX, by Fares
+  Abawi.
+- Emscripten, which compiles the engine. Its runtime is the engine's glue, `engine.js`, and its C library and
+  memory allocator run inside `engine.wasm`.
+- fontconfig (Keith Packard and others). The font list that lets XeTeX find fonts by name describes each font as
+  fontconfig does, and follows fontconfig's tables of weights, widths and slants.
+- PDF.js, Mozilla's PDF library, which shows the PDF.
+- markdown-it and its footnote and definition-list plugins, which read Markdown; isomorphic-git, which reads Git
+  repositories; and yaml, which reads front matter.
+- The libraries inside the engine: kpathsea (Karl Berry and others), HarfBuzz, Graphite2, TECkit, FreeType,
+  ICU, libpng, zlib, pplib, xpdf, SyncTeX and libmd5 (L. Peter Deutsch), with musl, dlmalloc (Doug Lea) and
+  LLVM's libraries from Emscripten. `THIRD_PARTY_NOTICES.md` lists each one with its version and licence, and
+  `dist/licenses/` holds their licence texts and notices.
+
+Portions of this software are copyright © 2025 The FreeType Project (https://freetype.org). All rights reserved.
 
 The files the extension copies into your folders come with no conditions at all: the starting documents of "New
 document from template" (`templates/`) and the example presets (`examples/presets/`) are dedicated to the public
