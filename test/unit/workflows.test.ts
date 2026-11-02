@@ -89,11 +89,11 @@ describe('GitHub Actions workflows (G0 preparation)', () => {
       }
     }
     // Split, each with its own time limit (GB1E-03); the header gives the minutes (GB1E-07).
-    assert.deepEqual(Object.keys(jobs), ['pin', 'fetch', 'build', 'closure', 'corpus', 'reference']);
+    assert.deepEqual(Object.keys(jobs), ['pin', 'fetch', 'build', 'closure', 'corpus', 'reference', 'release']);
     for (const [name, job] of Object.entries(jobs)) {
       assert.ok((job['timeout-minutes'] ?? 0) > 0 && (job['timeout-minutes'] ?? 0) <= 150, name);
     }
-    assert.match(text, /^# The minutes, estimated/m);
+    assert.match(text, /^# The minutes on 2-vCPU runners, measured on the first run/m);
     assert.deepEqual([jobs.build.needs, jobs.closure.needs, jobs.corpus.needs, jobs.reference.needs], ['fetch', 'build', 'build', 'corpus']);
     const at = (job: string, re: RegExp) => jobs[job].steps.findIndex((s) => re.test(`${s.name ?? ''} ${s.run ?? ''} ${s.uses ?? ''}`));
     const run = (job: string) => jobs[job].steps.map((s) => s.run ?? '').join('\n');
@@ -158,6 +158,100 @@ describe('GitHub Actions workflows (G0 preparation)', () => {
       ['bundle-corpus', 'bundle-build'],
     );
     assert.doesNotMatch(text, /scheme-full/);
+  });
+
+  it("the data releases: the bundle's release job makes the two data packages' drafts, on main only, by input, after the run's checks, with checked sources", () => {
+    type Step = { name?: string; run?: string; uses?: string; with?: Record<string, unknown>; env?: Record<string, string>; if?: string };
+    type Job = { needs?: string[]; if?: string; permissions?: Record<string, string>; env?: Record<string, string>; concurrency?: { 'cancel-in-progress': boolean }; 'timeout-minutes': number; steps: Step[] };
+    const w = load('bundle.yml') as Workflow & { permissions: Record<string, string> };
+    const inputs = (w.on.workflow_dispatch as { inputs: Record<string, { type: string; default: unknown }> }).inputs;
+    assert.deepEqual([inputs.release.type, inputs.release.default, inputs.candidate.default], ['boolean', false, '1']);
+    // The workflow reads; the release job alone writes, by input, on main, after every check of the run.
+    assert.deepEqual(w.permissions, { contents: 'read' });
+    const jobs = w.jobs as unknown as Record<string, Job>;
+    for (const [name, job] of Object.entries(jobs)) {
+      if (name !== 'release') assert.equal(job.permissions, undefined, name);
+    }
+    const job = jobs.release;
+    assert.deepEqual(job.permissions, { contents: 'write' });
+    assert.deepEqual(job.needs, ['build', 'closure', 'corpus', 'reference']);
+    assert.equal(job.if, "${{ !cancelled() && inputs.job == 'build' && inputs.release && github.ref == 'refs/heads/main' }}");
+    assert.equal(job.concurrency?.['cancel-in-progress'], false);
+    assert.deepEqual(job.env, { CANDIDATE: '${{ inputs.candidate }}' });
+    const rs = job.steps;
+    for (const st of rs) {
+      assert.doesNotMatch(st.run ?? '', /\$\{\{/, `${st.name}: no expression inside a run script`);
+      if (st.uses) assert.match(st.uses, /^actions\/[a-z-]+@[0-9a-f]{40}$/, `${st.uses}: pinned by commit`);
+    }
+    assert.equal(rs.find((st) => /actions\/checkout@/.test(st.uses ?? ''))?.with?.['persist-credentials'], false);
+    // First, before anything is fetched: the candidate's form, the branch, and every check of the run passed, with
+    // the closure test on both sets.
+    assert.match(rs[0].run ?? '', /case "\$CANDIDATE" in/);
+    assert.match(rs[0].run ?? '', /\[ "\$GITHUB_REF" = refs\/heads\/main \]/);
+    assert.deepEqual(rs[0].env, {
+      BUILD: '${{ needs.build.result }}',
+      CLOSURE: '${{ needs.closure.result }}',
+      CLOSURE_SET: '${{ inputs.closure }}',
+      CORPUS: '${{ needs.corpus.result }}',
+      REFERENCE: '${{ needs.reference.result }}',
+    });
+    assert.match(rs[0].run ?? '', /\[ "\$BUILD \$CLOSURE \$CORPUS \$REFERENCE \$CLOSURE_SET" = 'success success success success all' \] \|\| \{\n[^\n]*>&2\n\s+exit 1\n\s*\}/);
+    const at = (re: RegExp) => rs.findIndex((st) => re.test(`${st.name ?? ''} ${st.run ?? ''} ${st.uses ?? ''} ${String(st.with?.name ?? '')}`));
+    // The order: the build's packages; the plan (the pinned engine, one build); each package's sources listed,
+    // downloaded and checked; the files and notes (with the list's completeness); and only then the drafts.
+    const order = [
+      /download-artifact@[^ ]* bundle-packages/,
+      /data-release\.mjs plan --packages "\$RUNNER_TEMP\/packages" --candidate "\$CANDIDATE"/,
+      /release-sources\.mjs list --out "\$RUNNER_TEMP\/release\/\$set" --tag "\$tag" "\$vsix"/,
+      /curl --fail [^\n]*-K "\$RUNNER_TEMP\/release\/\$set\/sources\.curl"/,
+      /release-sources\.mjs check --out "\$RUNNER_TEMP\/release\/\$set"/,
+      /data-release\.mjs notes --set "\$set" --tag "\$tag"/,
+      /gh release create "\$tag" [^\n]*--draft/,
+    ].map(at);
+    assert.ok(order.every((i, k) => i >= 0 && (k === 0 || i >= order[k - 1])), order.join(' '));
+    const run = rs.map((st) => st.run ?? '').join('\n');
+    // Every loop reads its list on descriptor 3, so no command inside can take a line from it.
+    const loops = run.match(/while [^\n]*; do/g) ?? [];
+    assert.equal(loops.length, 5);
+    for (const l of loops) assert.match(l, /^while IFS="\$\(printf '\\t'\)" read -r -u 3 set tag vsix; do$/, l);
+    assert.equal((run.match(/\n\s*done 3< "[^"\n]+"/g) ?? []).length, 5);
+    assert.doesNotMatch(run, /done < /);
+    // Each draft: the package, its sources' tar, sources.json, the pinned tlpdb and its LICENSES/, every file of it:
+    // '**' crosses "/" in every unzip build, and the count is compared with the package's before the tar is made.
+    assert.match(run, /tar -cf "\$d\/assets\/\$tag-sources\.tar" -C "\$d\/files\/\$set" \./);
+    const files = rs.find((st) => st.name === "Each release's files and notes")?.run ?? '';
+    const unzipAt = files.indexOf(`unzip -q "$vsix" 'extension/LICENSES/**' -d "$d/licences"`);
+    const wantAt = files.indexOf(`want="$(unzip -Z1 "$vsix" | grep -c '^extension/LICENSES/.*[^/]$')"`);
+    const gotAt = files.indexOf('got="$(find "$d/licences/extension/LICENSES" -type f | wc -l)"');
+    const compareAt = files.indexOf('[ "$got" = "$want" ] || {');
+    const tarAt = files.indexOf('tar -cf "$d/assets/$tag-LICENSES.tar" -C "$d/licences/extension" LICENSES');
+    assert.ok(unzipAt >= 0 && unzipAt < wantAt && wantAt < gotAt && gotAt < compareAt && compareAt < tarAt, [unzipAt, wantAt, gotAt, compareAt, tarAt].join(' '));
+    assert.doesNotMatch(files, /'extension\/LICENSES\/\*'/);
+    assert.match(run, /cp "\$vsix" "\$d\/sources\.json" "\$d\/meta\/texlive\.tlpdb\.xz" "\$d\/assets\/"/);
+    // The drafts: both tags free before either draft (git ls-remote's 0 is taken, 2 is free, anything else fails),
+    // then each draft, which must hold every file by name and size, and exactly two of them.
+    const draft = rs.find((st) => st.name === 'The draft releases')?.run ?? '';
+    assert.match(draft, /\[ "\$\(wc -l < "\$list"\)" -eq 2 \]/);
+    const free = draft.indexOf('git ls-remote --exit-code --tags');
+    const taken = draft.indexOf('select(.tag_name ==');
+    const firstLoopEnd = draft.indexOf('done 3< "$list"');
+    const create = draft.indexOf('gh release create');
+    assert.ok(free >= 0 && free < taken && taken < firstLoopEnd && firstLoopEnd < create, [free, taken, firstLoopEnd, create].join(' '));
+    assert.match(draft, /s=0\n\s+git ls-remote --exit-code --tags [^\n]* >\/dev\/null \|\| s=\$\?\n\s+case "\$s" in\n\s+0\) [^\n]*exit 1 ;;\n\s+2\) ;;\n\s+\*\) [^\n]*exit 1 ;;\n\s+esac/);
+    const view = draft.indexOf(`gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[] | "\\(.name) \\(.size)"' | sort`);
+    const compare = draft.indexOf('[ "$got" = "$want" ] || {');
+    assert.ok(create < view && view < compare, [create, view, compare].join(' '));
+    assert.match(draft, /want="\$\(cd "\$d\/assets" && for f in \*; do printf '%s %s\\n' "\$f" "\$\(stat -c %s "\$f"\)"; done \| sort\)"/);
+    assert.match(draft, /made=\$\(\(made \+ 1\)\)[\s\S]*\[ "\$made" -eq 2 \] \|\| \{/);
+    assert.deepEqual(rs.filter((st) => st.env?.GH_TOKEN).map((st) => st.name), ['The draft releases']);
+    assert.equal((run.match(/gh release create/g) ?? []).length, 1);
+    assert.doesNotMatch(readFileSync(path.join(folder, 'bundle.yml'), 'utf8'), /git push|git tag |gh release (edit|upload|delete)|--latest|--draft=false/);
+    // The summary names the release on every line; the report is kept, also when the job fails.
+    const summary = rs.find((st) => /in the job summary/.test(st.name ?? ''));
+    assert.equal(summary?.if, 'always()');
+    assert.match(summary?.run ?? '', /awk -v tag="\$tag" '\{ print \$1 " {2}" tag "\/" \$2 \}' "\$RUNNER_TEMP\/release\/\$set\/assets\.sha256"/);
+    assert.match(summary?.run ?? '', /echo "\$tag: not assembled"/);
+    assert.equal(rs.find((st) => st.with?.name === 'bundle-release')?.if, 'always()');
   });
 
   it('B1: the reference installs the collections the bundle draws from and the build\'s packages, all under one folder', async () => {

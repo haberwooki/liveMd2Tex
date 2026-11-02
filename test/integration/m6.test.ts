@@ -3,7 +3,8 @@
 // route, with the add-on installed from its VSIX into the throwaway profile. "Add a package from a file" takes the
 // CTAN ZIP (REVTeX, for P2 without its own copies) and a .dtx with its .ins built by docstrip. The compile command
 // answers with its own compile, never an older one still running. Uses the V0 workspace and the add-on VSIX that
-// scripts/run-integration.mjs prepares (LIVEMD2TEX_EXTRA_DATA); the add-on route skips without the add-on.
+// scripts/run-integration.mjs prepares (the pinned extra-data package, or LIVEMD2TEX_EXTRA_DATA); the add-on route
+// skips without the add-on, on CI only before both data packages are pinned (test/support/missingData.ts).
 
 import * as assert from 'node:assert/strict';
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -181,7 +182,8 @@ describe('M6: package help in VS Code', function () {
   it('the Extra Packages route: the button opens the Extensions view; with the add-on installed, P7 reaches a PDF', async function () {
     const vsix = process.env.LIVEMD2TEX_TEST_EXTRA_VSIX;
     if (!vsix || !existsSync(vsix)) {
-      console.log('      no Extra Packages add-on given (LIVEMD2TEX_EXTRA_DATA, for scripts/run-integration.mjs); skipped');
+      missingInput('the Extra Packages add-on (the pinned extra-data package, or LIVEMD2TEX_EXTRA_DATA)');
+      console.log('      no Extra Packages add-on (the pinned extra-data package, or LIVEMD2TEX_EXTRA_DATA, for scripts/run-integration.mjs); skipped');
       this.skip();
     }
     const before = await api.dataSets();

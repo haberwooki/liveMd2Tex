@@ -4,7 +4,8 @@
 // in the engine host. scripts/run-integration.mjs prepares the workspace (test/support/prepareV0Workspace.ts)
 // and opens it in the test window; without the staged engine and data these tests skip. P4 (mwe) and P7 (memoir,
 // biblatex) need the Extra Packages add-on, as for a user: it is installed for these tests when
-// scripts/run-integration.mjs is given one (LIVEMD2TEX_EXTRA_DATA), and they skip without it.
+// scripts/run-integration.mjs has one (the pinned extra-data package, or LIVEMD2TEX_EXTRA_DATA), and they skip
+// without it, on CI only before both data packages are pinned.
 
 import * as assert from 'node:assert/strict';
 import { existsSync, readFileSync, statSync } from 'node:fs';
@@ -44,10 +45,14 @@ describe('V0: compile on save in VS Code', function () {
   let projects: CorpusProject[] = [];
   let addOn = false;
   const blockedBefore = { count: 0 };
-  /** Skips a test whose document needs the add-on when the run has none. */
+  /**
+   * Skips a test whose document needs the add-on when the run has none: on CI only before both data packages are
+   * pinned (test/support/missingData.ts); after them it fails.
+   */
   const needsAddOn = (ctx: Mocha.Context, id: string) => {
     if (NEEDS_ADD_ON.has(id) && !addOn) {
-      console.log(`      ${id} needs the Extra Packages add-on (LIVEMD2TEX_EXTRA_DATA); skipped`);
+      missingInput('the Extra Packages add-on (the pinned extra-data package, or LIVEMD2TEX_EXTRA_DATA)');
+      console.log(`      ${id} needs the Extra Packages add-on (the pinned extra-data package, or LIVEMD2TEX_EXTRA_DATA); skipped`);
       ctx.skip();
     }
   };

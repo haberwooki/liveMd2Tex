@@ -1,7 +1,7 @@
 # B1, the bundle builder (docs/DESIGN.md#engine-and-data), on GitHub only. It builds core-data and extra-data from the
 # pinned TeX Live snapshot (engine/bundle-pins.json) and the selection (engine/bundle-sets.json). The extension's own
 # engine builds the formats and runs the closure test. The public corpus is then compared with a TeX Live installed
-# as the reference. Prepared on the development machine and not yet run; run by hand (Actions, bundle, Run workflow).
+# as the reference. Run by hand (Actions, bundle, Run workflow); first run on 2026-10-31.
 #
 # The jobs. Each has its own time limit and keeps its own report, also when it fails (build gate B1, GB1E-03):
 # - pin (job: pin): fetches the snapshot's tlpdb and TeX Live's signed checksum of it. gpg verifies the signature
@@ -22,12 +22,16 @@
 #   the build's packages into the runner's temp folder, without root; then the corpus is compiled again and the
 #   page counts compared. install-tl and tlmgr are TeX Live's own Perl programs, run in this job only, outside the
 #   builder, after the packages are sealed (GB1E-07, GB1E-08). It downloads only the corpus and the selection.
+# - release (input release, on main only, after the closure, corpus and reference jobs passed): each data package of
+#   the build into a draft release of its own, with the sources of what it ships, checked (the job's own comment,
+#   below). The owner publishes the drafts once checked.
 #
-# The minutes, estimated for 2-vCPU runners and to be measured on the first run (GB1E-07): pin 5; fetch 20 to 40
-# the first time (a few GB from one host), a few minutes from the cache; build 30 to 60; closure, core only, about
-# 4 x 30; corpus 20; reference 40 to 60. A first run with the core's closure test: about 250 minutes. The add-on's
-# closure test (closure: extra, 8 shards) adds about 8 x 90. Artifacts are kept 3 days (the packages, about 250 MB
-# each) to 7 days (reports), within a private repository's storage.
+# The minutes on 2-vCPU runners, measured on the first run (core closure, 4 shards, reference on): fetch 7 (2950
+# archives from one host), build 3, closure 1 to 2 per shard, corpus 4, reference 10. Not yet measured: pin, about
+# 5; the add-on's closure test (closure: extra or all, 8 shards); and the release, about 15 to 30 (about 130 MB of
+# core-data's sources and 180 MB of extra-data's, from the snapshot, and about 680 MB of uploads: the two packages,
+# their sources, and the tlpdb once for each). Artifacts are kept 3 days (the packages, about 250 MB each) to 7 days
+# (reports), within the repository's artifact storage.
 
 name: bundle
 
@@ -57,6 +61,14 @@ on:
         required: false
         type: string
         default: ''
+      release:
+        description: Also make the draft releases of the two data packages (on main only)
+        type: boolean
+        default: false
+      candidate:
+        description: The candidate number n of the tags core-data-<engine short hash>-<n> and extra-data-<engine short hash>-<n>
+        type: string
+        default: '1'
 
 permissions:
   contents: read
@@ -395,3 +407,150 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
           path: ${{ runner.temp }}/bundle-out/corpus-reference.json
+
+  # The release (input release, on main only): the two data packages of this run's build, each made into a draft
+  # release of its own, core-data-<engine short hash>-<n> and extra-data-<engine short hash>-<n> (the short hash is
+  # that of the engine.wasm both are built for, their abi; scripts/data-release.mjs says why two releases). Each draft
+  # holds the package, the sources of what it ships (the pinned snapshot's archives of its GPL, LGPL and AGPL packages
+  # and packed GPL fonts, each checked against the pinned tlpdb's SHA-512 by scripts/release-sources.mjs, as
+  # release-sources.yml does for an extension release, and the list itself checked against the tlpdb by
+  # scripts/data-release.mjs), sources.json, the pinned tlpdb and the package's LICENSES/. It waits for the build,
+  # closure, corpus and reference jobs and makes no draft unless all four passed, with the closure test on both sets
+  # (closure: all), so a draft never comes from a run whose checks failed; it runs within the packages' 3-day artifact
+  # window. Every loop reads its list on descriptor 3, so no command inside can take a line. The owner publishes each
+  # draft once it is checked; nothing here publishes, tags or pushes.
+  release:
+    needs: [build, closure, corpus, reference]
+    if: ${{ !cancelled() && inputs.job == 'build' && inputs.release && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: write
+    concurrency:
+      group: data-release
+      cancel-in-progress: false
+    env:
+      CANDIDATE: ${{ inputs.candidate }}
+    steps:
+      - name: The release runs on main, with a candidate number, after the run's checks passed
+        env:
+          BUILD: ${{ needs.build.result }}
+          CLOSURE: ${{ needs.closure.result }}
+          CLOSURE_SET: ${{ inputs.closure }}
+          CORPUS: ${{ needs.corpus.result }}
+          REFERENCE: ${{ needs.reference.result }}
+        run: |
+          case "$CANDIDATE" in ''|*[!0-9]*|0*) echo "candidate must be a number from 1" >&2; exit 1 ;; esac
+          [ "$GITHUB_REF" = refs/heads/main ] || { echo "a release runs on main only, not $GITHUB_REF" >&2; exit 1; }
+          [ "$BUILD $CLOSURE $CORPUS $REFERENCE $CLOSURE_SET" = 'success success success success all' ] || {
+            echo "no drafts: the release needs the build, closure (closure: all), corpus and reference jobs to pass; this run gave build $BUILD, closure $CLOSURE (closure: $CLOSURE_SET), corpus $CORPUS, reference $REFERENCE" >&2
+            exit 1
+          }
+      # actions/checkout v4.4.0, actions/setup-node v4.4.0, actions/download-artifact v4.3.0 and
+      # actions/upload-artifact v4.6.2, pinned by commit, as in engine.yml.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: bundle-packages
+          path: ${{ runner.temp }}/packages
+      - name: The two packages against the pinned engine and each other, and their tags
+        run: node scripts/data-release.mjs plan --packages "$RUNNER_TEMP/packages" --candidate "$CANDIDATE" --out "$RUNNER_TEMP/release"
+      - name: Each package's sources, listed, downloaded with curl and checked against the pinned tlpdb
+        run: |
+          set -euo pipefail
+          while IFS="$(printf '\t')" read -r -u 3 set tag vsix; do
+            node scripts/release-sources.mjs list --out "$RUNNER_TEMP/release/$set" --tag "$tag" "$vsix"
+            curl --fail --location --retry 3 --create-dirs --parallel --parallel-max 4 -K "$RUNNER_TEMP/release/$set/sources.curl"
+            node scripts/release-sources.mjs check --out "$RUNNER_TEMP/release/$set"
+          done 3< "$RUNNER_TEMP/release/releases.tsv"
+      - name: Each release's files and notes
+        run: |
+          set -euo pipefail
+          while IFS="$(printf '\t')" read -r -u 3 set tag vsix; do
+            d="$RUNNER_TEMP/release/$set"
+            mkdir -p "$d/files/$set" "$d/assets" "$d/licences"
+            tar -cf "$d/assets/$tag-sources.tar" -C "$d/files/$set" .
+            # '**' crosses "/" in every unzip build ('*' does not in some), and the count proves that the tar holds
+            # every file of the package's LICENSES/.
+            unzip -q "$vsix" 'extension/LICENSES/**' -d "$d/licences"
+            want="$(unzip -Z1 "$vsix" | grep -c '^extension/LICENSES/.*[^/]$')"
+            got="$(find "$d/licences/extension/LICENSES" -type f | wc -l)"
+            [ "$got" = "$want" ] || { echo "$tag: LICENSES/ holds $got of the package's $want files" >&2; exit 1; }
+            echo "$tag: LICENSES/ holds the package's $want files"
+            tar -cf "$d/assets/$tag-LICENSES.tar" -C "$d/licences/extension" LICENSES
+            cp "$vsix" "$d/sources.json" "$d/meta/texlive.tlpdb.xz" "$d/assets/"
+            node scripts/data-release.mjs notes --set "$set" --tag "$tag" --vsix "$vsix" --sources "$d" --commit "$GITHUB_SHA" --repository "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" --out "$d/notes.md"
+            (cd "$d/assets" && sha256sum -- *) > "$d/assets.sha256"
+          done 3< "$RUNNER_TEMP/release/releases.tsv"
+      - name: The draft releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          list="$RUNNER_TEMP/release/releases.tsv"
+          [ "$(wc -l < "$list")" -eq 2 ] || { echo "the plan holds $(wc -l < "$list") releases, not 2" >&2; exit 1; }
+          # Both tags must be free before either draft is made: GitHub ignores --target when the tag exists, and a
+          # release of that tag, draft or not, would be another candidate's. git ls-remote gives 0 for a tag that
+          # exists and 2 for none; any other status is an error, never "free".
+          while IFS="$(printf '\t')" read -r -u 3 set tag vsix; do
+            s=0
+            git ls-remote --exit-code --tags "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" "refs/tags/$tag" >/dev/null || s=$?
+            case "$s" in
+              0) echo "the tag $tag exists already" >&2; exit 1 ;;
+              2) ;;
+              *) echo "git ls-remote failed (status $s), so the tag $tag is not known to be free" >&2; exit 1 ;;
+            esac
+            taken="$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases" --jq ".[] | select(.tag_name == \"$tag\") | .id")"
+            [ -z "$taken" ] || { echo "a release of $tag exists already" >&2; exit 1; }
+            echo "the tag $tag is free"
+          done 3< "$list"
+          # Then the drafts. Each must hold every assembled file, by name and size.
+          made=0
+          while IFS="$(printf '\t')" read -r -u 3 set tag vsix; do
+            d="$RUNNER_TEMP/release/$set"
+            assets=("$d"/assets/*)
+            gh release create "$tag" --repo "$GITHUB_REPOSITORY" --draft --target "$GITHUB_SHA" --title "$tag" --notes-file "$d/notes.md" "${assets[@]}"
+            made=$((made + 1))
+            want="$(cd "$d/assets" && for f in *; do printf '%s %s\n' "$f" "$(stat -c %s "$f")"; done | sort)"
+            got="$(gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[] | "\(.name) \(.size)"' | sort)"
+            [ "$got" = "$want" ] || { echo "the draft $tag does not hold the assembled files, by name and size:" >&2; diff <(echo "$want") <(echo "$got") >&2 || true; exit 1; }
+            echo "the draft $tag holds its ${#assets[@]} files, each by name and size"
+          done 3< "$list"
+          [ "$made" -eq 2 ] || { echo "$made drafts made, not 2" >&2; exit 1; }
+      - name: The release's files' SHA-256 and the notes, in the job summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo '### Data releases: the SHA-256 of each file, as <tag>/<file>'
+            echo '```'
+            if [ -s "$RUNNER_TEMP/release/releases.tsv" ]; then
+              while IFS="$(printf '\t')" read -r -u 3 set tag vsix; do
+                if [ -f "$RUNNER_TEMP/release/$set/assets.sha256" ]; then
+                  awk -v tag="$tag" '{ print $1 "  " tag "/" $2 }' "$RUNNER_TEMP/release/$set/assets.sha256"
+                else
+                  echo "$tag: not assembled"
+                fi
+              done 3< "$RUNNER_TEMP/release/releases.tsv"
+            else
+              echo 'no release was planned'
+            fi
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: The release report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: bundle-release
+          retention-days: 7
+          if-no-files-found: ignore
+          path: |
+            ${{ runner.temp }}/release/releases.tsv
+            ${{ runner.temp }}/release/*/sources.json
+            ${{ runner.temp }}/release/*/notes.md
+            ${{ runner.temp }}/release/*/assets.sha256

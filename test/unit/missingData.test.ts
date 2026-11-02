@@ -67,8 +67,20 @@ describe('a missing engine or TeX data: skip, or fail once both data packages ar
 
   it('the integration run applies the rule when no engine is staged: a notice before the pins, a failure after', () => {
     const run = readFileSync(path.join(root, 'scripts', 'run-integration.mjs'), 'utf8');
-    assert.match(run, /import \{ dataPinned, UNPINNED_NOTICE \} from '\.\/lib\/data-pins\.mjs';/);
+    assert.match(run, /import \{ dataPinned, [^}]*UNPINNED_NOTICE \} from '\.\/lib\/data-pins\.mjs';/);
     assert.match(run, /if \(process\.env\.CI === 'true'\) \{\n\s+if \(dataPinned\([^\n]+\)\) \{\n(?:[^\n]+\n){1,3}\s+process\.exit\(1\);\n\s+\}\n\s+console\.log\([^\n]*UNPINNED_NOTICE/);
+  });
+
+  it('the integration run and the V0 and M6 tests apply the rule to the add-on too (scripts/lib/data-pins.mjs decides; dataRelease.test.ts tests it)', () => {
+    const run = readFileSync(path.join(root, 'scripts', 'run-integration.mjs'), 'utf8');
+    // The add-on comes from extraDataPackage, whose refusals stop the run; without one, CI after the pins stops too.
+    assert.match(run, /const given = extraDataPackage\(pins, path\.join\(root, '\.\.', 'engine_assets'\)\);/);
+    assert.match(run, /if \(!extraVsix && process\.env\.CI === 'true' && dataPinned\(pins\)\) \{\n\s+throw new Error\(/);
+    assert.match(run, /\} catch \(err\) \{\n\s+console\.error\(`Extra Packages add-on: [^\n]+\n[^\n]+\n\s+process\.exit\(1\);/);
+    const v0 = readFileSync(path.join(root, 'test', 'integration', 'v0.test.ts'), 'utf8');
+    assert.match(v0, /if \(NEEDS_ADD_ON\.has\(id\) && !addOn\) \{\n\s+missingInput\([^\n]+\n[^\n]+\n\s+ctx\.skip\(\);/);
+    const m6 = readFileSync(path.join(root, 'test', 'integration', 'm6.test.ts'), 'utf8');
+    assert.match(m6, /if \(!vsix \|\| !existsSync\(vsix\)\) \{\n\s+missingInput\([^\n]+\n[^\n]+\n\s+this\.skip\(\);/);
   });
 
   it('every VS Code test file that needs the engine applies the rule, so none skips silently once the data is pinned', () => {

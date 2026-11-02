@@ -5,7 +5,6 @@
 import * as assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as path from 'node:path';
-import { crc32 } from 'node:zlib';
 import { imagesForNotFound, type PreparedCompile } from '../../src/extension/compile/pipeline';
 import { checkDataManifest } from '../../src/extension/engine/dataSets';
 import type { CompileResult } from '../../src/shared/engineJobs';
@@ -13,6 +12,7 @@ import { preparePackages, projectCopies, texmfPathFor } from '../../src/extensio
 import { missingMessage, packageRequests, scanDiagnostics, scanPackages, type ScanInput } from '../../src/extension/project/packageScan';
 import { buildPackageIndex, filesBothHold, loadsOf, type PackageIndex } from '../../src/shared/packageIndex';
 import { importScript, root } from '../support/helpers';
+import { storedZip } from '../support/zipWrite';
 
 const index = (packages: Record<string, { files: string[]; requires?: string[]; kind?: 'tex' | 'fonts' }>): PackageIndex => {
   const out: PackageIndex = { format: 1, packages: {}, files: {} };
@@ -24,44 +24,6 @@ const index = (packages: Record<string, { files: string[]; requires?: string[]; 
   }
   return out;
 };
-
-/** A ZIP with stored (uncompressed) entries, for the preparation tests. */
-function storedZip(entries: Record<string, string>): Buffer {
-  const locals: Buffer[] = [];
-  const centrals: Buffer[] = [];
-  let offset = 0;
-  for (const [name, text] of Object.entries(entries)) {
-    const data = Buffer.from(text);
-    const nameBytes = Buffer.from(name);
-    const local = Buffer.alloc(30);
-    local.writeUInt32LE(0x04034b50, 0);
-    local.writeUInt16LE(20, 4);
-    local.writeUInt32LE(crc32(data), 14);
-    local.writeUInt32LE(data.length, 18);
-    local.writeUInt32LE(data.length, 22);
-    local.writeUInt16LE(nameBytes.length, 26);
-    const central = Buffer.alloc(46);
-    central.writeUInt32LE(0x02014b50, 0);
-    central.writeUInt16LE(20, 4);
-    central.writeUInt16LE(20, 6);
-    central.writeUInt32LE(crc32(data), 16);
-    central.writeUInt32LE(data.length, 20);
-    central.writeUInt32LE(data.length, 24);
-    central.writeUInt16LE(nameBytes.length, 28);
-    central.writeUInt32LE(offset, 42);
-    locals.push(local, nameBytes, data);
-    centrals.push(central, nameBytes);
-    offset += 30 + nameBytes.length + data.length;
-  }
-  const cd = Buffer.concat(centrals);
-  const end = Buffer.alloc(22);
-  end.writeUInt32LE(0x06054b50, 0);
-  end.writeUInt16LE(Object.keys(entries).length, 8);
-  end.writeUInt16LE(Object.keys(entries).length, 10);
-  end.writeUInt32LE(cd.length, 12);
-  end.writeUInt32LE(offset, 16);
-  return Buffer.concat([...locals, cd, end]);
-}
 
 describe('M6: the preamble scan reads the document', () => {
   it('finds every kind of request, with options and lists, in the preamble only (inputs anywhere)', () => {

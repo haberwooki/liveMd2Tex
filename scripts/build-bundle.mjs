@@ -329,7 +329,7 @@ export async function main(argv, { fetchImpl = fetch, log = console.log } = {}) 
       chosen.missing.forEach((m) => fail(`not in the tlpdb: ${m}`));
     }
     say(`core-data: ${chosen.core.size} packages; extra-data: ${chosen.extra.size} (${chosen.dropped.length} left out: for their licence, or on purpose)`);
-    say(`core-data holds for the extension's own templates and presets: ${chosen.ownDocuments.map((o) => o.package).join(', ') || 'nothing more'}`);
+    say(`core-data holds for the extension's own documents and engine: ${chosen.ownDocuments.map((o) => o.package).join(', ') || 'nothing more'}`);
     say(`no Catalogue licence (TeX Live's own files): core-data ${report.unclassified.core.length}, extra-data ${report.unclassified.extra.length}`);
     step('sets');
     if (report.problems.length > 0) {

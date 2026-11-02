@@ -290,8 +290,10 @@ Catalogue's "other-free", and TeX Live's own files. "collection" packages and th
   names the pinned TeX Live snapshot (https://texlive.info/tlnet-archive/2026/10/15/tlnet/), which keeps every
   package as shipped: `archive/<package>.tar.xz`, and its `.source.tar.xz` and `.doc.tar.xz` where it has them.
   For each package under the GPL, LGPL or AGPL, and each package with a packed GPL font, `data/licences.json`
-  lists those archives with their URLs and the SHA-512 of TeX Live's package database. The release of a data
-  package carries a copy of each (`.github/workflows/release-sources.yml`, as `<set>-sources-<tag>.tar`).
+  lists those archives with their URLs and the SHA-512 of TeX Live's package database. Each data package's own
+  release (`core-data-<engine short hash>-<n>`, `extra-data-<engine short hash>-<n>`, made by
+  `.github/workflows/bundle.yml`'s `release` job) carries a copy of each as `<tag>-sources.tar`, with
+  `sources.json`, the pinned package database and the package's `LICENSES/`.
 
 ## Added later (planned; not in the package yet)
 

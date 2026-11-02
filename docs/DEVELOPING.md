@@ -141,7 +141,13 @@ unpacked on every run, about 0.5 GB). The tests mount the add-on for the documen
 installed it. Without the files every engine test is pending, and `stage-engine` says it skipped. On CI
 (`CI=true`) the same holds, with one notice, only while `engine/pins.json` does not pin both data packages
 (`test/support/missingData.ts`, `scripts/lib/data-pins.mjs`); once both are pinned, a missing engine, core data
-or add-on fails the engine tests on CI, so a CI run never passes by skipping.
+or add-on fails the engine tests and the VS Code integration tests on CI, so a CI run never passes by skipping.
+Once `engine/pins.json` pins the two packages (`livemd2tex-core-data` and `livemd2tex-extra-data`, each a `.vsix`
+in a data release), `npm run engine:assets` downloads them with the engine, `stage-engine --data` stages the pinned
+core data when no package is given, and the engine and integration tests mount the pinned add-on when
+`LIVEMD2TEX_EXTRA_DATA` is not set; the variables still take a local build first. Each use checks a pinned package
+against its pin's size and SHA-256 (`checkedDataPackage` in `scripts/lib/data-pins.mjs`): a file that differs
+fails on any machine, and so does a `LIVEMD2TEX_EXTRA_DATA` that names nothing.
 
 - Every route out of the engine is closed inside it. `system()` and `popen()` are our stubs
   (`engine/build/stubs.c`), which start nothing, so `\write18` and `\input|` run nothing. The engine imports no
@@ -345,8 +351,9 @@ node scripts/engine-shakedown.mjs --b ~/engine-out --a OTHER_ENGINE_DIR --images
   engine. The engine tests skip there with one notice that says so, the VSIX scans step scans the plain package and
   leaves the test copy out with the same notice, and the VS Code integration tests that compile skip with the same
   notice, because the extension finds no engine data (Restricted Mode's two compiling cases among them). Once both
-  are pinned, the engine tests and the integration tests that compile fail on CI without their inputs, and the test
-  copy is scanned. Every job must pass in between. The engine release must be published before the repository's
+  are pinned, the engine tests and the integration tests that compile fail on CI without their inputs (the
+  add-on's cases among them, and `scripts/run-integration.mjs` stops without the add-on), and the test copy is
+  scanned. Every job must pass in between. The engine release must be published before the repository's
   `main` pins it: `scripts/engine-assets.mjs` cannot download a draft's files, and says so.
 
 ## Version 0: compile on save (V0)
@@ -583,8 +590,8 @@ CI runs on GitHub since G0: on the first commit of the fresh history, and on eac
   with write access to the repository's contents, for the release's files; it pushes nothing, and its actions are
   pinned by commit.
 - `.github/workflows/bundle.yml` (B1, run by hand) builds the two data packages from the pinned TeX Live snapshot.
-  Its jobs are pin, fetch, build, a sharded closure test, the corpus, and the reference; each keeps its report
-  when it fails. The pin job checks TeX Live's signature with `gpg` on the runner, against the key whose
+  Its jobs are pin, fetch, build, a sharded closure test, the corpus, the reference and, by input on `main`, the
+  release of the two data packages ("The data sets", below); each keeps its report when it fails. The pin job checks TeX Live's signature with `gpg` on the runner, against the key whose
   fingerprint `engine/bundle-pins.json` pins.
   - The builder follows the plan's rule: no Python and no Perl.
   - The reference job is the exception, and why it is allowed. It installs the TeX Live that the public corpus is
@@ -1144,7 +1151,8 @@ archives.
     keeps the fonts it opens until it ends: at most the core's packed fonts, about 100 MB.
   - **Publishing.** Publish a core-data VSIX only from a `bundle.yml` run whose `corpus` job passed for that same
     package. That job checks every packed font on the engine: each unpacks to its original, pdfTeX reads each one
-    with the original's MD5, and the corpus gives the same PDFs with and without packing.
+    with the original's MD5, and the corpus gives the same PDFs with and without packing. The release job makes no
+    draft from any other run ("The data releases", below).
   Tests: `test/unit/t1c.test.ts`, `test/engine/t1c.test.ts` (also partial reads through `\pdffiledump`), and on
   CI `bundleCorpus.test.ts`.
 - **Fonts in the add-on.** Some fonts live only in extra-data (bookman, charter, utopia and more). A Type 1 file
@@ -1164,7 +1172,8 @@ archives.
   only from the same TeX Live snapshot as its core, and says so in plain words otherwise.
 - **The workflow.** `pin`, then `fetch` (the archive cache is saved even when the fetch fails), `build` (the
   packages' SHA-256 go into the job summary), `closure` (sharded over 4 or 8 runners, on the packages as they
-  ship), `corpus` (the public corpus on the built packages) and `reference`. The header gives the minutes.
+  ship), `corpus` (the public corpus on the built packages) and `reference`; then, by input, `release` ("The data
+  releases", below). The header gives the minutes, as measured on the first run.
 - **Downloads.** texlive.info runs a bot check (Anubis). A browser gets a challenge page before the file, and so
   does Node's fetch, which cannot answer it; curl gets the file (checked 2026-10-26). So the workflow downloads the
   files with the runner's curl, and the builder reads that copy (`--local DIR`) and opens no connection itself. The builder lists for curl what the copy lacks (`--curl-config FILE`), then checks every
@@ -1174,12 +1183,72 @@ archives.
   then the build's packages. It compiles the public corpus again, and the page counts must match
   (`test/engine/bundleCorpus.test.ts`, `scripts/bundle-reference.mjs`). Why its Perl is allowed is under
   "CI and the public history on GitHub".
-- **Still open.** Our own copy of the snapshot after the first build, and the measured minutes.
+- **The data releases** (`bundle.yml`'s `release` job, input `release`, on `main` only; `scripts/data-release.mjs`).
+  The job waits for the `build`, `closure`, `corpus` and `reference` jobs, and makes no draft unless each of them
+  passed and the closure test covered both sets (input `closure` `all`); it runs within the packages' 3-day
+  artifact window. Each package gets a draft release of its own:
+  `core-data-<engine short hash>-<n>` and `extra-data-<engine short hash>-<n>`. The short hash is the first 7 hex
+  digits of the SHA-256 of the `engine.wasm` both are built for (their `abi`), and `n` is the input `candidate`,
+  the same for the two packages of one build. Two releases, because each package is its own store item with its own
+  pin, licences and sources; the shared hash and number name the pair built together (the core lists the add-on's
+  files, so the two are used together). The job checks that the build holds exactly one package of each set, both
+  for the pinned engine and from one snapshot; then for each package `release-sources.mjs list` names the pinned
+  snapshot's archives of its GPL, LGPL and AGPL packages and packed GPL fonts, curl downloads them, and
+  `release-sources.mjs check` checks each against the pinned tlpdb's SHA-512 (as `release-sources.yml` does for
+  an extension release). `data-release.mjs notes` then checks the list itself against the pinned tlpdb, so a short
+  list stops the job: every package under the GPL, LGPL or AGPL, and every package `LICENSES/CHANGES-GPL` names,
+  must list each archive the tlpdb gives it, and `LICENSES/INDEX` must be there. Each draft holds the package,
+  `<tag>-sources.tar`, `sources.json`, the pinned `texlive.tlpdb.xz` and `<tag>-LICENSES.tar` (the package's
+  `LICENSES/`, every file of it: the job counts them against the package), with notes that give the package's
+  SHA-256, its engine and where the sources are; the job writes every file's SHA-256 into its summary, each line
+  with its release's tag. Both tags must be free before either draft is made (a failed `git ls-remote` stops the
+  job; it never counts as "free"), each draft must hold every file by name and size, and the job must make exactly
+  two drafts. Only that job may write, and only to make the drafts; the owner publishes each one after its check,
+  with "Set as the latest release" unticked ("Publishing", above).
+- **Running the data release**, step by step:
+  1. Before the run: `engine/pins.json` pins the published engine release the packages are built for; no other
+     `bundle` run with "release" ticked is queued or running; the snapshot answers (an anonymous `curl -I` of the
+     pinned `texlive.tlpdb.xz` gives 200); and both tags are free (anonymously, `git ls-remote --tags` lists
+     neither; logged in, the Releases page shows no draft of either, since drafts cannot be seen anonymously).
+  2. Start it: Actions, bundle, Run workflow, on `main`: job `build`, closure `all` with 8 shards, reference on,
+     version empty (it gives the snapshot's date), "release" ticked, and the candidate number.
+  3. Read the run: every job passed; the build summary's two `.vsix` SHA-256 equal the release summary's; each
+     draft holds its five files, which the job checked by name and size; each `<tag>-LICENSES.tar` holds every
+     file of its package's `LICENSES/` (the job's log gives the count), and each `<tag>-sources.tar` the archives
+     its `sources.json` lists; the notes name the run's commit.
+  4. Publish each draft only after that check, with "Set as the latest release" unticked, then pin both ("The
+     pins", below).
+  5. When the job fails, its summary and its `bundle-release` report say where. A failure before the drafts leaves
+     none. If it fails after making a draft, or an upload fails partway (`gh release create` then leaves a partial
+     draft), delete every draft of that run on the Releases page. Then re-run the failed job within the 3 days, or
+     start a new run with the next candidate number.
+  6. A candidate number belongs to one build run: a re-run of that run's release job uses it again once its drafts
+     are deleted, and a new run takes the next number. The number of a deleted draft is never given to another
+     build.
+- **The pins.** After publication, `engine/pins.json` gets `livemd2tex-core-data` and `livemd2tex-extra-data` in
+  one commit, each with every field: `id`, `folder` (its folder under `../engine_assets/`), `release`, `tag`,
+  `published`, and `files`, the `.vsix` with its `name`, `url`, `size` and `sha256`. CI then moves from "skip with
+  one notice" to "fail without the data" at once (`scripts/lib/data-pins.mjs` keys on both, and a unit test,
+  `dataRelease.test.ts`, fails a commit that pins one without the other).
+- **mylatexformat in core-data** (`forOwnDocuments`, decided 2026-11-01): a planned format that holds a pdfLaTeX
+  document's preamble, which the engine host would dump, needs it, so it is in core-data rather than the add-on.
+  No code builds that format yet. Its licence, read in the pinned snapshot: the LaTeX Project Public License 1.3 or
+  later (`mylatexformat.ltx` lines 13-17; Copyright 2010-2011 Florent Chervet, line 24, after David Carlisle's
+  mylatex.ltx, line 29; the tlpdb gives `lppl1.3`). Checked on our engine with TeX Live 2026's kernel
+  (2026-11-02): `pdflatex -ini -jobname=pre "&pdflatex" mylatexformat.ltx doc.tex` dumps the format, and a pass
+  with `-fmt=pre` gives the same PDF as the ordinary format, byte for byte with fixed dates, and no error. One
+  difference: in that pass `\begin` is an ordinary macro, while the kernel makes it `\protected` (`latex.ltx` line
+  15563, TeX Live's `latex` package in the pinned snapshot): mylatexformat redefines `\begin` with `\gdef` to catch
+  `\begin{document}`, and puts the old body back the same way, which drops the `\protected` (`mylatexformat.ltx`
+  lines 184-196). Whoever uses the format must allow for that.
+- **Still open.** Our own copy of the snapshot after the first build.
 
 Tests: `test/unit/xz.test.ts`, `tar.test.ts`, `tlpdb.test.ts`, `bundle.test.ts` (the whole build without the engine,
 on a made-up snapshot: the signed pin, the licence lists, the licence texts and their INDEX, the report on an error,
 the closure targets and the program guard), `dataImage.test.ts`, `fontLists.test.ts` (the font lists and their
-rules), `workflows.test.ts` (the jobs and their order), `m6.test.ts` (an add-on from another snapshot);
+rules), `workflows.test.ts` (the jobs and their order, the release job's steps), `dataRelease.test.ts` (the
+data releases' tags, plan and notes, the sources' list against the tlpdb, the checked data pins and their rule,
+both pins or neither, mylatexformat's place), `m6.test.ts` (an add-on from another snapshot);
 `test/engine/bundleEngine.test.ts` (the formats, the patterns' cost and the closure test on the engine).
 
 ## How many documents compile (M5, prepared, not yet run)
@@ -1432,9 +1501,11 @@ written again for our own engine (2026-10-31). What they set up:
      and the script checks each archive: its SHA-256 or SHA-512, a data archive's SHA-512 against the pinned package
      database, and a commit archive's files against its commit. The workflow then attaches one tar file per group
      (`engine-sources-<tag>.tar`, `core-data-sources-<tag>.tar`, `extra-data-sources-<tag>.tar`) and the list,
-     `sources.json`, to the draft. On the first real run, confirm that `gh release download` and
-     `gh release upload` find the draft by its tag: GitHub's look-up by tag does not return drafts, and gh's way
-     around that has not been tried here.
+     `sources.json`, to the draft. The data packages are released on their own, each with its sources, by
+     `bundle.yml`'s `release` job ("The data sets", "The data releases"), so the two `-data-sources-<tag>.tar`
+     names apply only when an extension release also holds a data package. On the first real run, confirm that
+     `gh release download` and `gh release upload` find the draft by its tag: GitHub's look-up by tag does not
+     return drafts, and gh's way around that has not been tried here.
   4. Only when that run has passed: publish the release.
   5. Only then: upload the packages to the VS Code Marketplace and Open VSX.
 

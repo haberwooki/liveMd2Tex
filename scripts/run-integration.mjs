@@ -15,7 +15,7 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, 
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { dataPinned, UNPINNED_NOTICE } from './lib/data-pins.mjs';
+import { dataPinned, extraDataPackage, UNPINNED_NOTICE } from './lib/data-pins.mjs';
 import { testVsCode } from './lib/test-vscode.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -80,22 +80,39 @@ if (projects) {
   }
 }
 // The Extra Packages add-on, which the M6 and V0 tests install into the throwaway profile as a user would: the
-// extra-data package LIVEMD2TEX_EXTRA_DATA names, built by the data builder for this engine. A .vsix is taken as
-// it is; for an unpacked package folder (the builder's <out>/extra-data/), the builder's .vsix beside it. Without
-// one the tests that need the add-on skip.
-const extraVsix = (() => {
-  const given = process.env.LIVEMD2TEX_EXTRA_DATA;
-  if (!given || !existsSync(given)) return null;
-  if (/\.vsix$/i.test(given)) return path.resolve(given);
-  const parent = path.dirname(path.resolve(given));
-  const found = readdirSync(parent).filter((n) => /^livemd2tex-extra-data-.*\.vsix$/.test(n));
-  return found.length === 1 ? path.join(parent, found[0]) : null;
-})();
+// extra-data package LIVEMD2TEX_EXTRA_DATA names, built by the data builder for this engine, or else the one
+// engine/pins.json pins as livemd2tex-extra-data, checked against its pinned size and SHA-256 once
+// scripts/engine-assets.mjs has downloaded it (scripts/lib/data-pins.mjs, extraDataPackage). A .vsix is taken as it
+// is; for an unpacked package folder (the builder's <out>/extra-data/), the builder's .vsix beside it. A path that
+// names no package, or a pinned file of another size or SHA-256, stops the run on any machine. Without an add-on the
+// tests that need it skip on a laptop, and on CI only before both data packages are pinned; after the pins the run
+// stops, as it does without the engine.
+let extraVsix = null;
+try {
+  const pins = JSON.parse(readFileSync(path.join(root, 'engine', 'pins.json'), 'utf8'));
+  const given = extraDataPackage(pins, path.join(root, '..', 'engine_assets'));
+  if (given && /\.vsix$/i.test(given)) {
+    extraVsix = given;
+  } else if (given) {
+    const found = readdirSync(path.dirname(given)).filter((n) => /^livemd2tex-extra-data-.*\.vsix$/.test(n));
+    if (found.length !== 1) {
+      throw new Error(`LIVEMD2TEX_EXTRA_DATA names a folder with ${found.length} livemd2tex-extra-data .vsix files beside it, not one: ${given}`);
+    }
+    extraVsix = path.join(path.dirname(given), found[0]);
+  }
+  if (!extraVsix && process.env.CI === 'true' && dataPinned(pins)) {
+    throw new Error('the integration tests need it (the pinned extra-data package): on CI they fail rather than skip once the data packages are pinned');
+  }
+} catch (err) {
+  console.error(`Extra Packages add-on: ${err instanceof Error ? err.message : String(err)}`);
+  rmSync(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 500 });
+  process.exit(1);
+}
 if (extraVsix) {
   env.LIVEMD2TEX_TEST_EXTRA_VSIX = extraVsix;
   console.log(`Extra Packages add-on: ${path.basename(extraVsix)}`);
 } else {
-  console.log('Extra Packages add-on: none given (LIVEMD2TEX_EXTRA_DATA); the tests that need it will skip');
+  console.log('Extra Packages add-on: none given (LIVEMD2TEX_EXTRA_DATA) and none pinned and downloaded; the tests that need it will skip');
 }
 // M2-B: LaTeX Workshop beside ours (docs/DESIGN.md#confinement-and-trust). --with-latex-workshop installs its VSIX, a pinned
 // development-only download kept outside the repository, into a second throwaway profile with VS Code's own

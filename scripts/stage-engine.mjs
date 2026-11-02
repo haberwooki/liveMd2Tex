@@ -11,20 +11,24 @@
 // 180 MB written on each run. build.mjs empties dist/, so run this after it.
 //
 //   node scripts/stage-engine.mjs [--data [--data-package PATH]] [--if-present]
-// --data: no core-data package is pinned in engine/pins.json yet, so --data takes a core-data package built for
-//         this engine (its manifest's abi must be the pinned engine.wasm's SHA-256), as a .vsix or as the package's
-//         unpacked folder (the one with data/ and LICENSES/): --data-package PATH, or the path the variable
-//         LIVEMD2TEX_CORE_DATA names (so npm run test:engine, which stages with --data alone, finds it). The
+// --data: stages a core-data package built for this engine (its manifest's abi must be the pinned engine.wasm's
+//         SHA-256), as a .vsix or as the package's unpacked folder (the one with data/ and LICENSES/):
+//         --data-package PATH, else the path the variable LIVEMD2TEX_CORE_DATA names (so npm run test:engine, which
+//         stages with --data alone, finds a local build), else the package engine/pins.json pins as
+//         livemd2tex-core-data, from ../engine_assets/<its folder>/ (scripts/engine-assets.mjs downloads it, and
+//         it is checked against its pinned size and SHA-256: scripts/lib/data-pins.mjs, checkedDataPackage). The
 //         package is checked before dist/data is replaced.
 // --if-present: when an input is simply not there, say so and stop without an error, and the engine tests then
-//         skip: the engine downloads are missing (a fresh clone, CI), or --data names no package. Anything else
-//         (a file of the wrong size or hash, a package that is not there or not built for this engine) still
-//         fails.
+//         skip: the engine downloads are missing (a fresh clone, CI), --data has no package (none given and none
+//         pinned), or the pinned package is not downloaded (on a laptop, or on CI before both data packages are
+//         pinned). Anything else (a file of the wrong size or hash, a package that is not there or not built for
+//         this engine, a pinned package missing on CI once both are pinned) still fails.
 
 import { createHash } from 'node:crypto';
 import { copyFileSync, existsSync, linkSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { checkedDataPackage } from './lib/data-pins.mjs';
 import { readZip } from './lib/zip.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -125,7 +129,7 @@ export function stageEngine({ data = false, dataPackage = null } = {}) {
     return report;
   }
   if (!dataPackage) {
-    throw new NotPresent('no core-data package is pinned yet: give --data-package PATH (or LIVEMD2TEX_CORE_DATA), a livemd2tex-core-data .vsix or unpacked package folder built for this engine');
+    dataPackage = pinnedCoreData();
   }
   if (!existsSync(dataPackage)) {
     throw new Error(`${dataPackage} is not there: give a core-data package built for this engine`);
@@ -151,6 +155,23 @@ export function stageEngine({ data = false, dataPackage = null } = {}) {
   const summary = [...ways].map(([w, n]) => `${n} ${w}`).join(', ');
   report.push(`dist/data: ${files.length} files from ${path.basename(dataPackage)} (${summary}; image ${manifest.image?.file}, ${manifest.image?.bytes} bytes)`);
   return report;
+}
+
+/**
+ * The data package of livemd2tex-core-data's pin (engine/pins.json), downloaded into ../engine_assets and checked
+ * (checkedDataPackage: a file of another size or SHA-256 throws, and so does a missing one on CI once both data
+ * packages are pinned). NotPresent when nothing is pinned, or when the pinned file is not downloaded otherwise.
+ */
+export function pinnedCoreData(repo = root, env = process.env) {
+  const pins = JSON.parse(readFileSync(path.join(repo, 'engine', 'pins.json'), 'utf8'));
+  const pinned = checkedDataPackage(pins, 'livemd2tex-core-data', path.join(repo, '..', 'engine_assets'), env);
+  if (!pinned) {
+    throw new NotPresent('no core-data package is pinned yet: give --data-package PATH (or LIVEMD2TEX_CORE_DATA), a livemd2tex-core-data .vsix or unpacked package folder built for this engine');
+  }
+  if (pinned.missing) {
+    throw new NotPresent(`the pinned core-data package ${path.basename(pinned.path)} is not downloaded; run node scripts/engine-assets.mjs`);
+  }
+  return pinned.path;
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {

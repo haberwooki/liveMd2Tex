@@ -88,7 +88,11 @@ describe('M6 (engine level): package help', function () {
   it('the scan finds nothing missing in the corpus documents that compile (no false alarms)', async () => {
     const report: Record<string, number> = {};
     // P7 needs the add-on (memoir, biblatex): installed when the tests have it, as for a user who installed it.
+    // Without it P7 is left out here, and the "Extra Packages route" case below skips or fails by the rule.
     const extra = await extraAddOn();
+    if (!extra) {
+      console.log('      P7 left out: it needs the Extra Packages add-on');
+    }
     for (const p of projects.filter((x) => x.main.endsWith('.tex') && (extra || x.id !== 'P7'))) {
       const prepared = await prepareCompile({ fs: nodeFs(p.folder), mainRel: p.main, engineSetting: 'pdflatex', packages: context(extra ? [extra] : []) });
       const scan = prepared.packageScan;
@@ -125,8 +129,8 @@ describe('M6 (engine level): package help', function () {
   });
 
   it('the Extra Packages route: with the add-on installed, P7 reaches a PDF', async function () {
-    // The add-on comes from LIVEMD2TEX_EXTRA_DATA; without it the case skips, and on CI it fails once a core-data
-    // package is pinned (support.ts, needAddOn).
+    // The add-on comes from its pin, or from LIVEMD2TEX_EXTRA_DATA; without it the case skips, and on CI it fails
+    // once both data packages are pinned (support.ts, needAddOn).
     const extra = await needAddOn(this);
     const p7 = projects.find((p) => p.id === 'P7') as CorpusProject;
     const prepared = await prepareCompile({ fs: nodeFs(p7.folder), mainRel: p7.main, engineSetting: 'pdflatex', packages: context([extra]) });

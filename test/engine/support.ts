@@ -73,16 +73,27 @@ export function stagedEngine(ctx: Mocha.Context): boolean {
 let addOn: Promise<{ set: InstalledSet; image: DataImageRef } | null> | null = null;
 
 /**
- * The Extra Packages add-on for the engine tests: the extra-data package that LIVEMD2TEX_EXTRA_DATA names, built by
- * the data builder for this engine, read as the extension reads an installed add-on. An unpacked package folder (the
- * builder's <out>/extra-data/) is read in place; a .vsix is unpacked once into a temporary folder, about 300 MB,
- * removed when the test process ends. Null without the variable or the staged core data. Documents whose packages
- * are in the add-on (memoir, biblatex, mwe and the rest) typeset only with it, as for a user who installed it
- * (needAddOn).
+ * The add-on's package: the path LIVEMD2TEX_EXTRA_DATA names, else the .vsix engine/pins.json pins as
+ * livemd2tex-extra-data, checked against its pinned size and SHA-256 once scripts/engine-assets.mjs has downloaded it
+ * (scripts/lib/data-pins.mjs, extraDataPackage and checkedDataPackage). It throws on a path that names nothing, on a
+ * pinned file of another size or SHA-256, and on CI when the pinned file is missing once both data packages are
+ * pinned.
+ */
+async function addOnPackage(): Promise<string | null> {
+  const { extraDataPackage } = await importScript<{ extraDataPackage(pins: unknown, assetsRoot: string): string | null }>('scripts/lib/data-pins.mjs');
+  return extraDataPackage(JSON.parse(readFileSync(path.join(root, 'engine', 'pins.json'), 'utf8')), assetsRoot);
+}
+
+/**
+ * The Extra Packages add-on for the engine tests (addOnPackage), read as the extension reads an installed add-on. An
+ * unpacked package folder (the data builder's <out>/extra-data/) is read in place; a .vsix is unpacked once into a
+ * temporary folder, about 300 MB, removed when the test process ends. Null without either, or without the staged core
+ * data. Documents whose packages are in the add-on (memoir, biblatex, mwe and the rest) typeset only with it, as for
+ * a user who installed it (needAddOn).
  */
 export function extraAddOn(): Promise<{ set: InstalledSet; image: DataImageRef } | null> {
   addOn ??= (async () => {
-    const file = process.env.LIVEMD2TEX_EXTRA_DATA;
+    const file = await addOnPackage();
     const core = await readCoreData(path.join(root, 'dist', 'data'));
     if (!file || !core) {
       return null;
@@ -120,7 +131,7 @@ export async function needAddOn(ctx: Mocha.Context): Promise<{ set: InstalledSet
   if (extra) {
     return extra;
   }
-  missingInput('the Extra Packages add-on (LIVEMD2TEX_EXTRA_DATA, an extra-data package built for this engine)');
+  missingInput('the Extra Packages add-on (the pinned extra-data package, or LIVEMD2TEX_EXTRA_DATA)');
   ctx.skip();
   throw new Error('skipped');
 }

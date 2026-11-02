@@ -72,8 +72,9 @@ const EXTRA_ID = `${PUBLISHER}.${EXTRA_DATA_NAME}`;
 
 /**
  * Installs the Extra Packages add-on into the throwaway profile from the .vsix that scripts/run-integration.mjs names
- * (LIVEMD2TEX_TEST_EXTRA_VSIX: the extra-data package the data builder made for this engine), as a user installs it
- * from the Extensions view. False when no add-on was given: a test that needs it then skips.
+ * (LIVEMD2TEX_TEST_EXTRA_VSIX: the pinned extra-data package, or one the data builder made for this engine), as a
+ * user installs it from the Extensions view. False when no add-on was given: a test that needs it then skips, on CI
+ * only before both data packages are pinned (test/support/missingData.ts).
  */
 export async function installAddOn(): Promise<boolean> {
   const vsix = process.env.LIVEMD2TEX_TEST_EXTRA_VSIX;

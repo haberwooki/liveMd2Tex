@@ -37,9 +37,10 @@ export function licenceOf(pkg, reviews = {}) {
  * "exclude" (name: reason) leaves a package out on purpose, listed with its reason; in core-data, any other
  * package that is not free stops the build. core-data's "toExtra" (name: reason) leaves a package out of core-data,
  * also as a dependency, and gives it to extra-data. core-data's "forOwnDocuments" (name: reason) names the packages
- * the extension's own templates and example presets load, which core-data must hold so that they compile without
- * the add-on: each is selected for core-data, and one that does not end there is a problem. "licenceReviews" give
- * the licences of "collection" packages.
+ * the extension itself needs, which core-data must hold so that they work without the add-on: those its own templates
+ * and example presets load, and those the engine host would use (mylatexformat, for a planned preamble format).
+ * Each is selected for core-data, and one that does not end there is a problem. "licenceReviews" give the licences
+ * of "collection" packages.
  * @returns {{ core: Set<string>, extra: Set<string>, missing: string[], dropped: { package: string, set: string, reason: string }[], problems: string[], moved: { package: string, reason: string, inExtra: boolean }[], ownDocuments: { package: string, reason: string, inCore: boolean }[] }}
  */
 export function selectSets(db, sets) {

@@ -129,6 +129,12 @@ These rules hold for everyone who installs the extension.
   licence files or the file that states its terms, from its archives. A package whose licence text is not found
   stops the build. The workflow runs in separate jobs (pin, fetch, build, a sharded
   closure test, the corpus, and a TeX Live reference in a job of its own), and each keeps its report on a failure.
+  A last job, by input on `main` and only after the run's checks passed, makes each data package a draft release
+  of its own (`core-data-<engine short hash>-<n>`, `extra-data-<engine short hash>-<n>`), with the sources of what
+  it ships, checked against the pinned package database, and its licence texts; the repository's tests take the
+  packages from those releases once they are published and pinned. core-data also holds what the extension itself
+  needs: the packages of its starting documents and presets, and mylatexformat, for a planned format that holds a
+  document's preamble.
 - **Mounting.** The engine host mounts a data extension's image whole, when a compile needs one of its packages
   (or an earlier "not found" named one of its files), under a tree searched after the user's own packages and
   before the core. It keeps images by id, version and content, forgets images that were removed or updated,
