@@ -2,28 +2,44 @@
 //
 // Paired (the normal case): one result file of a paired run (--ab, --ab-host, --ab-data, --ab-env, --ab-engine).
 //   node out/test/speed/compare.js --paired P.json --aim article:quick,bib:quick --band CAL.json [--min-pairs 8]
-//        [--no-cpu] [--outputs-may-differ] [--no-wsl]
+//        [--no-cpu] [--outputs-may-differ] [--no-wsl] [--no-power]
 //   0. The run: it records its start load and did not start busy (machine or Windows CPU above 30 %, or a WSL load
-//      above 1; a missing WSL load fails unless --no-wsl says the machine has none). With two hosts, the file shows
-//      both start orders in every row. The calibration (--band) is an A/A run of the same pairing kind, runtime,
-//      engine, image and host flags as the run's A side; it did not start busy; at most half its pairs are noisy;
-//      and each row the run uses has at least 10 pairs and no lean (its own sign test is not clear either way).
+//      above 1; a missing WSL load fails unless --no-wsl says the machine has none) or short of memory (under 3,000
+//      MB free). It stayed on mains: the benchmark's power watcher has a reading at the start and at the end, every
+//      reading is mains, and no gap between the run's start, its readings and its end is longer than 90 s
+//      (--no-power on a system without the watcher; a run made on Windows always has one, so there it is refused).
+//      With two hosts, the file shows both start orders in every row, and the calibration restarted its hosts at the
+//      same interval as the run. The report names every check lifted by --no-cpu, --outputs-may-differ, --no-wsl
+//      or --no-power. The calibration (--band) is an A/A run of the same pairing kind,
+//      runtime, engine, image and host flags as the run's A side; it passes the same start and power checks; at most
+//      half its pairs are noisy; each row the run uses has at least 10 pairs (with two hosts, at least 4 restart
+//      blocks outside fresh mode); and no row leans: each row's two-sided sign test on its untied pairs, corrected
+//      for the number of rows the run uses (Holm, at 0.10 for the family, which is 0.10 for a single row).
+//   Ties: a pair whose A and B times are equal counts as neither faster nor slower, and every sign test here runs on
+//   the untied pairs only.
+//   Blocks (two hosts): each engine host keeps its own speed for as long as it runs, so the pairs between two
+//   restarts form one block and a row's blocks, not its pairs, are the independent units. The report shows each
+//   block's median, and the band covers the spread of the calibration's block medians (below). One host (--ab)
+//   runs A and B in the same host, so its row is one block and the band is the pair band.
 //   1. Same output: in every pair, set-aside tries included, A's and B's PDF, .aux, problems list and SyncTeX text
 //      have the same hash (--outputs-may-differ lifts this for an engine or data change). Whatever the flag, a pair
 //      fails when either side has no PDF, the page counts differ, or B has more error lines than A.
 //   2. The worker's CPU time is present in every pair (a missing one means a side ran without the probe or failed),
 //      unless --no-cpu. It is reported beside wall time, not counted as a second witness: on this laptop it grows
 //      with the machine's load as wall time does.
-//   3. Each aimed row: at least --min-pairs pairs, an even number; B faster in a majority the one-sided sign test
-//      calls clear (p at most 0.05: 7 of 8, 9 of 10, 10 of 12); the median of (B - A) / A below minus the band.
+//   3. Each aimed row: at least --min-pairs pairs, an even number; B faster in a majority of the untied pairs that
+//      the one-sided sign test calls clear (p at most 0.05: 7 of 8, 9 of 10, 10 of 12); the median of (B - A) / A
+//      below minus the band.
 //   4. Every other row fails when its wall median is past the band and either the sign test calls B clearly slower
-//      or the CPU median is past its band too (with --no-cpu: the wall median alone). The report gives each such
-//      row's band as the slowdown that would pass unseen.
+//      (untied pairs) or the CPU median is past its band too (with --no-cpu: the wall median alone). The report gives
+//      each such row's band as the slowdown that would pass unseen.
 //   5. A pair is noisy when either side was marked so, or ran above 40 % machine CPU, or started below 1,000 MB of
 //      free memory (recomputed here, whatever thresholds bench was given). A row with more than half its pairs noisy
 //      fails as "run again".
 //   The band of a row with n pairs is 3 d / sqrt(n) (about 1.6 standard errors of the median), where d is the median
-//   of |B - A| / A in that row of the calibration; a row the calibration lacks gets d = 10 % and says so.
+//   of |B - A| / A in that row of the calibration; a row the calibration lacks gets d = 10 % and says so. With two
+//   hosts the band is the larger of that and 3 d_block / sqrt(blocks), where d_block is the median of the absolute
+//   block medians in the calibration's row and blocks is the number of blocks in the run's row.
 //
 // A change that only removes work (only the changes this file names in REMOVES_WORK_TIMERS):
 //   node out/test/speed/compare.js --paired P.json --removes-work restoreMs --band CAL.json [--rows doc:mode,...]
@@ -63,8 +79,14 @@ const BUSY_START_WSL = 1;
 /** Rule 5's thresholds for a noisy pair (above), applied here whatever bench was told. */
 const MAX_BUSY = 40;
 const MIN_FREE_MB = 1000;
+/** The least free memory at a run's start (a calibration that started with 1.3 GB free ran short). */
+const MIN_START_FREE_MB = 3000;
 /** The fewest pairs a calibration row may have. */
 const CALIBRATION_MIN_PAIRS = 10;
+/** Two hosts: the fewest restart blocks a calibration row may have outside fresh mode (16 pairs, --restart-every 4). */
+const CALIBRATION_MIN_BLOCKS = 4;
+/** The calibration's lean check: the family's level for Holm's correction over the rows the run uses. */
+const LEAN_ALPHA = 0.1;
 /** --removes-work: the fewest pairs per row for a change that only removes work. */
 const REMOVES_WORK_MIN_PAIRS = 16;
 /** A change that only removes work, and the timer that covers its code on both sides. */
@@ -112,8 +134,50 @@ export interface CalibrationRow {
   cpu: number;
   n: number;
   noisy: number;
-  /** Pairs in which B was faster (wall time), for the lean check. */
+  /** Pairs in which B was faster, slower, or tied with A (wall time), for the lean check. */
   faster: number;
+  slower: number;
+  ties: number;
+  /** Each block's median of (B - A) / A, percent (wall); one block for a one-host run. */
+  blocks: number[];
+  /** d_block: the median of the absolute block medians, percent, for wall time and job CPU time. */
+  blockWall: number;
+  blockCpu: number;
+}
+
+/** B faster, slower and tied with A in a row's pairs (wall time). */
+function signs(g: Pair[]): { faster: number; slower: number; ties: number } {
+  const faster = g.filter((p) => p.b.serviceMs < p.a.serviceMs).length;
+  const slower = g.filter((p) => p.b.serviceMs > p.a.serviceMs).length;
+  return { faster, slower, ties: g.length - faster - slower };
+}
+
+/**
+ * A row's pairs in blocks: with two hosts, the pairs between two restarts of the hosts (each host keeps its own
+ * speed while it runs), and in fresh mode, where the hosts start again before every compile, each pair alone. One
+ * host: the whole row. Pairs before a row's first recorded restart form a block of their own.
+ */
+export function blocksOf(run: Run, g: Pair[]): Pair[][] {
+  if (pairingKind(run) !== 'two hosts' || g.length === 0) {
+    return g.length > 0 ? [g] : [];
+  }
+  const { doc, mode } = g[0];
+  const sorted = [...g].sort((x, y) => x.rep - y.rep);
+  if (mode === 'fresh') {
+    return sorted.map((p) => [p]);
+  }
+  const starts = (run.hostRestarts ?? []).filter((r) => r.doc === doc && r.mode === mode).map((r) => r.beforeRep);
+  const out = new Map<number, Pair[]>();
+  for (const p of sorted) {
+    const block = starts.filter((s) => s <= p.rep).length;
+    out.set(block, [...(out.get(block) ?? []), p]);
+  }
+  return [...out.values()];
+}
+
+/** The median of (B - A) / A in percent within each block, against the row's A median (wall, or job CPU). */
+function blockMedians(blocks: Pair[][], cpu: boolean, aMedian: number): number[] {
+  return blocks.map((b) => median(b.map((p) => (100 * (cpu ? (p.b.jobCpuMs ?? NaN) - (p.a.jobCpuMs ?? NaN) : p.b.serviceMs - p.a.serviceMs)) / aMedian)));
 }
 
 /** d per row: the median of |B - A| / A (percent) over a run's pairs, for wall time and job CPU time. */
@@ -124,13 +188,20 @@ export function calibration(run: Run): Map<string, CalibrationRow> {
     const g = pairs.filter((p) => rowKey(p.doc, p.mode) === key);
     const am = median(g.map((p) => p.a.serviceMs));
     const ac = median(g.map((p) => p.a.jobCpuMs ?? NaN));
-    const cpu = g.every((p) => finite(p.a.jobCpuMs) && finite(p.b.jobCpuMs)) ? median(g.map((p) => (100 * Math.abs((p.b.jobCpuMs as number) - (p.a.jobCpuMs as number))) / ac)) : NaN;
+    const hasCpu = g.every((p) => finite(p.a.jobCpuMs) && finite(p.b.jobCpuMs));
+    const cpu = hasCpu ? median(g.map((p) => (100 * Math.abs((p.b.jobCpuMs as number) - (p.a.jobCpuMs as number))) / ac)) : NaN;
+    const blocks = blocksOf(run, g);
+    const bw = blockMedians(blocks, false, am);
+    const bc = hasCpu ? blockMedians(blocks, true, ac) : [];
     out.set(key, {
       wall: r1(median(g.map((p) => (100 * Math.abs(p.b.serviceMs - p.a.serviceMs)) / am))),
       cpu: r1(cpu),
       n: g.length,
       noisy: g.filter(isNoisy).length,
-      faster: g.filter((p) => p.b.serviceMs < p.a.serviceMs).length,
+      ...signs(g),
+      blocks: bw.map(r1),
+      blockWall: r1(median(bw.map(Math.abs))),
+      blockCpu: hasCpu ? r1(median(bc.map(Math.abs))) : NaN,
     });
   }
   return out;
@@ -194,11 +265,54 @@ function busyStart(run: Run, noWsl: boolean): string | null {
   if (typeof win === 'number' && !(win <= BUSY_START_CPU)) {
     why.push(`Windows CPU ${win} % at the start`);
   }
+  if (!(s.freeMemMB >= MIN_START_FREE_MB)) {
+    why.push(`${s.freeMemMB} MB free at the start, under ${MIN_START_FREE_MB}`);
+  }
   return why.length > 0 ? why.join(', ') : null;
 }
 
+/** The longest a power record may go without a reading (the watcher reads about every 30 s). */
+const MAX_POWER_GAP_S = 90;
+
+/**
+ * Why a run cannot show that it stayed on mains, or null. The calling script's start report must not say battery,
+ * and the benchmark's power watcher must have a reading at the start and at the end, every one of them mains (2) or
+ * "no battery" (null), with no gap of more than 90 s from the run's start through its readings to its end (a
+ * watcher that died in the middle leaves one). Without a watcher's readings the run fails, unless noPower says the
+ * system has no watcher; a run made on Windows always has one, so there noPower is refused.
+ */
+function powerProblem(r: Run, noPower: boolean): string | null {
+  const m = r.machine;
+  const reported: unknown = m.start?.reported?.power;
+  if (typeof reported === 'string' && reported !== 'mains' && reported !== 'no battery') {
+    return `the calling script reported power "${reported}" at the start`;
+  }
+  if (noPower && (m.platform ?? '').startsWith('win32')) {
+    return `--no-power is for a system without the power watcher, and this run ran on Windows (${m.platform ?? ''})`;
+  }
+  const readings = m.power?.readings ?? [];
+  if (readings.length === 0) {
+    return noPower ? null : `it records no power readings (${m.power?.noWatcher ?? 'an older result file'}; --no-power on a system without the watcher)`;
+  }
+  if (readings.length < 2) {
+    return `it records ${readings.length} power reading${readings.length === 1 ? '' : 's'}, not one at the start and one at the end`;
+  }
+  const off = readings.filter((r) => r.status !== 2 && r.status !== null);
+  if (off.length > 0) {
+    return `it left mains: ${off.length} of ${readings.length} power readings were not mains (the first at ${off[0].at}, battery status ${String(off[0].status)})`;
+  }
+  const times = [r.started, ...readings.map((x) => x.at), r.finished].filter((x): x is string => typeof x === 'string').map((x) => Date.parse(x)).sort((a, b) => a - b);
+  for (let i = 1; i < times.length; i++) {
+    const gap = (times[i] - times[i - 1]) / 1000;
+    if (gap > MAX_POWER_GAP_S) {
+      return `its power readings have a gap of ${Math.round(gap)} s (from ${new Date(times[i - 1]).toISOString()} to ${new Date(times[i]).toISOString()}): the watcher may have stopped`;
+    }
+  }
+  return null;
+}
+
 /** Why a calibration does not fit the run, for the rows the run uses (empty: it fits). */
-function calibrationProblems(b: Run, run: Run, rows: string[], cal: Map<string, CalibrationRow>, noWsl: boolean): string[] {
+function calibrationProblems(b: Run, run: Run, rows: string[], cal: Map<string, CalibrationRow>, noWsl: boolean, noPower: boolean): string[] {
   const out: string[] = [];
   const name = `the calibration ${b.label}`;
   if (!isAA(b)) {
@@ -229,10 +343,18 @@ function calibrationProblems(b: Run, run: Run, rows: string[], cal: Map<string, 
   if (busy) {
     out.push(`${name} started busy or cannot show its start (${busy})`);
   }
+  if (pairingKind(b) === 'two hosts' && b.machine.restartEvery !== run.machine.restartEvery) {
+    out.push(`${name} restarted its hosts every ${String(b.machine.restartEvery)} pairs and the run every ${String(run.machine.restartEvery)}: its block spread does not fit the run's blocks`);
+  }
+  const power = powerProblem(b, noPower);
+  if (power) {
+    out.push(`${name}: ${power}`);
+  }
   const bp = pairsOf(b.samples);
   if (bp.filter(isNoisy).length * 2 > bp.length) {
     out.push(`${name} has more than half its pairs noisy: calibrate on a quiet machine`);
   }
+  const leans: { key: string; c: CalibrationRow; p: number }[] = [];
   for (const key of rows) {
     const c = cal.get(key);
     if (!c) {
@@ -241,11 +363,24 @@ function calibrationProblems(b: Run, run: Run, rows: string[], cal: Map<string, 
     if (c.n < CALIBRATION_MIN_PAIRS) {
       out.push(`${name}'s row ${key} has ${c.n} pairs, fewer than ${CALIBRATION_MIN_PAIRS}`);
     }
-    const pFaster = signTestP(c.faster, c.n);
-    const pSlower = signTestP(c.n - c.faster, c.n);
-    if (pFaster <= 0.05 || pSlower <= 0.05) {
-      out.push(`${name}'s row ${key} leans: B ${pFaster <= 0.05 ? 'faster' : 'slower'} in ${pFaster <= 0.05 ? c.faster : c.n - c.faster} of ${c.n} pairs of the same build`);
+    if (pairingKind(b) === 'two hosts' && !key.endsWith(':fresh') && c.blocks.length < CALIBRATION_MIN_BLOCKS) {
+      out.push(`${name}'s row ${key} has ${c.blocks.length} restart block${c.blocks.length === 1 ? '' : 's'}, fewer than ${CALIBRATION_MIN_BLOCKS} (--restart-every 4 with 16 pairs)`);
     }
+    const untied = c.faster + c.slower;
+    leans.push({ key, c, p: Math.min(1, 2 * Math.min(signTestP(c.faster, untied), signTestP(c.slower, untied))) });
+  }
+  // Holm: the smallest p against LEAN_ALPHA / m, the next against LEAN_ALPHA / (m - 1), and so on, stopping at the
+  // first row that is not clear. A perfect A/A run of 10 rows then leans by chance at most 10 % of the time, not 40 %.
+  leans.sort((x, y) => x.p - y.p);
+  for (const [i, { key, c, p }] of leans.entries()) {
+    const limit = LEAN_ALPHA / (leans.length - i);
+    if (p > limit) {
+      break;
+    }
+    const dir = c.faster > c.slower ? 'faster' : 'slower';
+    out.push(
+      `${name}'s row ${key} leans: B ${dir} in ${Math.max(c.faster, c.slower)} of ${c.faster + c.slower} untied pairs of the same build (${c.ties} tie${c.ties === 1 ? '' : 's'}; two-sided p ${p.toFixed(4)}, Holm's limit ${limit.toFixed(4)} over ${leans.length} row${leans.length === 1 ? '' : 's'})`,
+    );
   }
   return out;
 }
@@ -291,6 +426,8 @@ export interface PairedOptions {
   outputsMayDiffer: boolean;
   /** The machine has no WSL, so no WSL load is reported. */
   noWsl?: boolean;
+  /** The runs carry no power watcher's record (a system without one), so none is required. */
+  noPower?: boolean;
   /** --removes-work: judge a change that only removes work. */
   removesWork?: RemovesWork | null;
   /** The named timers (REMOVES_WORK_TIMERS unless a test gives others). */
@@ -343,6 +480,8 @@ export function judgePaired(run: Run, o: PairedOptions): Verdict {
   const listed = rw && entry ? [...new Set([...entry.rows, ...rw.rows])] : [];
   const minPairs = rw ? Math.max(o.minPairs, REMOVES_WORK_MIN_PAIRS) : o.minPairs;
   const noWsl = Boolean(o.noWsl);
+  const noPower = Boolean(o.noPower);
+  const twoHosts = pairingKind(run) === 'two hosts';
   const pairs = pairsOf(run.samples);
   const rows = [...new Set(pairs.map((p) => rowKey(p.doc, p.mode)))];
 
@@ -350,11 +489,15 @@ export function judgePaired(run: Run, o: PairedOptions): Verdict {
   if (busy) {
     failures.push(`the run started busy or cannot show its start (${busy}): run again`);
   }
+  const power = powerProblem(run, noPower);
+  if (power) {
+    failures.push(`the run: ${power}: run again on mains`);
+  }
   failures.push(...startOrderProblems(run, rows));
   let cal: Map<string, CalibrationRow> | null = null;
   if (o.band) {
     cal = calibration(o.band);
-    failures.push(...calibrationProblems(o.band, run, rows, cal, noWsl));
+    failures.push(...calibrationProblems(o.band, run, rows, cal, noWsl, noPower));
   }
   let pause0: Verdict | null = null;
   if (rw && entry) {
@@ -391,10 +534,20 @@ export function judgePaired(run: Run, o: PairedOptions): Verdict {
     }
   }
   lines.push(`paired run ${run.label} (${pairingKind(run)}); bands from ${o.band ? `calibration ${o.band.label}` : 'no calibration (d = 10 % for every row)'}`);
+  for (const [lifted, what] of [
+    [!o.useCpu, "--no-cpu: the worker's CPU time is not required in every pair"],
+    [o.outputsMayDiffer, '--outputs-may-differ: outputs are compared by PDF, page count and error lines only'],
+    [noWsl, '--no-wsl: no WSL load is required at the start'],
+    [noPower, '--no-power: no power readings are required'],
+  ] as const) {
+    if (lifted) {
+      lines.push(`lifted: ${what}`);
+    }
+  }
   lines.push(
-    `| row | ${rw ? 'acts on' : 'aimed'} | pairs (noisy) | B faster | p (B faster) | p (B slower) | wall (B - A) / A | CPU (B - A) / A | band wall / CPU | unseen below | same outputs |${rw ? ` ${rw.timer} A / B (B lower) |` : ''} verdict |`,
+    `| row | ${rw ? 'acts on' : 'aimed'} | pairs (noisy) | B faster | p (B faster) | p (B slower) | wall (B - A) / A | CPU (B - A) / A | band wall / CPU | unseen below | same outputs |${rw ? ` ${rw.timer} A / B (B lower) |` : ''}${twoHosts ? ' blocks (B - A) / A |' : ''} verdict |`,
   );
-  lines.push(`|---|---|---|---|---|---|---|---|---|---|---|${rw ? '---|' : ''}---|`);
+  lines.push(`|---|---|---|---|---|---|---|---|---|---|---|${rw ? '---|' : ''}${twoHosts ? '---|' : ''}---|`);
   // Outputs of the set-aside tries are compared too: a rare difference could hide in a busy try.
   for (const p of pairsOf(run.samples, true)) {
     const broken = brokenB(p);
@@ -407,17 +560,25 @@ export function judgePaired(run: Run, o: PairedOptions): Verdict {
     const g: Pair[] = pairs.filter((p) => rowKey(p.doc, p.mode) === key);
     const n = g.length;
     const c = cal?.get(key);
-    const d = c ?? { wall: 10, cpu: 10 };
-    const bandWall = (3 * d.wall) / Math.sqrt(n);
-    const bandCpu = (3 * d.cpu) / Math.sqrt(n);
+    const d = c ?? { wall: 10, cpu: 10, blockWall: 10, blockCpu: 10 };
     const am = median(g.map((p) => p.a.serviceMs));
+    // Two hosts: the blocks between restarts are the independent units, so the band also covers the calibration's
+    // spread of block medians over the number of blocks in this row.
+    const blocks = blocksOf(run, g);
+    const nb = blocks.length;
+    const bandWall = twoHosts ? Math.max((3 * d.wall) / Math.sqrt(n), (3 * d.blockWall) / Math.sqrt(nb)) : (3 * d.wall) / Math.sqrt(n);
+    const bandCpu = twoHosts ? Math.max((3 * d.cpu) / Math.sqrt(n), (3 * d.blockCpu) / Math.sqrt(nb)) : (3 * d.cpu) / Math.sqrt(n);
+    const blockText = twoHosts ? `${nb}: ${blockMedians(blocks, false, am).map((x) => `${x > 0 ? '+' : ''}${r1(x)}`).join(', ')} %` : '';
     const wall = median(g.map((p) => (100 * (p.b.serviceMs - p.a.serviceMs)) / am));
     const cpuMissing = g.filter((p) => !finite(p.a.jobCpuMs) || !finite(p.b.jobCpuMs)).length;
     const ac = median(g.map((p) => p.a.jobCpuMs ?? NaN));
     const cpu = cpuMissing === 0 ? median(g.map((p) => (100 * ((p.b.jobCpuMs as number) - (p.a.jobCpuMs as number))) / ac)) : NaN;
-    const faster = g.filter((p) => p.b.serviceMs < p.a.serviceMs).length;
-    const pFaster = signTestP(faster, n);
-    const pSlower = signTestP(n - faster, n);
+    // Ties count as neither: the sign tests run on the untied pairs.
+    const { faster, slower, ties } = signs(g);
+    const untied = faster + slower;
+    const pFaster = signTestP(faster, untied);
+    const pSlower = signTestP(slower, untied);
+    const untiedText = `${untied} untied pair${untied === 1 ? '' : 's'}${ties > 0 ? `, ${ties} tie${ties === 1 ? '' : 's'}` : ''}`;
     const same = g.filter(sameOutputs).length;
     const broken = g.map(brokenB).filter((x): x is string => x !== null);
     const noisy = g.filter(isNoisy).length;
@@ -446,7 +607,7 @@ export function judgePaired(run: Run, o: PairedOptions): Verdict {
     }
     if (aimed) {
       if (pFaster > 0.05) {
-        why.push(`B faster in ${faster} of ${n} pairs (p ${pFaster.toFixed(3)})`);
+        why.push(`B faster in ${faster} of ${untiedText} (p ${pFaster.toFixed(3)})`);
       }
       if (!(wall < -bandWall)) {
         why.push(`wall ${r1(wall)} % is not below -${r1(bandWall)} %`);
@@ -455,7 +616,7 @@ export function judgePaired(run: Run, o: PairedOptions): Verdict {
       const wallPast = wall > bandWall;
       const cpuPast = finite(cpu) && finite(bandCpu) && cpu > bandCpu;
       if (wallPast && (!o.useCpu || pSlower <= 0.05 || cpuPast)) {
-        why.push(`slower: wall +${r1(wall)} % past ${r1(bandWall)} % (B slower in ${n - faster} of ${n}${o.useCpu ? `; CPU ${r1(cpu)} %` : ''})`);
+        why.push(`slower: wall +${r1(wall)} % past ${r1(bandWall)} % (B slower in ${slower} of ${untiedText}${o.useCpu ? `; CPU ${r1(cpu)} %` : ''})`);
       }
     }
     let timerText = '';
@@ -473,8 +634,9 @@ export function judgePaired(run: Run, o: PairedOptions): Verdict {
         const ma = median(ta);
         const mb = median(tb);
         timerText = `${r1(ma)} / ${r1(mb)} ms (${lower} of ${n}; gain ${r1(ma - mb)} ms)`;
-        if (actsOn && signTestP(lower, n) > 0.05) {
-          why.push(`${rw.timer} lower on B in only ${lower} of ${n} pairs`);
+        // Ties count as neither: the sign tests run on the pairs where the timers differ.
+        if (actsOn && signTestP(lower, lower + higher) > 0.05) {
+          why.push(`${rw.timer} lower on B in only ${lower} of ${n} pairs (${lower + higher} untied)`);
         }
         // The wall time must show the timer's gain within the band; if it does not, the work may have moved out of
         // the timed code, where only the guard band would see it.
@@ -482,7 +644,7 @@ export function judgePaired(run: Run, o: PairedOptions): Verdict {
         if (actsOn && gainShare > 0 && wall > -gainShare + bandWall) {
           why.push(`wall ${r1(wall)} % does not show the timer's gain of ${r1(gainShare)} % of A's time (at most ${r1(-gainShare + bandWall)} % with the band): the work may have moved out of the timed code`);
         }
-        if (mb > ma || signTestP(higher, n) <= 0.05) {
+        if (mb > ma || signTestP(higher, lower + higher) <= 0.05) {
           why.push(`${rw.timer} higher on B (median ${r1(mb)} against ${r1(ma)} ms; higher in ${higher} of ${n} pairs)`);
         }
       }
@@ -499,7 +661,7 @@ export function judgePaired(run: Run, o: PairedOptions): Verdict {
     }
     const unseen = aimed ? '-' : pct(bandWall);
     lines.push(
-      `| ${key} | ${aimed || actsOn ? 'yes' : ''} | ${n} (${noisy}) | ${faster} | ${pFaster.toFixed(3)} | ${pSlower.toFixed(3)} | ${pct(wall)} | ${pct(cpu)} | ${pct(bandWall)} / ${pct(bandCpu)} | ${unseen} | ${same}/${n} |${rw ? ` ${timerText} |` : ''} ${verdict} |`,
+      `| ${key} | ${aimed || actsOn ? 'yes' : ''} | ${n} (${noisy}) | ${faster} of ${untied}${ties > 0 ? ` (${ties} tied)` : ''} | ${pFaster.toFixed(3)} | ${pSlower.toFixed(3)} | ${pct(wall)} | ${pct(cpu)} | ${pct(bandWall)} / ${pct(bandCpu)} | ${unseen} | ${same}/${n} |${rw ? ` ${timerText} |` : ''}${twoHosts ? ` ${blockText} |` : ''} ${verdict} |`,
     );
   }
   if (!rw) {
@@ -602,11 +764,11 @@ function main(): void {
   const calFile = option(argv, '--calibration', '');
   if (calFile) {
     const run = load(calFile);
-    console.log(`calibration ${run.label}: d = median |B - A| / A per row (wall, job CPU), pairs`);
-    console.log('| row | pairs (noisy) | B faster | d wall % | d CPU % | band for 10 pairs, wall / CPU % |');
-    console.log('|---|---|---|---|---|---|');
+    console.log(`calibration ${run.label}: d = median |B - A| / A per row (wall, job CPU), pairs; with two hosts, each restart block's median and d_block`);
+    console.log('| row | pairs (noisy) | B faster / slower / tied | d wall % | d CPU % | band for 10 pairs, wall / CPU % | blocks (B - A) / A % | d_block wall / CPU % |');
+    console.log('|---|---|---|---|---|---|---|---|');
     for (const [k, v] of calibration(run)) {
-      console.log(`| ${k} | ${v.n} (${v.noisy}) | ${v.faster} | ${v.wall} | ${v.cpu} | ${r1((3 * v.wall) / Math.sqrt(10))} / ${r1((3 * v.cpu) / Math.sqrt(10))} |`);
+      console.log(`| ${k} | ${v.n} (${v.noisy}) | ${v.faster} / ${v.slower} / ${v.ties} | ${v.wall} | ${v.cpu} | ${r1((3 * v.wall) / Math.sqrt(10))} / ${r1((3 * v.cpu) / Math.sqrt(10))} | ${v.blocks.length}: ${v.blocks.join(', ')} | ${v.blockWall} / ${v.blockCpu} |`);
     }
     return;
   }
@@ -629,6 +791,7 @@ function main(): void {
       useCpu: !argv.includes('--no-cpu'),
       outputsMayDiffer: argv.includes('--outputs-may-differ'),
       noWsl: argv.includes('--no-wsl'),
+      noPower: argv.includes('--no-power'),
       removesWork: timer
         ? {
             timer,

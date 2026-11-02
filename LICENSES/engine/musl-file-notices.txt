@@ -1,4 +1,4 @@
-Notices of the files of musl, inside Emscripten 6.0.13, that liveMd2Tex's engine links and that carry terms of their own. musl's COPYRIGHT (musl-COPYRIGHT.txt) names their authors and says "license text in the source files"; their conditions ask that binary copies reproduce the notice, so each one follows, exactly as in the file. engine/build/tools/link-report.mjs (musl) lists the libc members the link takes and fails the build when one carries a notice this file lacks.
+Notices of the files of musl, inside Emscripten 6.0.13, that liveMd2Tex's engine links and that carry terms of their own, and of one, pow_small.c, that only an -Oz build links (kept for the build's check). musl's COPYRIGHT (musl-COPYRIGHT.txt) names their authors and says "license text in the source files"; their conditions ask that binary copies reproduce the notice, so each one follows, exactly as in the file. engine/build/tools/link-report.mjs (musl) lists the libc members the link takes and fails the build when one carries a notice this file lacks.
 
 Source: system/lib/libc/musl/src/regex/regcomp.c of Emscripten 6.0.13 (https://github.com/emscripten-core/emscripten/blob/e13ee988ce3d87a738dd8f3661d02223308c412a/system/lib/libc/musl/src/regex/regcomp.c), lines 1-30: TRE (Ville Laurikari), BSD-2-Clause: musl's regular expressions. Also linked, with lines 1-30, the same notice below their own first line: regexec.c, tre-mem.c
 
@@ -109,7 +109,7 @@ Source: system/lib/libc/musl/src/math/__tan.c of Emscripten 6.0.13 (https://gith
  * ====================================================
  */
 
-Source: system/lib/libc/musl/src/math/pow_small.c of Emscripten 6.0.13 (https://github.com/emscripten-core/emscripten/blob/e13ee988ce3d87a738dd8f3661d02223308c412a/system/lib/libc/musl/src/math/pow_small.c), lines 2-10: Sun Microsystems (FreeBSD's msun), "provided that this notice is preserved". Linked only by an engine built at -Os or -Oz (libc_optz.a's pow); the shipped engine, built at -O3, links pow.c instead (below). Kept so that an -Os or -Oz build passes the build's check.
+Source: system/lib/libc/musl/src/math/pow_small.c of Emscripten 6.0.13 (https://github.com/emscripten-core/emscripten/blob/e13ee988ce3d87a738dd8f3661d02223308c412a/system/lib/libc/musl/src/math/pow_small.c), lines 2-10: Sun Microsystems (FreeBSD's msun), "provided that this notice is preserved". Linked only by an engine built at -Oz (libc_optz.a's pow); the shipped engine, built at -O3, links pow.c instead (below). Kept so that an -Oz build passes the build's check.
 
 /*
  * ====================================================

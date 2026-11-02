@@ -413,21 +413,39 @@ added here then. `compare.ts` reads result files only.
   A side, and give that file to `compare.js --band`. A result file records each engine by the hash of its files and
   each image by the hash of its index file, and the load at the start: the CPU use over two seconds, the free
   memory, and what a calling script reports in `LIVEMD2TEX_SPEED_START_LOAD`, read at that moment (JSON: `wslLoad`,
-  WSL's one-minute load average; `windowsCpuPct`; `power`). A field of the wrong type stops the benchmark.
+  WSL's one-minute load average; `windowsCpuPct`; `power`). A field of the wrong type stops the benchmark. A calling
+  script reports a WSL load of 0 when WSL is not running, since reading it would start WSL's virtual machine and take
+  memory the run needs. The benchmark's own power watcher reads Windows' battery status at the start, about every
+  30 s and at the end, and the result file keeps every reading with its time; on another system the file says that
+  there is no watcher.
+- With two engine hosts (B with other flags, another image, other variables or another engine), both restart every
+  `--restart-every` pairs (4) within a row, the one started first alternating. Each host keeps its own speed for as
+  long as it runs (within about 1 to 3 %), so the pairs between two restarts form one block, and the blocks, not the
+  pairs, are a two-host row's independent units: 16 pairs make 4 blocks, 2 in each start order. In one host (A and B
+  differ only in a worker switch) the row is one block.
 - `compare.js --paired P.json --aim doc:mode,... --band CAL.json` judges a change aimed at a gain. An aimed row
   passes with at least `--min-pairs` pairs (default 8; 16 to 20 for a gain under 10 %), an even number, B faster in a
-  clear majority (sign test, p at most 0.05), and a median change below minus the band, 3 d/√n, where d comes from
-  the calibration's row (10 % for a row it lacks, which the report names). Any other row fails when its wall median
-  is past the band and either the sign test says B is slower or the CPU median is past its band too. Every pair,
+  clear majority (sign test, p at most 0.05, on the untied pairs: a tie counts as neither), and a median change below
+  minus the band, 3 d/√n, where d comes from the calibration's row (10 % for a row it lacks, which the report names).
+  With two hosts the band is the larger of that and 3 d_block/√blocks, where d_block is the median of the
+  calibration row's absolute block medians and blocks is the number of blocks in the run's row; the report shows
+  each block's median. Any other row fails when its wall median is past the band and either the sign test says B is
+  slower or the CPU median is past its band too. Every pair,
   set-aside tries included, must give the same PDF, `.aux`, problems list and SyncTeX text (`--outputs-may-differ`
   lifts this for an engine or data change, but a pair still fails if either side has no PDF, the page counts differ,
   or B has more errors). A pair is noisy above 40 % machine CPU or below 1,000 MB of free memory, whatever the run
   was told. `compare.js` also fails a missing CPU time (unless `--no-cpu`), a row with more than half its pairs
-  noisy, a run that started busy or reported no WSL load (`--no-wsl` on a machine without WSL), a two-host row whose
-  hosts started in one order only, and a calibration that is not A/A, pairs the other way, ran under another
-  runtime, engine, image or host flags than the run's A side, started busy, is noisy in more than half its pairs,
-  has a row with fewer than 10 pairs, or has a row that leans (its own sign test is clear either way). The report
-  gives each guard row's band as the slowdown that would pass unseen. The worker's CPU time is reported but is no
+  noisy, a run that started busy, with less than 3,000 MB free, or reported no WSL load (`--no-wsl` on a machine
+  without WSL), a run whose power record has a reading that is not mains, fewer than a start and an end reading, a
+  gap of more than 90 s (a watcher that stopped), or no readings (`--no-power` on a system without the watcher; it
+  is refused for a run made on Windows, where the watcher always runs), a two-host row whose hosts started in one
+  order only, and a calibration that is not A/A, pairs the other way, ran under another runtime, engine, image or
+  host flags than the run's A side, restarted its two hosts at another interval, fails the same start and power
+  checks, is noisy in more than half its pairs, has a row with fewer than 10 pairs (with two hosts, fewer than 4
+  restart blocks outside fresh mode), or has a row that leans: its two-sided sign test on the untied pairs is clear
+  after Holm's correction for the number of rows the run uses (0.10 for the family). The report gives each guard
+  row's band as the slowdown that would pass unseen, and names every check that `--no-cpu`, `--outputs-may-differ`,
+  `--no-wsl` or `--no-power` lifted. The worker's CPU time is reported but is no
   second witness: on a loaded laptop it grows with the load as wall time does. PASS is necessary, not sufficient. A
   change gets one full rerun at most, of every row, with a fresh A/A calibration made in the same quiet window and
   judged by the same rules; it passes only if the rerun passes every row; both runs are reported.

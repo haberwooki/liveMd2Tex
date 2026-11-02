@@ -1228,8 +1228,8 @@
       "from": "texk/web2c/xetexdir/image/jpegimage.c in TeX Live's source tree at commit 6a300188053b8f2ded89dbd52293732a706b9c0e (https://github.com/TeX-Live/texlive-source/blob/6a300188053b8f2ded89dbd52293732a706b9c0e/texk/web2c/xetexdir/image/jpegimage.c), lines 1-45: both notices whole."
     },
     "LICENSES/engine/musl-file-notices.txt": {
-      "sha256": "8e4752f1207b3cff7d8fb8f82ca4f1d1b7c0bdfdac484a25fbc498516e37272f",
-      "from": "the notice headers of the files of musl in Emscripten 6.0.13 (https://github.com/emscripten-core/emscripten/tree/e13ee988ce3d87a738dd8f3661d02223308c412a/system/lib/libc/musl) that the engine links and that carry terms of their own, each with its path and lines: src/regex/regcomp.c 1-30 (TRE, also regexec.c and tre-mem.c), src/stdlib/qsort.c 1-20 (smoothsort), src/math/__cos.c 2-11, __cosdf.c 6-15, __rem_pio2.c 2-13, __tan.c 2-10 and pow_small.c 2-10 (Sun; pow_small.c is linked only at -Os and -Oz), src/math/expf.c 1-6 (Arm, also exp2f_data.c), src/math/pow.c 1-6 (Arm, 2018; also pow_data.c and exp_data.c)."
+      "sha256": "20d3451663d04db65c84ded2d5b78c1c20a1b05d5d02b7729f29b6836c32589c",
+      "from": "the notice headers of the files of musl in Emscripten 6.0.13 (https://github.com/emscripten-core/emscripten/tree/e13ee988ce3d87a738dd8f3661d02223308c412a/system/lib/libc/musl) that the engine links and that carry terms of their own, each with its path and lines: src/regex/regcomp.c 1-30 (TRE, also regexec.c and tre-mem.c), src/stdlib/qsort.c 1-20 (smoothsort), src/math/__cos.c 2-11, __cosdf.c 6-15, __rem_pio2.c 2-13, __tan.c 2-10 and pow_small.c 2-10 (Sun; pow_small.c is linked only at -Oz), src/math/expf.c 1-6 (Arm, also exp2f_data.c), src/math/pow.c 1-6 (Arm, 2018; also pow_data.c and exp_data.c)."
     }
   }
 }

@@ -34,8 +34,13 @@ export interface BenchArgs {
   abEngine: string | null;
   maxBusy: number;
   minFreeMB: number;
+  /** The least free memory at the start of a run, MB: below it the benchmark does not start. */
+  minStartFreeMB: number;
   retries: number;
-  /** Two hosts: restart both every this many pairs within a row, in alternating order. */
+  /**
+   * Two hosts: restart both every this many pairs within a row, in alternating order. Each host keeps its own speed
+   * while it runs, so a 16-pair row needs 4 blocks, 2 in each start order.
+   */
   restartEvery: number;
 }
 
@@ -65,8 +70,9 @@ export function parseBenchArgs(argv: string[]): BenchArgs {
     abEngine: null,
     maxBusy: 40,
     minFreeMB: 1000,
+    minStartFreeMB: 3000,
     retries: 3,
-    restartEvery: 2,
+    restartEvery: 4,
   };
   for (let i = 0; i < argv.length; i++) {
     const name = argv[i];
@@ -124,6 +130,7 @@ export function parseBenchArgs(argv: string[]): BenchArgs {
       case '--ab-engine': a.abEngine = path.resolve(v()); break;
       case '--max-busy': a.maxBusy = num(0, 100); break;
       case '--min-free-mb': a.minFreeMB = num(0); break;
+      case '--min-start-free-mb': a.minStartFreeMB = num(0); break;
       case '--retries': a.retries = num(0, Infinity, true); break;
       case '--restart-every': a.restartEvery = count(); break;
       default: throw new Error(`unknown argument ${name}`);

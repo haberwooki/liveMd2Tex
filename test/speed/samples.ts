@@ -104,6 +104,19 @@ export interface RunMachine {
   restartEvery?: number;
   /** The load when the run started: machine CPU over two seconds, free memory, and what the calling script saw. */
   start?: { cpuPct: number; freeMemMB: number; reported?: ReportedLoad };
+  /**
+   * The benchmark's own power watcher (Windows): one reading at the start, one about every 30 s, one at the end.
+   * Absent on another system, and in result files written before the watcher existed.
+   */
+  power?: { readings: PowerReading[]; noWatcher?: string };
+  /** The system the run ran on ("win32 10.0.26300"): on Windows the power watcher always runs. */
+  platform?: string;
+}
+
+/** One reading of Windows' battery status: 2 is mains; null means the machine reports no battery. */
+export interface PowerReading {
+  at: string;
+  status: number | null;
 }
 
 /** Two hosts: one restart of both, before a pair (`beforeRep`) of a row; the host started first comes first. */
@@ -117,6 +130,9 @@ export interface HostRestart {
 
 export interface Run {
   label: string;
+  /** When the run started and finished (ISO times), which bound its power readings. */
+  started?: string;
+  finished?: string;
   machine: RunMachine;
   samples: Sample[];
   hostStarts: { ms: number }[];

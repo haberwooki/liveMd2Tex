@@ -38,6 +38,15 @@ describe('speed benchmark options (benchArgs.ts)', () => {
     assert.equal(a.restartEvery, 4);
   });
 
+  it('restarts two hosts every 4 pairs and needs 3,000 MB free at the start by default', () => {
+    const d = parseBenchArgs([]);
+    assert.equal(d.restartEvery, 4);
+    assert.equal(d.minStartFreeMB, 3000);
+    assert.equal(parseBenchArgs(['--restart-every', '8', '--min-start-free-mb', '2000']).restartEvery, 8);
+    assert.equal(parseBenchArgs(['--min-start-free-mb', '2000']).minStartFreeMB, 2000);
+    assert.throws(() => parseBenchArgs(['--min-start-free-mb', 'lots']), /--min-start-free-mb needs a number/);
+  });
+
   it('stops on an unknown mode, an unknown option and a malformed --ab-env', () => {
     assert.throws(() => parseBenchArgs(['--modes', 'quick,fast']), /unknown mode fast/);
     assert.throws(() => parseBenchArgs(['--quik', '3']), /unknown argument --quik/);

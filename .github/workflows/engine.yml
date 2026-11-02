@@ -32,7 +32,7 @@ on:
       candidate:
         description: The candidate number n of the tag engine-<TeX Live short commit>-<n>
         type: string
-        default: '3'
+        default: '4'
       expected_commit:
         description: For a release, the commit whose build engine-compare matched (40 hex digits)
         type: string
