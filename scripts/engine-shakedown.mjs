@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// The LaTeX shake-down of an engine build, and the paired measure of two builds (another optimisation level against
-// -Oz). It runs real LaTeX through the extension's own route: each job is prepared by the extension's compile
+// The LaTeX shake-down of an engine build, and the paired measure of two builds (for example another optimisation
+// level against the shipped one). It runs real LaTeX through the extension's own route: each job is prepared by the extension's compile
 // pipeline (out/src/extension/compile/pipeline.js, prepareCompile, with the core and add-on data sets installed),
 // and run by its engine host (dist/engine-host.js, with the client compiled to out/ by tsc, as
 // scripts/lib/bundle-engine.mjs does), on a data set's core image:

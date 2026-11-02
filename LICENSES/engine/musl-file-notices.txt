@@ -109,7 +109,7 @@ Source: system/lib/libc/musl/src/math/__tan.c of Emscripten 6.0.13 (https://gith
  * ====================================================
  */
 
-Source: system/lib/libc/musl/src/math/pow_small.c of Emscripten 6.0.13 (https://github.com/emscripten-core/emscripten/blob/e13ee988ce3d87a738dd8f3661d02223308c412a/system/lib/libc/musl/src/math/pow_small.c), lines 2-10: Sun Microsystems (FreeBSD's msun), "provided that this notice is preserved"
+Source: system/lib/libc/musl/src/math/pow_small.c of Emscripten 6.0.13 (https://github.com/emscripten-core/emscripten/blob/e13ee988ce3d87a738dd8f3661d02223308c412a/system/lib/libc/musl/src/math/pow_small.c), lines 2-10: Sun Microsystems (FreeBSD's msun), "provided that this notice is preserved". Linked only by an engine built at -Os or -Oz (libc_optz.a's pow); the shipped engine, built at -O3, links pow.c instead (below). Kept so that an -Os or -Oz build passes the build's check.
 
 /*
  * ====================================================
@@ -127,5 +127,14 @@ Source: system/lib/libc/musl/src/math/expf.c of Emscripten 6.0.13 (https://githu
  * Single-precision e^x function.
  *
  * Copyright (c) 2017-2018, Arm Limited.
+ * SPDX-License-Identifier: MIT
+ */
+
+Source: system/lib/libc/musl/src/math/pow.c of Emscripten 6.0.13 (https://github.com/emscripten-core/emscripten/blob/e13ee988ce3d87a738dd8f3661d02223308c412a/system/lib/libc/musl/src/math/pow.c), lines 1-6: Arm Limited, MIT (the licence text is musl's own, in musl-COPYRIGHT.txt). The shipped engine links it: at -O3 (and -O2) Emscripten takes libc.a's pow in place of libc_optz.a's pow_small.c. Also linked, with the same copyright and licence lines: exp_data.c, pow_data.c
+
+/*
+ * Double-precision x^y function.
+ *
+ * Copyright (c) 2018, Arm Limited.
  * SPDX-License-Identifier: MIT
  */

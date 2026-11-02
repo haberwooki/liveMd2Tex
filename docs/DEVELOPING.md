@@ -163,13 +163,13 @@ node scripts/engine-shakedown.mjs --b ~/engine-out --a busytex --images DATA_PAC
   `engine.js`, `engine-build.json` and `generated-sources/` (the generated C and headers: web2c's output, every
   `config.h`, `c-auto.h` and `paths.h`); the step logs stay in `<root>/logs/`. Nothing of it is committed.
 - **Steps.** Each step logs to `<root>/logs/<step>.log` and is skipped when it is done; `--from STEP` redoes a step
-  and every step after it. A speed variant sets `OPT` (default `-Oz`), `EXTRA_CFLAGS` or `EXTRA_LDFLAGS` and builds
+  and every step after it. A speed variant sets `OPT` (default `-O3`), `EXTRA_CFLAGS` or `EXTRA_LDFLAGS` and builds
   into its own `--root` and `--out`, sharing the archives with `--downloads`: for example `OPT=-O2 bash
   engine/build/build.sh --root ~/engine-build-O2 --downloads ~/engine-build/downloads --out ~/engine-out-O2`. A
   change of `EXTRA_LDFLAGS` alone may reuse a root with `--from link`. The manifest records them.
 - **`-g1` is required** (`--no-g1` is refused). It changes no byte of the wasm (the build checks it), and it keeps
   the glue's whitespace, comments and import names: without it Emscripten writes each library function into
-  `wasmImports` in place, so the import check cannot name 43 of the 46 imports, the scan's allow-list cannot tell its
+  `wasmImports` in place, so the import check cannot name most of the imports, the scan's allow-list cannot tell its
   entries apart in a two-line file, and MiniLZ4's notice drops out of the glue. The glue's one `SOCKFS` (a comment)
   is a reviewed entry of `engine/build/glue-allow.json`, pinned to the glue's SHA-256 and line.
 - **What the build checks, and fails on.** The rename and shared lists (a shared name must sit in `.bss`; strong
@@ -236,14 +236,23 @@ node scripts/engine-shakedown.mjs --b ~/engine-out --a busytex --images DATA_PAC
   not yet give the engine our font list, so it does not test fonts that LaTeX looks up by name.
 - **Decisions, 2026-10-31.** Fonts by name go through our stand-in, with no fontconfig and no expat. The `-g1` glue
   ships. The collision report is on request only, and the builder checks collisions across the sets mounted together.
-  The engine is built at `-Oz`; another level may replace it until the last CI round before the release, if it builds
-  in its own root, passes the build's checks and the font check, measures with the shake-down paired against `-Oz`
-  with every PDF the same, passes the recursion case with the workers' stack, and passes its own gate. CI runs on
-  `ubuntu-26.04`.
+  CI runs on `ubuntu-26.04`.
+- **The level, 2026-11-01.** The engine is built at `-O3` with `-sTEXTDECODER=2` (`build.sh`'s defaults). By the
+  speed plan's pass rule, fixed before the timing, `-O3` failed: on its guard row, a short paper's first compile
+  after each host start (which follows 10 idle minutes by default), it was slower in 30 of 30 pairs in three runs,
+  by 21 to 29 ms. The maintainer took `-O3` anyway, as a recorded exception to that rule, for its gain per edit in
+  a running session: about 0.25 s for a 31-slide deck, about 75 ms for a Markdown note, and 3 to 18 ms for a paper.
+  The cost accepted: those 21 to 29 ms on a short paper's first compile after each host start, and an engine about
+  1.6 MB larger. `-sTEXTDECODER=2` keeps `-Oz`'s text decoding (at `-O3` Emscripten's default decodes short strings in
+  JavaScript, which gives other characters for invalid UTF-8). The engine releases `engine-6a30018-1` and `-2` were
+  `-Oz` drafts, never published. Another level may replace `-O3` at the yearly TeX Live rebuild, if it builds in
+  its own root, passes the build's checks and the font check, measures with the shake-down paired against the
+  shipped level with every PDF the same, passes the recursion case with the workers' stack, and passes its own gate.
 - **Runtimes.** The smoke test runs under Node 22 and 24, and under VS Code's own runtime (`Code.exe` with
   `ELECTRON_RUN_AS_NODE=1`; on 2026-10-31 Electron 43.7.7 with Node 24.21.0 and V8 15.0). The engine's workers need a
   larger stack than Node's default: with `resourceLimits: { stackSizeMb: 16 }` TeX's own `expand_depth` stops a
-  runaway macro; with the default 4 MB the `-Oz` pdfTeX meets V8's `RangeError` first. The smoke test records both.
+  runaway macro. What a worker with Node's default 4 MB does first depends on the level (the `-Oz` pdfTeX met V8's
+  `RangeError` first); the smoke test records it.
 
 ## Version 0: compile on save (V0)
 

@@ -179,7 +179,7 @@ export function layout(w) {
       dataEnd = Math.max(dataEnd, start + seg.size);
     }
   }
-  // __stack_pointer is the first mutable i32 global (wasm-ld puts it first); at -Oz it is not exported by name.
+  // __stack_pointer is the first mutable i32 global (wasm-ld puts it first); at -Oz and -O3 it is not exported by name.
   const sp = w.globals.find((g) => g.mutable && g.valtype === 0x7f && g.init && 'i32' in g.init);
   return {
     memoryImported: Boolean(imported),

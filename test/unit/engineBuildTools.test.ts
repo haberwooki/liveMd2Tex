@@ -277,9 +277,9 @@ describe('the engine build tools (engine/build/tools)', () => {
       }
     });
 
-    it('denies none of the shipped engine\'s 46 imports', () => {
-      const shipped = '___assert_fail _exit invoke_iii invoke_iiii invoke_iiiii invoke_v ___syscall_fcntl64 invoke_vii _fd_close invoke_viii invoke_vi _fd_write invoke_i invoke_ii _fd_read ___syscall_openat _emscripten_date_now ___cxa_throw __emscripten_throw_longjmp _emscripten_resize_heap _emscripten_get_heap_max ___syscall_renameat ___syscall_rmdir ___syscall_unlinkat ___syscall_readlinkat ___syscall_getdents64 ___syscall_pipe2 __mmap_js __munmap_js __gmtime_js __localtime_js _clock_time_get _fd_seek ___syscall_getuid32 _environ_get _environ_sizes_get ___syscall_getcwd ___syscall_lstat64 ___syscall_newfstatat ___syscall_stat64 ___syscall_ioctl ___syscall_dup ___syscall_faccessat __abort_js _proc_exit __tzset_js'.split(' ');
-      assert.equal(shipped.length, 46);
+    it('denies none of the shipped engine\'s 43 imports (-O3)', () => {
+      const shipped = '___assert_fail _exit invoke_iii invoke_iiii invoke_iiiii invoke_v ___syscall_fcntl64 invoke_vii _fd_close invoke_viii invoke_vi _fd_write invoke_i invoke_ii _fd_read ___syscall_openat _emscripten_date_now ___cxa_throw __emscripten_throw_longjmp _emscripten_resize_heap ___syscall_renameat ___syscall_rmdir ___syscall_unlinkat ___syscall_readlinkat ___syscall_getdents64 ___syscall_pipe2 __mmap_js __munmap_js __gmtime_js __localtime_js _clock_time_get _fd_seek ___syscall_getuid32 _environ_get _environ_sizes_get ___syscall_getcwd ___syscall_lstat64 ___syscall_newfstatat ___syscall_stat64 ___syscall_ioctl ___syscall_faccessat __abort_js __tzset_js'.split(' ');
+      assert.equal(shipped.length, 43);
       assert.deepEqual(shipped.filter((n) => wi.deniedImport(n)), []);
     });
 

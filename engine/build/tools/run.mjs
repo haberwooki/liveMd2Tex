@@ -344,7 +344,7 @@ async function main() {
   } else console.log('note: no --thai-font, so the ICU Thai line-break case is left out');
 
   // TeX's own recursion limit in a worker thread: with the engine host's stack it ends with TeX's message; with
-  // Node's default stack, at -Oz, pdfTeX's V8 stack runs out first (recorded; another level may differ).
+  // Node's default stack the result depends on the level (at -Oz pdfTeX's V8 stack ran out first), and is recorded.
   const deep = await recursionInWorker(o.dir, 16);
   const deepOk = /TeX capacity exceeded, sorry \[expansion depth=10000\]/.test(deep.text) && !/RangeError/.test(deep.text);
   results.push({ label: 'recursion in a worker with a 16 MB stack ends with TeX\'s message', ok: deepOk });

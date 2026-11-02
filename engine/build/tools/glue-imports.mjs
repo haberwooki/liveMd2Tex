@@ -4,7 +4,7 @@
 //
 // Ours (the liveMd2Tex authors), GPL-3.0-or-later.
 //
-// At -Oz with ASSERTIONS=0, Emscripten minifies the wasm's import and export names (tools/link.py:1606-1621 at
+// At -Oz and -O3 with ASSERTIONS=0 (not at -O2), Emscripten minifies the wasm's import and export names (tools/link.py:1606-1621 at
 // 6.0.13). The glue keeps the map: "var wasmImports = {a: ___syscall_openat, ...}" (tools/emscripten.py,
 // create_sending: each key is the wasm import's name, each value the JavaScript function it calls), and
 // "function assignWasmExports(wasmExports) { _main = Module['_main'] = wasmExports['b']; ... }"
@@ -78,7 +78,7 @@ export function parseGlue(glueText) {
   const ast = acorn.parse(glueText, { ecmaVersion: 'latest', sourceType: 'script', allowHashBang: true, locations: true });
   const imports = new Map();
   // An import whose value is a function written in place has no name: its text is kept instead. A glue linked
-  // without -g1 writes every library function into wasmImports this way (43 of the engine's 46 imports), which is why the engine ships the -g1 glue and the build refuses --no-g1.
+  // without -g1 writes every library function into wasmImports this way (most of the engine's imports), which is why the engine ships the -g1 glue and the build refuses --no-g1.
   const inlined = new Map();
   let importsLine = null;
   const exports = new Map();

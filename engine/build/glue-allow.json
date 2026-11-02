@@ -2,7 +2,7 @@
  "about": "The reviewed exceptions to the names that must be absent from the glue (engine/build/tools/wasm-inspect.mjs, glueChecks; docs/DEVELOPING.md, \"The TeX engine: our own build\"). Each entry names one glue by its SHA-256, a line and a text, and must lie inside a comment; a new glue, or a watched name anywhere else, fails the build until an entry is reviewed and added here, so a new comment is a reviewed change. Ours (the liveMd2Tex authors), GPL-3.0-or-later.",
  "entries": [
   {
-   "glueSha256": "524a5d82d53eabed26a6e52984adfeb4bebc1111642b3d664366ea64a0e278b5",
+   "glueSha256": "4fc08dd4c837334afa553951a66dc914dfcf0a95f9631310aeb505d40920dceb",
    "line": 1786,
    "text": "SOCKFS",
    "reason": "a comment Emscripten 6.0.13 keeps in the -g1 glue, on the file system's per-node wait queue (\"producers (SOCKFS, PIPEFS) call notifyListeners\"); the glue defines no SOCKFS object (var SOCKFS is absent), and a comment cannot run"

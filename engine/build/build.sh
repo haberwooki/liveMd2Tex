@@ -21,12 +21,13 @@
 #
 # The engine always ships the -g1 link (--no-g1 is refused). -g1 changes no byte of the wasm (the build checks
 # it); it keeps the glue's whitespace and comments, and with them the names of the imports: without it Emscripten
-# writes each library function into wasmImports in place, so the import check cannot name 43 of the 46 imports,
+# writes each library function into wasmImports in place, so the import check cannot name most of the imports,
 # the scan's allow-list cannot tell its entries apart in a two-line file, and MiniLZ4's notice drops out of the
 # glue.
 #
 # Variables a variant build may set (each recorded in engine-build.json):
-#   OPT            optimisation flag for every compile and the link (default -Oz, the smallest code; the engine ships it)
+#   OPT            optimisation flag for every compile and the link (default -O3, which the engine ships; docs/DEVELOPING.md,
+#                  the decision line)
 #   EXTRA_CFLAGS   more flags for every C and C++ compile (TeX Live's configure line)
 #   EXTRA_LDFLAGS  more flags for the final link only
 # A variant with another OPT or EXTRA_CFLAGS needs its own --root (share the archives with --downloads); one that
@@ -52,7 +53,7 @@ main() {
       --assert) ASSERT=1; shift ;;
       --no-g1) echo "build.sh: --no-g1 is refused: the engine ships the -g1 glue (see the header of build.sh)" >&2; exit 2 ;;
       --jobs) JOBS=$2; shift 2 ;;
-      -h|--help) sed -n '2,37p' "$HERE/build.sh"; exit 0 ;;
+      -h|--help) sed -n '2,38p' "$HERE/build.sh"; exit 0 ;;
       *) echo "build.sh: unknown option $1" >&2; exit 2 ;;
     esac
   done
@@ -65,7 +66,7 @@ main() {
   DOWNLOADS=${DOWNLOADS:-$ROOT/downloads}
   mkdir -p "$DOWNLOADS" "$ROOT/logs" "$ROOT/stamps"
 
-  OPT=${OPT:--Oz}
+  OPT=${OPT:--O3}
   EXTRA_CFLAGS=${EXTRA_CFLAGS:-}
   EXTRA_LDFLAGS=${EXTRA_LDFLAGS:-}
 
@@ -640,7 +641,10 @@ do_rename() {
   "$NODE" "$HERE/tools/rename-list.mjs" verify "$LINK/nm-after" "$LINK/rename-lists.json"
 }
 
-LINK_FLAGS_BASE="-sINITIAL_MEMORY=64MB -sALLOW_MEMORY_GROWTH=1 -sMAXIMUM_MEMORY=576MB -sSTACK_SIZE=8MB -Wl,--stack-first -sEXIT_RUNTIME=0 -sINVOKE_RUN=0 -sMODULARIZE=1 -sEXPORT_NAME=createEngine -sLZ4=1 -sFORCE_FILESYSTEM=1 -sENVIRONMENT=node -sEXPORTED_FUNCTIONS=_main,_flush_streams -sEXPORTED_RUNTIME_METHODS=callMain,FS,ENV,LZ4,HEAPU8,HEAP32"
+# -sTEXTDECODER=2: the glue decodes text with TextDecoder only, as Emscripten does by default at -Oz; at -O3 its
+# default (1) decodes short strings in JavaScript. In the base flags, so the control links and a rebuild with no
+# variables take it too.
+LINK_FLAGS_BASE="-sTEXTDECODER=2 -sINITIAL_MEMORY=64MB -sALLOW_MEMORY_GROWTH=1 -sMAXIMUM_MEMORY=576MB -sSTACK_SIZE=8MB -Wl,--stack-first -sEXIT_RUNTIME=0 -sINVOKE_RUN=0 -sMODULARIZE=1 -sEXPORT_NAME=createEngine -sLZ4=1 -sFORCE_FILESYSTEM=1 -sENVIRONMENT=node -sEXPORTED_FUNCTIONS=_main,_flush_streams -sEXPORTED_RUNTIME_METHODS=callMain,FS,ENV,LZ4,HEAPU8,HEAP32"
 
 # link_engine DIR FLAGS...: one link of the engine into DIR/engine.js and DIR/engine.wasm, with its map. The
 # programs' objects and own archives are linked whole, so a duplicate definition fails the link; the
