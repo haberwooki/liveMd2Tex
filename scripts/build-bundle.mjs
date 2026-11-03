@@ -7,7 +7,8 @@
 //   node scripts/build-bundle.mjs --stage pin --signed-sha512 FILE --signed-by FINGERPRINT
 //   node scripts/build-bundle.mjs --stage fetch
 //   node scripts/build-bundle.mjs --stage build [--skip-engine] [--no-package] [--version 2026.10.15]
-//   node scripts/build-bundle.mjs --stage closure [--closure core|extra|all] [--shard 0/4] [--hosts 3]   (core by default)
+//   node scripts/build-bundle.mjs --stage closure [--closure core|extra|all] [--shard 0/4] [--hosts 3] [--files LIST]
+//        [--closure-rules FILE]   (core by default)
 //   (no --stage: fetch, build and closure in one run)
 // Common options: --out ../bundle-out, --cache ../bundle-cache, --local DIR, --curl-config FILE, --pins FILE,
 // --sets FILE, --licences FILE (engine/bundle-licences.json), --allow-missing, --engine-assets DIR.
@@ -44,7 +45,9 @@
 //           (selection.json: every package of each set, for the reference install), and the data packages
 //           (VSIX) under our own cap of 262,144,000 bytes (250 MiB; no store's published limit).
 //  closure  Every target the build listed (each class, and each .sty of a package's own folder) loads alone in a
-//           minimal document on the built images; a shard takes every n-th package.
+//           minimal document on the built images; a shard takes every n-th package. --files LIST tests only the
+//           targets a list file names, one per line: a target's path, or package:<name> for all of a package's
+//           targets (a subset run, to check a fix); a line that names no target stops the stage.
 // Each stage writes report-<stage>.json and .txt into --out after every step, and once more on an error, so a
 // failed run keeps what it found (GB1E-03).
 
@@ -410,6 +413,10 @@ export async function main(argv, { fetchImpl = fetch, log = console.log } = {}) 
     const skipEngine = argv.includes('--skip-engine');
     const filesOf = { core: new Map(), extra: new Map() };
     const leftOut = { core: [], extra: [] };
+    const leftOutFiles = [];
+    for (const [setName, key] of [['core-data', 'core'], ['extra-data', 'extra']]) {
+      Object.keys(sets[setName].leaveOut ?? {}).filter((n) => !chosen[key].has(n)).forEach((n) => fail(`${setName}'s leaveOut names ${n}, which ${setName} does not hold`));
+    }
     const ownerOf = new Map();
     /** Each package's licence files by name, from its archives (texmf-relative path, or root name), and its other files that may state its terms. */
     const ownOf = new Map();
@@ -427,6 +434,20 @@ export async function main(argv, { fetchImpl = fetch, log = console.log } = {}) 
       ownOf.set(name, licenceFiles);
       if (skipped.files > 0) {
         leftOut[set].push({ package: name, files: skipped.files, bytes: skipped.bytes });
+      }
+      // A set's "leaveOut" (package: { file: reason }) leaves named run files out of data/ for a package it keeps,
+      // such as a script among its TeX files that nothing reads at run time; a name the package does not hold stops
+      // the build. The licence step can still ship a left-out file in LICENSES/ (a reading's archiveFiles), and
+      // LICENSE.txt lists every one with its reason.
+      const setName = set === 'core' ? 'core-data' : 'extra-data';
+      for (const [rel, reason] of Object.entries(sets[setName].leaveOut?.[name] ?? {})) {
+        const bytes = files.get(rel);
+        if (!files.delete(rel)) {
+          fail(`${setName}: leaveOut names ${rel}, which ${name} does not hold`);
+          continue;
+        }
+        leftOutFiles.push({ set: setName, package: name, file: rel, reason });
+        licenceFiles.set(rel, bytes);
       }
       for (const [rel, b] of files) {
         // No data set ships a program (a .jar, a Python wheel, a script, a binary).
@@ -449,6 +470,11 @@ export async function main(argv, { fetchImpl = fetch, log = console.log } = {}) 
       if (list.length > 0) {
         say(`${set === 'core' ? 'core-data' : 'extra-data'}: doc/, source/ and scripts/ left out of ${list.length} package(s), ${human(list.reduce((n, x) => n + x.bytes, 0))}: ${list.map((x) => x.package).join(', ')}`);
       }
+    }
+    // Run files a set's leaveOut names: left out, and listed with their reasons.
+    report.leftOutFiles = leftOutFiles;
+    for (const x of leftOutFiles) {
+      say(`${x.set}: ${x.file} of ${x.package} left out (${x.reason})`);
     }
     step('unpack');
     if (report.problems.length > 0) {
@@ -689,7 +715,7 @@ export async function main(argv, { fetchImpl = fetch, log = console.log } = {}) 
     if (!argv.includes('--no-package')) {
       const { packageDataSet } = await import('./lib/bundle-package.mjs');
       for (const [set, dir] of [['core-data', path.join(out, 'core-data')], ['extra-data', path.join(out, 'extra-data')]]) {
-        const vsix = await packageDataSet(root, dir, set, version, path.join(out, `livemd2tex-${set}-${version}.vsix`), set === 'core-data' ? coreFonts : undefined, { date: pins.snapshot, url: snapshotBase });
+        const vsix = await packageDataSet(root, dir, set, version, path.join(out, `livemd2tex-${set}-${version}.vsix`), set === 'core-data' ? coreFonts : undefined, { date: pins.snapshot, url: snapshotBase }, (report.leftOutFiles ?? []).filter((x) => x.set === set));
         report.sizes[set === 'core-data' ? 'core' : 'extra'].vsix = vsix.bytes;
         report.sizes[set === 'core-data' ? 'core' : 'extra'].vsixSha256 = sha256(readFileSync(vsix.file));
         if (vsix.bytes >= MAX_PACKAGE) {
@@ -717,11 +743,17 @@ export async function main(argv, { fetchImpl = fetch, log = console.log } = {}) 
     // The core by default: a first run judges the core before it spends minutes on the add-on (GB1E-03).
     const scope = arg('--closure', 'core');
     const [shard, shards] = (arg('--shard', '0/1')).split('/').map(Number);
-    const { closureTest, judgeClosure, pool, startEngines } = await import('./lib/bundle-engine.mjs');
+    const { chooseTargets, closureTest, judgeClosure, pool, startEngines, unusedPatternNotes } = await import('./lib/bundle-engine.mjs');
     // What a file needs first (setup), and the failures that are expected, with their reasons.
     const rules = readJson(arg('--closure-rules', path.join(root, 'engine', 'bundle-closure.json')));
-    const { targets } = readJson(path.join(out, 'closure-targets.json'));
-    const chosenTargets = targets.filter((t) => scope === 'all' || t.set === scope).filter((_, i) => i % shards === shard);
+    const { targets, untestable } = readJson(path.join(out, 'closure-targets.json'));
+    const listFile = arg('--files');
+    const list = listFile ? readFileSync(listFile, 'utf8').split(/\r?\n/).map((l) => l.trim()).filter(Boolean) : null;
+    const { chosen: chosenTargets, unknown } = chooseTargets(targets, { scope, shard, shards, list, untestable });
+    if (unknown.length > 0) {
+      unknown.forEach((u) => fail(`closure test: ${listFile} names ${u}, which is no target of the build's closure-targets.json (scope ${scope})`));
+      return 1;
+    }
     const coreDir = path.join(out, 'core-data', 'data');
     const extraDir = path.join(out, 'extra-data', 'data');
     const core = readJson(path.join(coreDir, 'manifest.json'));
@@ -738,16 +770,19 @@ export async function main(argv, { fetchImpl = fetch, log = console.log } = {}) 
       const results = await pool(hosts, tasks);
       const failed = results.filter((r) => !r.ok);
       const verdict = judgeClosure(results, rules, extra.index?.files ?? {});
-      report.closure = { scope, shard: `${shard}/${shards}`, packages: chosenTargets.length, files: results.length, failed, expected: verdict.expected, stale: verdict.stale };
+      report.closure = { scope, shard: `${shard}/${shards}`, ...(list ? { files_listed: list.length } : {}), packages: chosenTargets.length, files: results.length, failed, expected: verdict.expected, stale: verdict.stale, patternHits: verdict.patternHits };
       verdict.problems.forEach(fail);
       verdict.stale.forEach((f) => report.notes.push(`closure test: ${f} loads now; take it out of engine/bundle-closure.json's expected failures`));
+      // A pattern names a kind of file in either set, so only a whole run of both sets can say it took no failure.
+      report.notes.push(...unusedPatternNotes(verdict.patternHits, { scope, shards, list }));
       report.memory = await Promise.all(hosts.map((h) => h.memory()));
       say(`closure test (${scope}, shard ${shard}/${shards}): ${results.length - failed.length} of ${results.length} files of ${chosenTargets.length} packages load alone; ${verdict.expected.length} expected failure(s), ${verdict.problems.length} unexpected, ${verdict.stale.length} stale`);
       for (const e of verdict.expected) {
         say(`  expected: ${e.file}: ${e.reason}${e.inExtra.length ? ` (extra-data holds ${e.inExtra.join(', ')})` : ''}`);
       }
       say(`engine host peak memory: ${report.memory.map((m) => human(m.maxRss)).join(', ')}`);
-      writeFileSync(path.join(out, `closure-${scope}-${shard}-of-${shards}.json`), `${JSON.stringify(report.closure, null, 1)}\n`);
+      // A subset run (--files) keeps its own file, so it never overwrites a full run's.
+      writeFileSync(path.join(out, `closure-${scope}-${list ? 'files' : `${shard}-of-${shards}`}.json`), `${JSON.stringify(report.closure, null, 1)}\n`);
     } finally {
       await Promise.all(hosts.map((h) => h.stop()));
     }

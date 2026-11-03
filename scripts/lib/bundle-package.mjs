@@ -79,10 +79,12 @@ const item = (text) => wrap(`- ${text}`, '  ').replace(/^ {2}/, '');
  * the fonts stored as they are because of their own terms, with the reason; `gplChanges`: whether
  * LICENSES/CHANGES-GPL lists packed GPL fonts. `snapshot`: the pinned TeX Live snapshot the files come from, its date and
  * its tlnet URL, and where the releases are (the data package's GitHub releases, which attach the archives).
+ * `leftOut`: the run files the set's leaveOut leaves out of data/, each with its package and reason.
  * @param {{ lppl: string[], vera?: string[], gpl: string[], kept: Record<string, string>, unpacked?: Record<string, { reason: string, files: string[] }[]>, gplChanges?: boolean } | undefined} fonts
  * @param {{ date: string, url: string, releases: string }} snapshot
+ * @param {{ package: string, file: string, reason: string }[]} leftOut
  */
-export function licenceFile(fonts, snapshot) {
+export function licenceFile(fonts, snapshot, leftOut = []) {
   if (!snapshot?.date || !snapshot.url || !snapshot.releases) {
     throw new Error('licenceFile: the snapshot (date, url, releases) is needed, so LICENSE.txt can say where the sources are');
   }
@@ -97,6 +99,14 @@ export function licenceFile(fonts, snapshot) {
       `LICENSES/ holds the licence texts these packages' licences require, and LICENSES/INDEX lists each package with its licence files: the texts of its licences, its own licence files (an OFL font's copyright notice and Reserved Font Names, an MIT or BSD notice), or the file that states its terms.`,
     ),
   ];
+  if (leftOut.length > 0) {
+    parts.push(
+      [
+        wrap('Run files left out. data/ holds no package\'s documentation, sources or scripts. It also leaves out these run files, each with its reason:'),
+        ...[...leftOut].sort((a, b) => (a.package + a.file < b.package + b.file ? -1 : 1)).map((x) => item(`${x.package}, ${x.file}: ${x.reason}.`)),
+      ].join('\n'),
+    );
+  }
   if (fonts) {
     parts.push(wrap(`How the Type 1 fonts are stored. ${PACKED_FONTS}`));
     parts.push(
@@ -155,9 +165,10 @@ export function licenceFile(fonts, snapshot) {
 /**
  * Writes the package's files into `dir` (which already holds data/) and makes the VSIX; returns its size.
  * `fonts`: for a set whose image packs its Type 1 fonts, which packages' fonts are packed and which are not (licenceFile).
- * `snapshot`: the pinned snapshot's date and tlnet URL, for LICENSE.txt's pointer to the sources.
+ * `snapshot`: the pinned snapshot's date and tlnet URL, for LICENSE.txt's pointer to the sources. `leftOut`: the run
+ * files the set's leaveOut leaves out (licenceFile lists them).
  */
-export async function packageDataSet(root, dir, set, version, vsixPath, fonts = undefined, snapshot = undefined) {
+export async function packageDataSet(root, dir, set, version, vsixPath, fonts = undefined, snapshot = undefined, leftOut = []) {
   const manifest = JSON.parse(readFileSync(path.join(dir, 'data', 'manifest.json'), 'utf8'));
   const packed = manifest.image?.packed !== undefined;
   if (!existsSync(path.join(dir, 'LICENSES', 'INDEX'))) {
@@ -189,7 +200,7 @@ export async function packageDataSet(root, dir, set, version, vsixPath, fonts = 
     `# ${pkg.displayName}\n\n${pkg.description}\n\nA data-only extension: it holds no code. liveMd2Tex reads its data/manifest.json and mounts its one data image. ${readmeFiles(version.slice(0, 4), packed, fonts?.gplChanges === true)}\n\n${changesNote(project, set === 'core-data', packed)}\n`,
   );
   const releases = `${project}/releases`;
-  writeFileSync(path.join(dir, 'LICENSE.txt'), licenceFile(fonts, { ...snapshot, releases }));
+  writeFileSync(path.join(dir, 'LICENSE.txt'), licenceFile(fonts, { ...snapshot, releases }, leftOut));
   const vsce = await import('@vscode/vsce');
   await vsce.createVSIX({ cwd: dir, packagePath: vsixPath, dependencies: false, allowMissingRepository: true });
   return { file: vsixPath, bytes: statSync(vsixPath).size };

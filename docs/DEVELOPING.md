@@ -1042,6 +1042,48 @@ archives.
   holds authblk, `was`, which holds upgreek, and `frankenstein`, and the publisher classes `fbithesis` and
   `tugboat-plain` (below). A set's `exclude` leaves a package out on purpose, with its reason (today `ltxmisc`:
   one of its files forbids selling it). The report lists both.
+  - **What the add-on's own packages load.** A collection brings its packages, and TeX Live seldom records what a
+    LaTeX package loads, so extra-data's `packages` also names 83 packages from other collections. The add-on's
+    first closure test on GitHub (2026-11-02) found what its packages load, and each named package was tried on a
+    local build:
+    - small packages from plaingeneric, pictures, fontsextra, humanities, bibtexextra and the language
+      collections, and tree-dvips;
+    - the six cheapest of the larger ones: bidi, hfbright with cmbright, fourier, stix2-type1, arimo and
+      fontawesome7;
+    - lhcyr, whose T2A metrics (7, 9 and 10 pt) join lh's (6, 8, 10.95, 12 and 17.28 pt), with cm-super's outlines
+      from core-data. Not every style has metrics in each of these sizes. In a 10 pt document (yes: the text is
+      set; no: its metrics exist only as Metafont sources, and its text is left out; compiled 2026-11-02):
+
+      | Size | roman | bold | italic | slanted | bold italic | sans | bold sans | typewriter |
+      |---|---|---|---|---|---|---|---|---|
+      | `\tiny` (5 pt) | no | no | no | no | no | no | no | yes |
+      | `\scriptsize` (7 pt) | yes | yes | no | no | no | no | no | yes |
+      | `\footnotesize` (8 pt) | yes | no | no | no | no | no | no | yes |
+      | `\small` (9 pt) | yes | yes | yes | yes | no | no | no | yes |
+      | `\normalsize` (10 pt) | yes | yes | yes | yes | no | yes | yes | yes |
+      | `\large` (12 pt) | yes | yes | yes | no | no | no | no | no |
+      | `\Large` (14.4 pt) | no | no | no | no | no | no | no | no |
+      | `\LARGE` (17.28 pt) | yes | yes | no | no | no | no | no | no |
+      | `\huge` (20.74 pt) | no | no | no | no | no | no | no | no |
+      | `\Huge` (24.88 pt) | no | no | no | no | no | no | no | no |
+
+    Larger font packages (Fira, Roboto, Source Sans and others, 3 to 75 MB each) stay out, and the files that need
+    them are expected failures (below).
+  - **Packages that cannot work here.** extra-data's `exclude` also leaves out 71 packages whose every main file
+    fails for a reason that will not change, each with that reason: Chinese classes and four general classes whose
+    default font setup loads ctex (ctex, xeCJK and their fonts are not shipped), LuaLaTeX-only classes, packages
+    that need shell escape or a program (pythontex, texosquery), ones that need fonts or files TeX Live does not
+    ship (URW Arial, MathTime, AcroTeX), ones whose fonts exist only as Metafont sources (Concrete, the Tibetan
+    ctib), and two that draw with PSTricks. PSTricks itself stays out: its
+    figures draw through PostScript, and on our engines a PSTricks figure gives no drawing (tried on XeLaTeX and
+    pdfLaTeX, 2026-11-02).
+  - **Files left out of a package.** A set's `leaveOut` (package: each file and its reason) leaves named run files
+    out of data/ for a package it keeps, and the data package's `LICENSE.txt` lists each with its reason. lhcyr
+    keeps its TFMs and styles without `maketfms.sh`, a shell script that makes KOI-8 TFMs with mktextfm, which none
+    of its files reads or runs; and without its three READMEs, whose name dehyph's README in core-data has (below).
+    The READMEs state lhcyr's terms, so its licence reading (`engine/bundle-licences.json`, `readings`) ships them
+    with its source archive's README in `LICENSES/packages/lhcyr/`. A listed file the package does not hold, or a
+    package the set does not hold, stops the build.
   - **No file name in both sets.** The extension does not use an add-on whose package index holds a file name the
     core's holds: mounted, it is searched before the core and would change the core's file for every document
     (`filesBothHold`, `src/shared/packageIndex.ts`). The builder stops on such a name, with the same rule
@@ -1062,17 +1104,38 @@ archives.
 - **The engine checks the result.** In the extension's own engine host it builds `pdflatex.fmt` and
   `xelatex.fmt` in initex mode, and measures what the hyphenation patterns add to them. The closure test then
   loads, alone in a minimal document, every class and every `.sty` directly in a package's own `tex/latex`
-  folder (on XeTeX when the package asks for it). A missing file or font fails it, and so does a package's main
-  file that gives no PDF. Packages with nothing to load (fonts, BibTeX styles) are listed as not testable.
-  `engine/bundle-closure.json` holds the test's rules. `setup` gives a file the preamble it needs first
-  (babelbib needs babel with a language). `expected` lists the failures that are right for core-data, each with
-  its reason: documentation tools and helpers that need a package only extra-data holds, psnfss's font options
-  whose fonts are in extra-data, old code a package loads only on a LaTeX older than ours (draftwatermark-2x),
-  and the LuaTeX branches. The report says which missing files extra-data holds.
-  It also names a listed file that loads now. Any other failure stops the build.
+  folder. A file under `tex/xelatex/` starts on XeTeX; any other starts on pdfTeX and moves to XeTeX when its log
+  asks for a Unicode engine, in any of the ways packages say it ("requires XeTeX", "XeTeX is required", "Use
+  Unicode-compliant TeX-engines", "Cannot be run with pdftex" and the like; `NEEDS_UNICODE_ENGINE` in
+  `scripts/lib/bundle-engine.mjs`). A missing file or font fails it, and so does a package's main file that gives
+  no PDF. Packages with nothing to load (fonts, BibTeX styles) are listed as not testable.
+  `engine/bundle-closure.json` holds the test's rules:
+  - `setup` gives a file the preamble it needs first (babelbib needs babel with a language; numerica-plus and
+    numerica-tables need numerica).
+  - `expected` lists the failures that are right, each with its reason. For core-data: documentation tools and
+    helpers that need a package only extra-data holds, psnfss's font options whose fonts are in extra-data, old code
+    a package loads only on a LaTeX older than ours (draftwatermark-2x), and the LuaTeX branches. For extra-data:
+    files that need a package the add-on leaves out or does not hold (a larger font package, PSTricks, Chinese
+    fonts), files not meant to load alone (documentation classes, files that ask on the terminal, a theme or helper
+    that needs its class, a class that needs an option), and files that refer to files TeX Live no longer has.
+  - `expectedPatterns` lists kinds of file by a regular expression on the path, each with its reason: the dated
+    rollback copies (`chemmacros-2020-03-07.sty`), which only latexrelease loads.
+  The report says which missing files extra-data holds. It also names a file listed by name that loads now, and,
+  after a whole run of both sets (`--closure all`, one shard, no `--files`), a pattern that took no failure: a
+  pattern names a kind of file in either set, so a run of one set cannot say it took none. Any other failure stops
+  the build.
 - **Stages.** `--stage pin`, `fetch`, `build` and `closure` run apart, each in its own job. Each stage writes
   `report-<stage>.json` and `.txt` after every step and once more on an error, so a failed run keeps what it
-  found. The closure test takes `--closure core|extra|all` (core by default) and `--shard i/n`.
+  found. The closure test takes `--closure core|extra|all` (core by default), `--shard i/n`, `--hosts N`,
+  `--closure-rules FILE` (rules that are not committed yet) and `--files LIST`: only the targets a list file names,
+  one per line, a target's path or `package:<name>`, to check a fix; a line that names no target of the scope stops
+  it. A subset run writes `closure-<scope>-files.json`, so it never overwrites a full run's file.
+  - **On a laptop.** The closure stage runs on a local build of the data sets (`--local` with the snapshot copy,
+    then `--stage build`), from a checkout with `node scripts/build.mjs` and `npm run compile` done and the engine
+    in `../engine_assets`:
+    `node scripts/build-bundle.mjs --stage closure --closure extra --shard 0/1 --hosts 2 --out <build>`. It gives
+    the same failures as CI, file for file. The whole add-on takes 21 to 24 minutes on 2 engine hosts; each host
+    peaks at about 1.2 to 1.8 GB of memory.
 - **What it writes.** For each set: `data/manifest.json` (the DataManifest contract; core-data's also gives its
   mount root, its formats with their SHA-256, and extra-data's files and requires; both name the snapshot), the
   image, `licences.json` (each package's licence and CTAN page; for a package under the GPL, LGPL or AGPL, or
@@ -1097,9 +1160,12 @@ archives.
     README, a shipped file whose own text states them, or another file of the doc or source archive (a `.ins`
     file first). The report lists the terms found by reading text, for a person to check; `readings` records a
     package whose terms a person read, with the shipped or archive files that state them and the texts they name.
-    kastrup's and plweb's files say "see the source file", so their `.dtx` (and plweb's `.ins`) ship in their
-    LICENSES folders; menu, fancynum, colorprofiles, beamertheme-metropolis, tucv, apa6e, correctmathalign,
-    docutils and dvips get the texts their READMEs name.
+    kastrup's, plweb's and fltpoint's files say "see the source file", so their `.dtx` (and plweb's `.ins`) ship in
+    their LICENSES folders, fltpoint's with its README and the LPPL 1.2 text its `.dtx` names; menu, fancynum,
+    colorprofiles, beamertheme-metropolis, tucv, apa6e, correctmathalign, docutils and dvips get the texts their
+    READMEs name, and ifsym the LPPL 1.0 text its `.sty` names. doublestroke's and lhcyr's READMEs state their own
+    terms and ship; lhcyr's three in its run files are kept out of data/ (`leaveOut`, above), and its reading can
+    still ship them, since a file `leaveOut` names stays available to the licence step.
   - **GPL change notices: decided by the maintainer, 2026-10-26.** The GPL fonts stay packed, with a notice per
     file. `LICENSES/CHANGES-GPL` in core-data lists every packed font under the GPL, by its own terms (above): its
     path, its package, its original's SHA-256, the snapshot archive that holds the original unmodified (its URL),
@@ -1245,7 +1311,8 @@ archives.
 
 Tests: `test/unit/xz.test.ts`, `tar.test.ts`, `tlpdb.test.ts`, `bundle.test.ts` (the whole build without the engine,
 on a made-up snapshot: the signed pin, the licence lists, the licence texts and their INDEX, the report on an error,
-the closure targets and the program guard), `dataImage.test.ts`, `fontLists.test.ts` (the font lists and their
+the closure targets and the program guard, `leaveOut`; the closure rules with their patterns, the engine a file
+starts on, and `--files`), `dataImage.test.ts`, `fontLists.test.ts` (the font lists and their
 rules), `workflows.test.ts` (the jobs and their order, the release job's steps), `dataRelease.test.ts` (the
 data releases' tags, plan and notes, the sources' list against the tlpdb, the checked data pins and their rule,
 both pins or neither, mylatexformat's place), `m6.test.ts` (an add-on from another snapshot);

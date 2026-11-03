@@ -318,7 +318,8 @@ export function licenceFolder(set, packages, rules, texts) {
         }
         entries.push(...(reading.files ?? []).map((f) => `terms in data:${f}`));
         // Files of its doc or source archives that state the terms (a .dtx whose generated files say "see the
-        // source file"; a README that names the licence): they ship in its LICENSES folder.
+        // source file"; a README that names the licence), or run files the set's leaveOut keeps out of data/
+        // (build-bundle.mjs puts those into p.own): they ship in its LICENSES folder.
         for (const rel of reading.archiveFiles ?? []) {
           const bytes = p.docs?.get(rel) ?? p.own.get(rel);
           if (bytes) {

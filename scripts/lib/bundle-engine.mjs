@@ -119,7 +119,15 @@ const NOT_FOUND = [
   /Could not locate a virtual\/physical font[^\n]*/g,
 ];
 // (fontspec's own message is split over lines with "(fontspec)" in between, so its message name is matched too.)
-const NEEDS_UNICODE_ENGINE = /requires (either )?(XeTeX|XeLaTeX|LuaTeX)|cannot-use-pdftex|only works with (XeLaTeX|XeTeX|LuaLaTeX)/i;
+// The packages' own words, as their logs give them: "requires XeLaTeX", "XeTeX is required", "LuaTeX or XeTeX is
+// required", "Use Unicode-compliant TeX-engines", "can only be used with "XeLaTeX" or "LuaLaTeX"", "Cannot be run
+// with pdftex", "can only be compiled with the lualatex or xelatex engine(s)" (a package error's continuation lines
+// start with "(phimisci)" and the like, which the unwrapped log keeps between the words).
+export const NEEDS_UNICODE_ENGINE =
+  /requires (either )?(XeTeX|XeLaTeX|LuaTeX)|cannot-use-pdftex|only works with (XeLaTeX|XeTeX|LuaLaTeX)|(LuaTeX or )?XeTeX is required|Unicode-compliant TeX-engines?|can only be used with "?XeLaTeX|cannot be run with pdftex|compiled with the(?:\s|\([a-z-]+\))*lualatex or xelatex/i;
+
+/** The engine a closure test starts on: XeLaTeX for a file in TeX Live's tex/xelatex/ tree, else pdfLaTeX. */
+export const firstEngine = (target) => (target.file.startsWith('tex/xelatex/') ? 'xelatex' : 'pdflatex');
 
 /** A log with TeX's line wrapping (at 79 characters) undone, so a message split across lines is found whole. */
 const unwrap = (log) => log.replace(/\r?\n/g, '');
@@ -137,9 +145,10 @@ export function notFound(raw) {
 }
 
 /**
- * The closure test of one file: a minimal document that loads it, on pdfTeX, and on XeTeX when the package says
- * it needs a Unicode engine. Passes when the log names no file or font that was not found, and, for a main file,
- * when a PDF came out.
+ * The closure test of one file: a minimal document that loads it, on pdfTeX, and again on XeTeX when the package
+ * says it needs a Unicode engine (NEEDS_UNICODE_ENGINE); a file in TeX Live's tex/xelatex/ tree starts on XeTeX
+ * (firstEngine). Passes when the log names no file or font that was not found, and, for a main file, when a PDF came
+ * out.
  */
 /**
  * The closure test's document for one file: the class alone, or the package alone in an article. `preamble` comes
@@ -153,12 +162,17 @@ export function closureDocument(target, preamble = '') {
 }
 
 /**
- * The closure test's verdict over its results, with engine/bundle-closure.json's "expected" failures (file: reason):
- * a failure listed there is reported as expected, with the missing files and which of them extra-data holds (so
- * the add-on supplies them); any other failure is a problem; a listed file that now loads is reported as stale.
+ * The closure test's verdict over its results, with engine/bundle-closure.json's "expected" failures (file: reason)
+ * and "expectedPatterns" ([{ match, reason }], a regular expression on the file's path, for a kind of file rather
+ * than one file): a failure listed there is reported as expected, with the missing files and which of them extra-data
+ * holds (so the add-on supplies them); any other failure is a problem; a file listed by name that now loads is
+ * reported as stale. A pattern is not stale when a file it matches loads (it names a kind of file, and some of that
+ * kind may load); patternHits counts the failures each pattern took, so a whole run can name a pattern that took none.
  */
 export function judgeClosure(results, rules = {}, extraFiles = {}) {
   const expectedRules = rules.expected ?? {};
+  const patterns = (rules.expectedPatterns ?? []).map((p) => ({ ...p, re: new RegExp(p.match) }));
+  const patternHits = Object.fromEntries(patterns.map((p) => [p.match, 0]));
   const problems = [];
   const expected = [];
   const stale = [];
@@ -170,14 +184,54 @@ export function judgeClosure(results, rules = {}, extraFiles = {}) {
       }
       continue;
     }
-    if (reason === undefined) {
+    const pattern = reason === undefined ? patterns.find((p) => p.re.test(r.file)) : undefined;
+    if (reason === undefined && !pattern) {
       problems.push(`closure test: ${r.package} (${r.set}, ${r.file}, ${r.engine}): ${r.missing.join('; ')}`);
       continue;
     }
+    if (pattern) {
+      patternHits[pattern.match]++;
+    }
     const names = r.missing.flatMap((m) => [...m.matchAll(/File `([^']+)' not found/g)].map((x) => x[1]));
-    expected.push({ file: r.file, package: r.package, reason, missing: r.missing, inExtra: names.filter((n) => n in extraFiles) });
+    expected.push({ file: r.file, package: r.package, reason: reason ?? pattern.reason, ...(pattern ? { pattern: pattern.match } : {}), missing: r.missing, inExtra: names.filter((n) => n in extraFiles) });
   }
-  return { problems, expected, stale };
+  return { problems, expected, stale, patternHits };
+}
+
+/**
+ * The notes a closure run gives for patterns that took no failure. A pattern names a kind of file in either set, so
+ * only a whole run of every set (scope all, one shard, no --files list) can say a pattern took none and may go.
+ * @param {Record<string, number>} patternHits
+ * @param {{ scope: string, shards: number, list: string[] | null }} run
+ */
+export function unusedPatternNotes(patternHits, { scope, shards, list }) {
+  if (scope !== 'all' || shards !== 1 || list) {
+    return [];
+  }
+  return Object.entries(patternHits)
+    .filter(([, n]) => n === 0)
+    .map(([match]) => `closure test: the pattern ${match} took no failure; take it out of engine/bundle-closure.json's expectedPatterns`);
+}
+
+/**
+ * The packages a closure run tests: those of the scope (core, extra or all), every shards-th one from shard, and,
+ * with a list (a target's path, or package:<name>), only the listed targets. `unknown` holds the lines that name no
+ * target of the scope; a package the build holds but cannot test (closure-targets.json's untestable) is not unknown.
+ * @param {{ set: string, package: string, targets: { file: string }[] }[]} targets
+ * @param {{ scope: string, shard: number, shards: number, list: string[] | null, untestable?: { set: string, package: string }[] }} options
+ */
+export function chooseTargets(targets, { scope, shard, shards, list, untestable = [] }) {
+  let inScope = targets.filter((t) => scope === 'all' || t.set === scope);
+  const unknown = [];
+  if (list) {
+    const files = new Set(list.filter((l) => !l.startsWith('package:')));
+    const packages = new Set(list.filter((l) => l.startsWith('package:')).map((l) => l.slice('package:'.length)));
+    unknown.push(...[...files].filter((f) => !inScope.some((t) => t.targets.some((x) => x.file === f))));
+    const untested = new Set(untestable.filter((u) => scope === 'all' || u.set === scope).map((u) => u.package));
+    unknown.push(...[...packages].filter((p) => !inScope.some((t) => t.package === p) && !untested.has(p)).map((p) => `package:${p}`));
+    inScope = inScope.map((t) => (packages.has(t.package) ? t : { ...t, targets: t.targets.filter((x) => files.has(x.file)) })).filter((t) => t.targets.length > 0);
+  }
+  return { chosen: inScope.filter((_, i) => i % shards === shard), unknown };
 }
 
 export async function closureTest(host, target, dataImages = [], preamble = '') {
@@ -194,9 +248,9 @@ export async function closureTest(host, target, dataImages = [], preamble = '') 
       dataImages,
       knownImages: dataImages.map((d) => `${d.id}@${d.version}#${d.sha256}`),
     });
-  let engine = 'pdflatex';
+  let engine = firstEngine(target);
   let r = await job(engine);
-  if (NEEDS_UNICODE_ENGINE.test(unwrap(r.log))) {
+  if (engine === 'pdflatex' && NEEDS_UNICODE_ENGINE.test(unwrap(r.log))) {
     engine = 'xelatex';
     r = await job(engine);
   }

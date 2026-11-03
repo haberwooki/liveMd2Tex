@@ -152,6 +152,33 @@ shares measure package coverage, not papers. The method is written down in `docs
 - The LaTeX development release (`latex-dev`) and the `mmap` package are left out of the Extra Packages add-on,
   because their files have the same names as files of the core data. The `cmap` package, which the core data
   holds, makes the PDF's text searchable and copyable.
+- Also left out of the add-on, because they cannot work here: Chinese thesis and document classes, and four
+  general classes whose default font setup loads ctex (they need ctex and its Chinese fonts), LuaLaTeX-only
+  classes, packages that need shell escape or a program, packages that need files TeX Live does not ship (the URW
+  Arial and MathTime fonts, AcroTeX's form packages), packages whose fonts exist only as Metafont sources (the
+  Concrete fonts), and PSTricks, whose figures draw through PostScript and come out empty here.
+  `engine/bundle-sets.json` gives each package's reason.
+- Some larger font packages are not in the add-on (Fira, Roboto, Source Sans and Source Code Pro, Alegreya,
+  Merriweather, New PX, KP Fonts, XCharter and others). The classes and themes that load them are in the add-on,
+  but stop with a missing file; `engine/bundle-closure.json` names each.
+- Cyrillic in the T2A encoding (`\usepackage[T2A]{fontenc}`, with the Extra Packages add-on) works only in the
+  sizes and styles whose font metrics TeX Live ships ready-made. The others need Metafont, which the engine does
+  not have, and their text is left out. In a 10 pt document (yes: the text is set; no: it is left out):
+
+  | Size | roman | bold | italic | slanted | bold italic | sans | bold sans | typewriter |
+  |---|---|---|---|---|---|---|---|---|
+  | `\tiny` (5 pt) | no | no | no | no | no | no | no | yes |
+  | `\scriptsize` (7 pt) | yes | yes | no | no | no | no | no | yes |
+  | `\footnotesize` (8 pt) | yes | no | no | no | no | no | no | yes |
+  | `\small` (9 pt) | yes | yes | yes | yes | no | no | no | yes |
+  | `\normalsize` (10 pt) | yes | yes | yes | yes | no | yes | yes | yes |
+  | `\large` (12 pt) | yes | yes | yes | no | no | no | no | no |
+  | `\Large` (14.4 pt) | no | no | no | no | no | no | no | no |
+  | `\LARGE` (17.28 pt) | yes | yes | no | no | no | no | no | no |
+  | `\huge` (20.74 pt) | no | no | no | no | no | no | no | no |
+  | `\Huge` (24.88 pt) | no | no | no | no | no | no | no | no |
+
+  So `\section` headings, which are bold `\Large`, are left out.
 - In Markdown: CSL styles and citeproc (natbib or biblatex is used instead), grid, simple and multiline tables,
   example lists, letter and Roman list markers, and Markdown to Beamer slides. Each gives one plain warning.
 

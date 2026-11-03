@@ -552,6 +552,28 @@ describe('B1 bundle builder, without the engine (scripts/build-bundle.mjs)', fun
     assert.ok(ok.report.dropped.some((d) => d.package === 'pytool'));
   });
 
+  it('leaves out the run files a set\'s leaveOut names, and stops on a name the package or the set does not hold', async () => {
+    const sets = JSON.parse(readFileSync(setsFile, 'utf8'));
+    sets['extra-data'].packages.push('pytool');
+    sets['extra-data'].leaveOut = { pytool: { 'tex/latex/pytool/helper.py': 'a script nothing reads at run time' } };
+    const file = path.join(tmp, 'sets-leaveout.json');
+    const out = path.join(tmp, 'out-leaveout');
+    const runWith = (s: unknown) => {
+      writeFileSync(file, JSON.stringify(s));
+      return build.main(['--local', snapshot, '--pins', pinsFile, '--sets', file, '--out', out, '--stage', 'build', '--skip-engine', '--no-package'], { log: () => undefined });
+    };
+    // The package stays, without its script: no program in the set, and the report lists what was left out.
+    const ok = await runWith(sets);
+    assert.deepEqual(ok.report.problems, []);
+    assert.deepEqual((ok.report as unknown as { leftOutFiles: unknown }).leftOutFiles, [{ set: 'extra-data', package: 'pytool', file: 'tex/latex/pytool/helper.py', reason: 'a script nothing reads at run time' }]);
+    const index = JSON.parse(readFileSync(path.join(out, 'extra-data', 'data', 'manifest.json'), 'utf8')).index as { packages: Record<string, { files: string[] }> };
+    assert.deepEqual(index.packages.pytool.files, ['tex/latex/pytool/pytool.sty']);
+    // A file the package does not hold, and a package the set does not hold, stop the build.
+    sets['extra-data'].leaveOut = { pytool: { 'tex/latex/pytool/helper.py': 'r', 'tex/latex/pytool/gone.sh': 'r' }, nosuch: { 'x.sh': 'r' } };
+    const bad = await runWith(sets);
+    assert.deepEqual(bad.report.problems.sort(), ["extra-data's leaveOut names nosuch, which extra-data does not hold", 'extra-data: leaveOut names tex/latex/pytool/gone.sh, which pytool does not hold']);
+  });
+
   it('moves a package and its dependency to extra-data (toExtra), and leaves it out of core-data even as a dependency', async () => {
     type Db = Map<string, unknown>;
     const { parseTlpdb } = await importScript<{ parseTlpdb(text: string): Db }>('scripts/lib/tlpdb.mjs');
@@ -619,15 +641,124 @@ describe('B1 bundle builder, without the engine (scripts/build-bundle.mjs)', fun
     assert.deepEqual(verdict.problems, ["closure test: algorithm2e (core, tex/latex/algorithm2e/algorithm2e.sty, pdflatex): ! LaTeX Error: File `ifoddpage.sty' not found"]);
     assert.deepEqual(verdict.expected.map((e) => [e.file, e.reason, e.inExtra]), [['tex/latex/base/ltxdoc.cls', 'needs hypdoc', ['hypdoc.sty']]]);
     assert.deepEqual(verdict.stale, ['tex/latex/psnfss/bookman.sty']);
-    // The repository's rules: a reason for every expected failure, and a preamble and a reason for every setup.
+    // The repository's rules: a reason for every expected failure and pattern, and a preamble and a reason for every
+    // setup. A target is a class anywhere under tex/, or a .sty in its package's own folder under tex/latex/.
     const rules = JSON.parse(readFileSync(path.join(__dirname, '..', '..', '..', 'engine', 'bundle-closure.json'), 'utf8'));
     for (const [file, reason] of Object.entries(rules.expected as Record<string, string>)) {
-      assert.match(file, /^tex\/latex\/[^/]+\/[^/]+\.(sty|cls)$/, file);
+      assert.match(file, /^tex\/[a-z]+\/[^/]+\/(?:.+\.cls|[^/]+\.sty)$/, file);
       assert.ok(reason.length > 20, file);
+    }
+    for (const p of (rules.expectedPatterns ?? []) as { match: string; reason: string }[]) {
+      assert.doesNotThrow(() => new RegExp(p.match), p.match);
+      assert.ok(p.reason.length > 20, p.match);
     }
     for (const [file, s] of Object.entries(rules.setup as Record<string, { preamble: string; reason: string }>)) {
       assert.ok(s.preamble.startsWith('\\') && s.reason.length > 20, file);
     }
+  });
+
+  it('expects a kind of file by pattern: a failure it matches is expected, a file it matches may load, and it counts what it took', async () => {
+    const { judgeClosure } = await importScript<{
+      judgeClosure(
+        results: { set: string; package: string; file: string; engine: string; ok: boolean; missing: string[] }[],
+        rules: { expected?: Record<string, string>; expectedPatterns?: { match: string; reason: string }[] },
+        extraFiles: Record<string, string>,
+      ): { problems: string[]; expected: { file: string; reason: string; pattern?: string }[]; stale: string[]; patternHits: Record<string, number> };
+    }>('scripts/lib/bundle-engine.mjs');
+    const result = (file: string, ok: boolean) => ({ set: 'extra', package: file.split('/')[2], file, engine: 'pdflatex', ok, missing: ok ? [] : ["! LaTeX Error: File `x.sty' not found"] });
+    const rollback = { match: '^tex/latex/[^/]+/[^/]+-\\d{4}-\\d{2}-\\d{2}\\.(sty|cls)$', reason: 'a dated rollback copy, loaded only through latexrelease' };
+    const lua = { match: '^tex/lualatex/', reason: 'LuaLaTeX only: the engine has no LuaTeX' };
+    const verdict = judgeClosure(
+      [
+        result('tex/latex/chemmacros/chemmacros-2020-03-07.sty', false),
+        result('tex/latex/nwejm/nwejm-2024-02-08.cls', true),
+        result('tex/latex/chemmacros/chemmacros.sty', false),
+        result('tex/latex/listed/listed.sty', false),
+      ],
+      { expected: { 'tex/latex/listed/listed.sty': 'listed by name' }, expectedPatterns: [rollback, lua] },
+      {},
+    );
+    assert.deepEqual(verdict.expected.map((e) => [e.file, e.reason, e.pattern]), [
+      ['tex/latex/chemmacros/chemmacros-2020-03-07.sty', rollback.reason, rollback.match],
+      ['tex/latex/listed/listed.sty', 'listed by name', undefined],
+    ]);
+    assert.deepEqual(verdict.problems, ["closure test: chemmacros (extra, tex/latex/chemmacros/chemmacros.sty, pdflatex): ! LaTeX Error: File `x.sty' not found"]);
+    assert.deepEqual(verdict.stale, [], 'a rollback copy that loads does not make the pattern stale');
+    assert.deepEqual(verdict.patternHits, { [rollback.match]: 1, [lua.match]: 0 });
+  });
+
+  it('names a pattern that took no failure only after a whole run of both sets', async () => {
+    const { unusedPatternNotes } = await importScript<{
+      unusedPatternNotes(hits: Record<string, number>, run: { scope: string; shards: number; list: string[] | null }): string[];
+    }>('scripts/lib/bundle-engine.mjs');
+    const hits = { '^tex/latex/[^/]+/[^/]+-\\d{4}-\\d{2}-\\d{2}\\.(sty|cls)$': 0, '^tex/lualatex/': 3 };
+    // A core-only run: the rollback copies the pattern names are in the add-on, so 0 here says nothing.
+    assert.deepEqual(unusedPatternNotes(hits, { scope: 'core', shards: 1, list: null }), []);
+    assert.deepEqual(unusedPatternNotes(hits, { scope: 'extra', shards: 1, list: null }), []);
+    assert.deepEqual(unusedPatternNotes(hits, { scope: 'all', shards: 2, list: null }), []);
+    assert.deepEqual(unusedPatternNotes(hits, { scope: 'all', shards: 1, list: ['package:lhcyr'] }), []);
+    assert.deepEqual(unusedPatternNotes(hits, { scope: 'all', shards: 1, list: null }), [
+      "closure test: the pattern ^tex/latex/[^/]+/[^/]+-\\d{4}-\\d{2}-\\d{2}\\.(sty|cls)$ took no failure; take it out of engine/bundle-closure.json's expectedPatterns",
+    ]);
+  });
+
+  it('starts a file of tex/xelatex/ on XeLaTeX, and moves to XeLaTeX on each way a package asks for it', async () => {
+    const { NEEDS_UNICODE_ENGINE, firstEngine } = await importScript<{ NEEDS_UNICODE_ENGINE: RegExp; firstEngine(t: { file: string }): string }>('scripts/lib/bundle-engine.mjs');
+    assert.equal(firstEngine({ file: 'tex/xelatex/buctthesis/buctthesis.cls' }), 'xelatex');
+    assert.equal(firstEngine({ file: 'tex/latex/hitreport/hitreport.cls' }), 'pdflatex');
+    assert.equal(firstEngine({ file: 'tex/lualatex/novel/novel.cls' }), 'pdflatex');
+    // The packages' own words, as read in the logs of the add-on's first closure test.
+    for (const words of [
+      'Package fontspec Error: The fontspec package requires either XeTeX or LuaTeX.',
+      '* XeTeX is required to compile this document.',
+      '* LuaTeX or XeTeX is required to compile this document.',
+      'Package fontsetup Error: Use Unicode-compliant TeX-engines.',
+      'LaTeX Error: This package can only be used with "XeLaTeX" or "LuaLaTeX"!',
+      'Package unicode-math Error: Cannot be run with pdftex!',
+      'You are using the pdftexengine, but your document can only be compiled with the lualatex or xelatex engine(s).',
+      // The same as the unwrapped log gives it, with the error's continuation prefix between the words.
+      'Fatal Package phimisci Error: You are using the pdftexengine, but your(phimisci)                      document can only be compiled with the(phimisci)                      lualatex or xelatex engine(s).',
+    ]) {
+      assert.match(words, NEEDS_UNICODE_ENGINE, words);
+    }
+    for (const words of ['Package hyperref Warning: Token not allowed', '* LuaTeX is required to compile this document.', 'Output written on closure.pdf']) {
+      assert.doesNotMatch(words, NEEDS_UNICODE_ENGINE, words);
+    }
+  });
+
+  it('runs a subset (--files): the listed targets and packages only, and stops on a line that names no target', async () => {
+    const { chooseTargets } = await importScript<{
+      chooseTargets(
+        t: { set: string; package: string; targets: { file: string }[] }[],
+        o: { scope: string; shard: number; shards: number; list: string[] | null; untestable?: { set: string; package: string }[] },
+      ): { chosen: { package: string; targets: { file: string }[] }[]; unknown: string[] };
+    }>('scripts/lib/bundle-engine.mjs');
+    const targets = [
+      { set: 'core', package: 'amsmath', targets: [{ file: 'tex/latex/amsmath/amsmath.sty' }, { file: 'tex/latex/amsmath/amstext.sty' }] },
+      { set: 'extra', package: 'memoir', targets: [{ file: 'tex/latex/memoir/memoir.cls' }, { file: 'tex/latex/memoir/mempatch.sty' }] },
+      { set: 'extra', package: 'tikzlings', targets: [{ file: 'tex/latex/tikzlings/tikzlings.sty' }] },
+      { set: 'extra', package: 'poormanlog', targets: [{ file: 'tex/latex/poormanlog/poormanlog.sty' }] },
+    ];
+    const names = (r: { chosen: { package: string; targets: { file: string }[] }[] }) => r.chosen.flatMap((t) => t.targets.map((x) => x.file));
+    // Without a list: the scope, then every n-th package.
+    assert.deepEqual(names(chooseTargets(targets, { scope: 'extra', shard: 0, shards: 1, list: null })), ['tex/latex/memoir/memoir.cls', 'tex/latex/memoir/mempatch.sty', 'tex/latex/tikzlings/tikzlings.sty', 'tex/latex/poormanlog/poormanlog.sty']);
+    assert.deepEqual(names(chooseTargets(targets, { scope: 'extra', shard: 1, shards: 2, list: null })), ['tex/latex/tikzlings/tikzlings.sty']);
+    // A list: one file of memoir, and all of tikzlings; a package the build holds without targets is no mistake.
+    const listed = chooseTargets(targets, { scope: 'extra', shard: 0, shards: 1, list: ['tex/latex/memoir/memoir.cls', 'package:tikzlings', 'package:lhcyr'], untestable: [{ set: 'extra', package: 'lhcyr' }] });
+    assert.deepEqual(names(listed), ['tex/latex/memoir/memoir.cls', 'tex/latex/tikzlings/tikzlings.sty']);
+    assert.deepEqual(listed.unknown, []);
+    // Lines that name nothing of the scope: a core file in an extra run, a misspelt file, an unknown package.
+    const wrong = chooseTargets(targets, { scope: 'extra', shard: 0, shards: 1, list: ['tex/latex/amsmath/amsmath.sty', 'tex/latex/memoir/memoirr.cls', 'package:nosuch'] });
+    assert.deepEqual(wrong.unknown, ['tex/latex/amsmath/amsmath.sty', 'tex/latex/memoir/memoirr.cls', 'package:nosuch']);
+    // The stage stops on them before it starts an engine.
+    const out = path.join(tmp, 'out-files');
+    mkdirSync(out, { recursive: true });
+    writeFileSync(path.join(out, 'closure-targets.json'), JSON.stringify({ targets, untestable: [] }));
+    const list = path.join(tmp, 'files.txt');
+    writeFileSync(list, 'tex/latex/memoir/memoir.cls\npackage:nosuch\n');
+    const r = await build.main(['--pins', pinsFile, '--sets', setsFile, '--out', out, '--stage', 'closure', '--closure', 'extra', '--files', list], { log: () => undefined });
+    assert.equal(r.status, 1);
+    assert.deepEqual(r.report.problems, [`closure test: ${list} names package:nosuch, which is no target of the build's closure-targets.json (scope extra)`]);
   });
 
   it('runs the closure stage without the tlpdb: it opens no connection and reads only the build\'s lists', async () => {

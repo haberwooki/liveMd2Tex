@@ -170,7 +170,7 @@ describe('t1c: lossless packing of Type 1 fonts (B1, core-data)', () => {
 
   it("the data package's README and LICENSE.txt say how the fonts are stored, and quote the LPPL's clause 9 word for word", async () => {
     type Fonts = { lppl: string[]; vera?: string[]; gpl: string[]; kept: Record<string, string>; unpacked?: Record<string, { reason: string; files: string[] }[]>; gplChanges?: boolean };
-    const { changesNote, licenceFile, readmeFiles } = await importScript<{ changesNote(project: string, core: boolean, packed: boolean): string; licenceFile(f: Fonts | undefined, s: { date: string; url: string; releases: string }): string; readmeFiles(y: string, p: boolean, g?: boolean): string }>('scripts/lib/bundle-package.mjs');
+    const { changesNote, licenceFile, readmeFiles } = await importScript<{ changesNote(project: string, core: boolean, packed: boolean): string; licenceFile(f: Fonts | undefined, s: { date: string; url: string; releases: string }, leftOut?: { package: string; file: string; reason: string }[]): string; readmeFiles(y: string, p: boolean, g?: boolean): string }>('scripts/lib/bundle-package.mjs');
     const snapshot = { date: '2026/10/15', url: 'https://texlive.info/tlnet-archive/2026/10/15/tlnet/', releases: 'https://github.com/haberwooki/liveMd2Tex/releases' };
     // The groups come from each font's own terms (the t1c gate, T1S-02): DejaVu under its own terms, not the LPPL.
     const text = licenceFile({
@@ -198,6 +198,11 @@ describe('t1c: lossless packing of Type 1 fonts (B1, core-data)', () => {
     const plain = licenceFile(undefined, snapshot).replace(/\s+/g, ' ');
     assert.match(plain, /are distributed unchanged from TeX Live/);
     assert.doesNotMatch(plain, /clause 9|DejaVu|Type 1/);
+    // The run files a set's leaveOut leaves out, each with its reason; with none, no such paragraph.
+    const leftOut = licenceFile(undefined, snapshot, [{ package: 'lhcyr', file: 'tex/latex/lhcyr/lhcyrkoi/maketfms.sh', reason: 'a shell script no file reads or runs' }]);
+    assert.ok(leftOut.replace(/\s+/g, ' ').includes("Run files left out. data/ holds no package's documentation, sources or scripts. It also leaves out these run files, each with its reason: - lhcyr, tex/latex/lhcyr/lhcyrkoi/maketfms.sh: a shell script no file reads or runs."));
+    assert.match(leftOut, /\n- lhcyr, tex\/latex\/lhcyr\/lhcyrkoi\/maketfms\.sh: a shell script no file reads or runs\.\n/);
+    assert.doesNotMatch(plain, /Run files left out/);
     // Where the sources are: the pinned snapshot, which keeps the version shipped, and the release's copies; CTAN
     // has only the newest version (the licence gate, M6).
     for (const t of [flat, plain]) {

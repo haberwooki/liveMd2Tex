@@ -269,7 +269,11 @@ bytes, checked against its SHA-256, before TeX reads it; the package's `LICENSE.
 clause 9. Which fonts are stored so is decided font by font, by each font's own header: fonts under the SIL OFL,
 IBM's Courier fonts and fonts with no clear terms are stored as they are, and so are all fonts of amsfonts,
 inconsolata, rsfs and newtx (`engine/bundle-sets.json`, `t1cSkip`). courier's `LICENSES` folder holds IBM's
-notice, as its fonts state it, and IBM's terms as X.Org ships them.
+notice, as its fonts state it, and IBM's terms as X.Org ships them. From lhcyr, the Extra Packages add-on leaves
+out of its data one shell script (`maketfms.sh`, which none of its files runs) and three READMEs whose name a
+core-data file has (`engine/bundle-sets.json`, `leaveOut`). The READMEs state lhcyr's terms, so they ship, with
+its source archive's README, in lhcyr's `LICENSES` folder, and the add-on's `LICENSE.txt` lists the four files
+with their reasons.
 
 Each package is under its own licence, as `data/licences.json` lists it from the TeX Catalogue. B1's licence scan
 of the 2026-10-15 snapshot finds: LPPL (1.3c and earlier), GPL, LGPL, AGPL, GNU FDL, SIL OFL, GUST Font License,
