@@ -261,7 +261,7 @@ packages instead.
 |---|---|---|---|---|
 | TeX Live's packages, classes and fonts of core-data, as that data package holds them ("The data packages") | TeX Live 2026 | each package's own; `dist/data/LICENSES/INDEX` names each package's licence files | `dist/data/` | https://ctan.org, https://tug.org/texlive/ |
 
-## The data packages (core-data, extra-data; B1, built on a laptop, not yet released)
+## The data packages (core-data, extra-data; B1, released as core-data-ae9dbba-2 and extra-data-ae9dbba-2)
 
 TeX Live's packages, classes and fonts in the data packages are unchanged as TeX reads them. core-data stores
 most of its Type 1 fonts with their encryption removed, and the engine host restores each one to the original
@@ -297,7 +297,8 @@ Catalogue's "other-free", and TeX Live's own files. "collection" packages and th
   lists those archives with their URLs and the SHA-512 of TeX Live's package database. Each data package's own
   release (`core-data-<engine short hash>-<n>`, `extra-data-<engine short hash>-<n>`, made by
   `.github/workflows/bundle.yml`'s `release` job) carries a copy of each as `<tag>-sources.tar`, with
-  `sources.json`, the pinned package database and the package's `LICENSES/`.
+  `sources.json`, the pinned package database and the package's `LICENSES/`. The first two are
+  `core-data-ae9dbba-2` and `extra-data-ae9dbba-2`, which `engine/pins.json` pins.
 
 ## Added later (planned; not in the package yet)
 

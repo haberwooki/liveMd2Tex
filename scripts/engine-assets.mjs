@@ -2,8 +2,8 @@
 // Development tool (never shipped): fetches the pinned engine and TeX inputs of engine/pins.json into a folder
 // OUTSIDE the repository (default: ../engine_assets), one folder per source, and checks every file's size and
 // SHA-256. Files already present are re-checked, not re-downloaded. Downloads are data: nothing here runs them. A
-// source marked "published": null (an engine release that is still a draft, whose files cannot be downloaded
-// anonymously) is never fetched: a missing file of it fails with a message that says so and what to do.
+// source marked "published": null (an engine or data release that is still a draft, whose files cannot be
+// downloaded anonymously) is never fetched: a missing file of it fails with a message that says so and what to do.
 //
 //   node scripts/engine-assets.mjs [--root DIR] [--source ID] [--verify]
 

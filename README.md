@@ -55,14 +55,15 @@ can use them for anything.
 
 ## What you install
 
-The plan for the first release is three store items. Until the data packages are released, the core data comes
-only with the development test copy.
+The plan for the first release is three store items. The two data packages are built and released on GitHub
+(`core-data-ae9dbba-2` and `extra-data-ae9dbba-2`, each a `.vsix` with its sources), but the extension is not yet
+built, so for now the core data reaches VS Code only in the development test copy.
 
 | Item | What it holds | Size |
 |---|---|---|
 | liveMd2Tex (`haberwooki.livemd2tex`) | The extension: the compile loop, the TeX engines, the viewer, the Markdown converter, the notices | not yet built |
-| liveMd2Tex core data (`haberwooki.livemd2tex-core-data`) | The packages and fonts most documents use, the prebuilt formats | not yet built |
-| Extra Packages (`haberwooki.livemd2tex-extra-data`) | Optional: many more packages and fonts, publishers' classes among them | not yet built |
+| liveMd2Tex core data (`haberwooki.livemd2tex-core-data`) | The packages and fonts most documents use, the prebuilt formats | 131.7 MB |
+| Extra Packages (`haberwooki.livemd2tex-extra-data`) | Optional: many more packages and fonts, publishers' classes among them | 239.9 MB |
 
 The TeX engines are part of the extension itself. The two data items hold TeX's files only, and no code.
 Installing liveMd2Tex from the store will install the core data with it. If you install from a `.vsix` file
@@ -217,7 +218,12 @@ each release's page links it.
 The engine is built by this repository from TeX Live's source at commit `6a300188` with Emscripten 6.0.13.
 `engine/build/` holds the build, and `THIRD_PARTY_NOTICES.md` ("The engine's source") gives each source archive's
 address and SHA-256. Each release that ships the engine carries a copy of these archives, attached before the
-release is published, so they stay available.
+release is published, so they stay available. In the same way, each data package's release (`core-data-ae9dbba-2`,
+`extra-data-ae9dbba-2`) carries the TeX Live archives of its packages under the GPL, LGPL or AGPL
+(`<tag>-sources.tar`, listed in `sources.json`), the package database they were checked against, and the package's
+licence texts (`<tag>-LICENSES.tar`). The core data stores most of its Type 1 fonts in a packed form that
+compresses better, while the add-on ships its fonts unchanged. So only the core data's release also carries the
+archives of the GPL fonts it packs.
 
 liveMd2Tex's engine and data packages are built from TeX Live 2026 with changes of our own. The engine's programs
 are linked with our own stubs for `system()` and `popen()` and our own stand-in for fontconfig, and without

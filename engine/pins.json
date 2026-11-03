@@ -32,6 +32,42 @@
       ]
     },
     {
+      "id": "livemd2tex-core-data",
+      "folder": "livemd2tex-core-data-ae9dbba-2",
+      "release": "https://github.com/haberwooki/liveMd2Tex/releases/tag/core-data-ae9dbba-2",
+      "tag": "core-data-ae9dbba-2",
+      "published": "2026-11-03",
+      "commit": "598a7c59ad4cd91b8d62611bff526fc499fdb3ed",
+      "licence": "TeX Live's packages, classes and fonts, each under its own licence (the package's data/licences.json, from the TeX Catalogue; its LICENSES/ and LICENSE.txt); the package's own files (package.json, README.md, LICENSE.txt, data/manifest.json) GPL-3.0-or-later (THIRD_PARTY_NOTICES.md, \"The data packages\").",
+      "note": "liveMd2Tex's core data, built by .github/workflows/bundle.yml's release job at the commit above, from the TeX Live snapshot engine/bundle-pins.json pins, for the pinned engine (its manifest's abi is engine.wasm's SHA-256). The release also holds the package's sources (core-data-ae9dbba-2-sources.tar, sources.json, texlive.tlpdb.xz) and its licence texts (core-data-ae9dbba-2-LICENSES.tar). published is the date the owner published the release. It is an immutable release, so its file cannot change: scripts/engine-assets.mjs downloads it anonymously from the address below and checks its size and SHA-256.",
+      "files": [
+        {
+          "name": "livemd2tex-core-data-2026.10.15.vsix",
+          "url": "https://github.com/haberwooki/liveMd2Tex/releases/download/core-data-ae9dbba-2/livemd2tex-core-data-2026.10.15.vsix",
+          "size": 131664805,
+          "sha256": "337d9034efdfccf1dfe19d8068afee12bb5ad9212a8b61452f712807f3dcc3a3"
+        }
+      ]
+    },
+    {
+      "id": "livemd2tex-extra-data",
+      "folder": "livemd2tex-extra-data-ae9dbba-2",
+      "release": "https://github.com/haberwooki/liveMd2Tex/releases/tag/extra-data-ae9dbba-2",
+      "tag": "extra-data-ae9dbba-2",
+      "published": "2026-11-03",
+      "commit": "598a7c59ad4cd91b8d62611bff526fc499fdb3ed",
+      "licence": "TeX Live's packages, classes and fonts, each under its own licence (the package's data/licences.json, from the TeX Catalogue; its LICENSES/ and LICENSE.txt); the package's own files (package.json, README.md, LICENSE.txt, data/manifest.json) GPL-3.0-or-later (THIRD_PARTY_NOTICES.md, \"The data packages\").",
+      "note": "The Extra Packages add-on, built by .github/workflows/bundle.yml's release job at the commit above, from the TeX Live snapshot engine/bundle-pins.json pins, for the pinned engine (its manifest's abi is engine.wasm's SHA-256). The release also holds the package's sources (extra-data-ae9dbba-2-sources.tar, sources.json, texlive.tlpdb.xz) and its licence texts (extra-data-ae9dbba-2-LICENSES.tar). published is the date the owner published the release. It is an immutable release, so its file cannot change: scripts/engine-assets.mjs downloads it anonymously from the address below and checks its size and SHA-256.",
+      "files": [
+        {
+          "name": "livemd2tex-extra-data-2026.10.15.vsix",
+          "url": "https://github.com/haberwooki/liveMd2Tex/releases/download/extra-data-ae9dbba-2/livemd2tex-extra-data-2026.10.15.vsix",
+          "size": 239896841,
+          "sha256": "cf0b1ae4bd0203488bac722094cc019fc331c34a1617ec1222823ca96a88a439"
+        }
+      ]
+    },
+    {
       "id": "ctan-revtex",
       "folder": "ctan-revtex",
       "package": "revtex 4.2f",

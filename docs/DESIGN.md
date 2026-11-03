@@ -131,8 +131,9 @@ These rules hold for everyone who installs the extension.
   closure test, the corpus, and a TeX Live reference in a job of its own), and each keeps its report on a failure.
   A last job, by input on `main` and only after the run's checks passed, makes each data package a draft release
   of its own (`core-data-<engine short hash>-<n>`, `extra-data-<engine short hash>-<n>`), with the sources of what
-  it ships, checked against the pinned package database, and its licence texts; the repository's tests take the
-  packages from those releases once they are published and pinned. core-data also holds what the extension itself
+  it ships, checked against the pinned package database, and its licence texts; the owner publishes each one after
+  its check. The repository's tests take the packages from those releases, which `engine/pins.json` pins
+  (`core-data-ae9dbba-2` and `extra-data-ae9dbba-2`). core-data also holds what the extension itself
   needs: the packages of its starting documents and presets, and mylatexformat, for a planned format that holds a
   document's preamble.
 - **Mounting.** The engine host mounts a data extension's image whole, when a compile needs one of its packages
@@ -300,9 +301,8 @@ These rules hold for everyone who installs the extension.
 - **Engine tests** run the real engine in the engine host with its stubs: a public corpus of sample documents
   (page counts and missing-package lists are compared with a recorded baseline), cancel races, change sets,
   data images, package builds, fonts by name. They run on a core-data package built for the pinned engine, with
-  the Extra Packages add-on mounted for the documents that need it, as for a user who installed it. On CI they
-  skip with one notice until both data packages are pinned; once they are, they fail without the engine and the
-  data, instead of skipping.
+  the Extra Packages add-on mounted for the documents that need it, as for a user who installed it. Both come from
+  their pins, so on CI they fail without the engine and the data, instead of skipping.
 - **VS Code tests** run in the installed VS Code (on CI, in downloaded versions) in a throwaway profile, with
   the stubs in the extension host and the engine host; a separate window runs Restricted Mode. Another window
   has LaTeX Workshop installed: there the stubs also allow its MathJax worker and its PDF viewer's server on the

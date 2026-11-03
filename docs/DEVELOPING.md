@@ -54,9 +54,8 @@ to WebAssembly), the optional native packages of `@vscode/vsce` (signing, keyrin
 (canvas) are left out, and no package install script runs. The integration tests use the installed VS Code
 with a throwaway profile under the system temp folder (`--user-data-dir`, `--extensions-dir`), deleted after
 the run; `.vscode-test.mjs` refuses to download a VS Code build. The engine work adds the pinned engine files
-in `../engine_assets/` (about 40.6 MB: our engine, 27.0 MB, and the CTAN set, 13.6 MB) and small result files in
-`../s1_runs/`. The engine tests also need a core-data package and the Extra Packages add-on built for the pinned
-engine (about 131.6 MB and 235.1 MB, outside the repository) until the data packages are pinned ("The TeX engine").
+in `../engine_assets/` (about 412.2 MB: our engine, 27.0 MB, the CTAN set, 13.6 MB, and the two data packages the
+engine tests need, 131.7 MB and 239.9 MB; "The TeX engine") and small result files in `../s1_runs/`.
 
 ## The rules the checks enforce
 
@@ -126,28 +125,30 @@ beside a small CTAN set (corpus samples, the publisher classes, DejaVu). The rel
 anonymously and checks each one.
 
 ```sh
-npm run engine:assets   # fetch and check every pinned file into ../engine_assets/ (about 40.6 MB; never inside the repo)
+npm run engine:assets   # fetch and check every pinned file into ../engine_assets/ (about 412.2 MB; never inside the repo)
 npm run test:engine     # the engine tests: fixtures, the public corpus P1-P8, the engine-host design, any private tests
 ```
 
 The engine tests also need TeX's files: a core-data package and the Extra Packages add-on built for the pinned
-engine (their manifests' `abi` is its SHA-256). Until the data packages are pinned, set `LIVEMD2TEX_CORE_DATA` to
-the core-data package and `LIVEMD2TEX_EXTRA_DATA` to the add-on, and, for the bundle tests,
-`LIVEMD2TEX_BUNDLE_OUT` to the builder's output folder. The builder makes both packages on a laptop from a
-downloaded copy of the pinned snapshot (`node scripts/build-bundle.mjs --local DIR`, "The data sets" below). Point
-the two variables at its unpacked folders, `<out>/core-data` and `<out>/extra-data`: `stage-engine` then
-hard-links the core data into `dist/data`, and the tests read the add-on where it is (a `.vsix` works too, but is
-unpacked on every run, about 0.5 GB). The tests mount the add-on for the documents that need it, as for a user who
-installed it. Without the files every engine test is pending, and `stage-engine` says it skipped. On CI
-(`CI=true`) the same holds, with one notice, only while `engine/pins.json` does not pin both data packages
-(`test/support/missingData.ts`, `scripts/lib/data-pins.mjs`); once both are pinned, a missing engine, core data
-or add-on fails the engine tests and the VS Code integration tests on CI, so a CI run never passes by skipping.
-Once `engine/pins.json` pins the two packages (`livemd2tex-core-data` and `livemd2tex-extra-data`, each a `.vsix`
-in a data release), `npm run engine:assets` downloads them with the engine, `stage-engine --data` stages the pinned
-core data when no package is given, and the engine and integration tests mount the pinned add-on when
-`LIVEMD2TEX_EXTRA_DATA` is not set; the variables still take a local build first. Each use checks a pinned package
-against its pin's size and SHA-256 (`checkedDataPackage` in `scripts/lib/data-pins.mjs`): a file that differs
-fails on any machine, and so does a `LIVEMD2TEX_EXTRA_DATA` that names nothing.
+engine (their manifests' `abi` is its SHA-256). `engine/pins.json` pins both, each a `.vsix` in a data release of
+its own: `livemd2tex-core-data` (release `core-data-ae9dbba-2`, 131.7 MB) and `livemd2tex-extra-data` (release
+`extra-data-ae9dbba-2`, 239.9 MB), built by `bundle.yml` from the pinned snapshot ("The data releases" below).
+`npm run engine:assets` downloads them with the engine. `stage-engine --data` then stages the pinned core data,
+and the engine and integration tests mount the pinned add-on for the documents that need it, as for a user who
+installed it. Each use checks a pinned package against its pin's size and SHA-256 (`checkedDataPackage` in
+`scripts/lib/data-pins.mjs`): a file that differs fails on any machine. A missing file skips on a laptop, where
+every engine test is then pending and `stage-engine` says it skipped. On CI (`CI=true`) a missing engine, core
+data or add-on fails the engine tests and the VS Code integration tests, so a CI run never passes by skipping
+(`test/support/missingData.ts`, `scripts/lib/data-pins.mjs`). Only a repository that pins neither data package
+skips them on CI, with one notice.
+
+To test a local build instead, such as one with changed rules, set `LIVEMD2TEX_CORE_DATA` to its core-data package
+and `LIVEMD2TEX_EXTRA_DATA` to its add-on, and, for the bundle tests, `LIVEMD2TEX_BUNDLE_OUT` to the builder's
+output folder. The variables come before the pins. The builder makes both packages on a laptop from a downloaded
+copy of the pinned snapshot (`node scripts/build-bundle.mjs --local DIR`, "The data sets" below). Point the two
+variables at its unpacked folders, `<out>/core-data` and `<out>/extra-data`: `stage-engine` then hard-links the
+core data into `dist/data`, and the tests read the add-on where it is (a `.vsix`, such as the pinned one, is
+unpacked on every run, about 0.5 GB). A `LIVEMD2TEX_EXTRA_DATA` that names nothing fails on any machine.
 
 - Every route out of the engine is closed inside it. `system()` and `popen()` are our stubs
   (`engine/build/stubs.c`), which start nothing, so `\write18` and `\input|` run nothing. The engine imports no
@@ -263,8 +264,9 @@ node scripts/engine-shakedown.mjs --b ~/engine-out --a OTHER_ENGINE_DIR --images
   `engine/engine-notices.json`, a generated `NOTICE`, the two source archives, our scripts' archive, and notes
   with the source directions (`scripts/engine-release.mjs`); then it counts the draft's files. The owner publishes
   it with "Set as the latest release" unticked (the extension's releases are the latest). While the engine release
-  is the repository's only published release, GitHub shows it as "Latest" even with the box unticked; the first
-  extension release, published as the latest, takes the mark. Then
+  was the repository's only published release, GitHub showed it as "Latest" even with the box unticked. Since the
+  data releases, it keeps the mark only because the owner set it back by hand ("Running the data release", step
+  4); the first extension release, published as the latest, takes the mark. Then
   `engine/engine-build.json` is committed from the draft's own copy. Nothing is added later. `engine/pins.json`
   then pins the release (`livemd2tex-engine`: each file's address, size and SHA-256, the tag and the commit), and
   the data packages are built again for its `abi`. Once the owner has published the release, the next commit sets
@@ -347,14 +349,13 @@ node scripts/engine-shakedown.mjs --b ~/engine-out --a OTHER_ENGINE_DIR --images
   engine is rebuilt", under "Licences, notices and releases"). Emscripten moves once a year on purpose. The
   libraries that read users' files (libpng, FreeType, HarfBuzz, zlib, xpdf) can need a security fix: watch TeX
   Live's branch and their advisories, and rebuild from a newer commit of the branch when one matters.
-- **Until both data packages are pinned** (core-data and the Extra Packages add-on), CI has no TeX data for the
-  engine. The engine tests skip there with one notice that says so, the VSIX scans step scans the plain package and
-  leaves the test copy out with the same notice, and the VS Code integration tests that compile skip with the same
-  notice, because the extension finds no engine data (Restricted Mode's two compiling cases among them). Once both
-  are pinned, the engine tests and the integration tests that compile fail on CI without their inputs (the
-  add-on's cases among them, and `scripts/run-integration.mjs` stops without the add-on), and the test copy is
-  scanned. Every job must pass in between. The engine release must be published before the repository's
-  `main` pins it: `scripts/engine-assets.mjs` cannot download a draft's files, and says so.
+- **Both data packages are pinned** (core-data and the Extra Packages add-on), so CI has the engine's TeX data.
+  The engine tests and the VS Code integration tests that compile fail on CI without their inputs (the add-on's
+  cases among them, and `scripts/run-integration.mjs` stops without the add-on), and the VSIX scans step scans the
+  test copy as well as the plain package. A repository that pins neither data package skips them on CI with one
+  notice that says so instead, and a unit test fails a commit that pins one without the other. A release must be
+  published before the repository's `main` pins it, the engine's and each data package's alike:
+  `scripts/engine-assets.mjs` cannot download a draft's files, and says so.
 
 ## Version 0: compile on save (V0)
 
@@ -996,9 +997,11 @@ Tests:
   glossaries-extra's `record`, `\makeglossaries`), each with what to do instead. "Report a missing package"
   opens the issue tracker through VS Code's link prompt.
 
-The Extra Packages add-on is not published yet. The builder makes it (extra-data), and the tests use that build
-(`LIVEMD2TEX_EXTRA_DATA`): the engine tests read it, and `scripts/run-integration.mjs` hands its `.vsix` to the VS
-Code tests, which install it into the throwaway profile as a user would. Tests:
+The Extra Packages add-on is released on GitHub (`extra-data-ae9dbba-2`), but not yet in the stores. The tests take
+it from its pin (`livemd2tex-extra-data` in `engine/pins.json`); `LIVEMD2TEX_EXTRA_DATA` overrides the pin with a
+local build ("The TeX engine"). The engine tests read it, and `scripts/run-integration.mjs` hands its `.vsix` to
+the VS Code tests, which install it into the throwaway profile as a user would. The core data comes from its pin in
+the same way (`LIVEMD2TEX_CORE_DATA` overrides it). Tests:
 `test/unit/m6.test.ts`; `test/engine/m6.test.ts` (the scan finds nothing missing in the corpus with the add-on
 installed; P7 without it: the scan names its package and TeX's "not found" its class, each with the add-on; with
 the add-on, P7 reaches a PDF; P2 through the CTAN ZIP; tensor from its `.dtx` and `.ins`); `test/integration/m6.test.ts` (the same in
@@ -1007,12 +1010,12 @@ its own compile, never an older one that was still running); `test/engine/gate2.
 an image's package loads indirectly, the mount after "not found", a package build beside a live compile, the
 user's files in the change sets).
 
-## The data sets: core-data and extra-data (B1, built on a laptop, not yet released)
+## The data sets: core-data and extra-data (B1; released as core-data-ae9dbba-2 and extra-data-ae9dbba-2)
 
 `scripts/build-bundle.mjs` builds the two data sets from TeX Live itself, on GitHub (`.github/workflows/bundle.yml`,
 run by hand). On a development machine it runs on a downloaded copy of the pinned snapshot (`--local DIR`), to
-build the data the engine tests need until the data packages are pinned; its unit tests use tiny made-up
-archives.
+try changed rules before a release (the engine tests take its output through the variables in "The TeX engine");
+its unit tests use tiny made-up archives.
 
 - **One pin, checked against TeX Live's signature.** `engine/bundle-pins.json` names a dated snapshot of TeX
   Live's package repository and the SHA-256 of its package database, `texlive.tlpdb`. Every package archive is
@@ -1283,7 +1286,10 @@ archives.
      file of its package's `LICENSES/` (the job's log gives the count), and each `<tag>-sources.tar` the archives
      its `sources.json` lists; the notes name the run's commit.
   4. Publish each draft only after that check, with "Set as the latest release" unticked, then pin both ("The
-     pins", below).
+     pins", below). Then check which release GitHub shows as "Latest", and set it back on the engine release if it
+     moved. Observed on 2026-11-03: publishing the two data drafts with the box unticked (`gh release edit
+     --draft=false --latest=false`) still made `extra-data-ae9dbba-2` "Latest", and `gh release edit
+     engine-6a30018-4 --latest` gave the mark back to the engine release.
   5. When the job fails, its summary and its `bundle-release` report say where. A failure before the drafts leaves
      none. If it fails after making a draft, or an upload fails partway (`gh release create` then leaves a partial
      draft), delete every draft of that run on the Releases page. Then re-run the failed job within the 3 days, or
@@ -1291,11 +1297,18 @@ archives.
   6. A candidate number belongs to one build run: a re-run of that run's release job uses it again once its drafts
      are deleted, and a new run takes the next number. The number of a deleted draft is never given to another
      build.
-- **The pins.** After publication, `engine/pins.json` gets `livemd2tex-core-data` and `livemd2tex-extra-data` in
-  one commit, each with every field: `id`, `folder` (its folder under `../engine_assets/`), `release`, `tag`,
-  `published`, and `files`, the `.vsix` with its `name`, `url`, `size` and `sha256`. CI then moves from "skip with
-  one notice" to "fail without the data" at once (`scripts/lib/data-pins.mjs` keys on both, and a unit test,
-  `dataRelease.test.ts`, fails a commit that pins one without the other).
+- **The pins.** `engine/pins.json` pins both packages, added in one commit: `livemd2tex-core-data` (release
+  `core-data-ae9dbba-2`) and `livemd2tex-extra-data` (release `extra-data-ae9dbba-2`), both from candidate 2's run
+  at the commit each pin's `commit` names. Each pin has every field: `id`, `folder` (its folder under
+  `../engine_assets/`), `release`, `tag`, `published`, `commit`, `licence`, `note`, and `files`, the `.vsix` with
+  its `name`, `url` (the published release's address, `releases/download/<tag>/<name>`), `size` and `sha256`. The
+  size and SHA-256 are the draft's own (the release's asset digest, checked against a download of the draft), never
+  a laptop build's: a laptop build of the same commit gives a package with other bytes. The
+  pins are written while the drafts wait, with `published` null; `scripts/engine-assets.mjs` then cannot download
+  the files and says so, and the drafts' files go into the pinned folders by hand for the checks. Once the owner
+  publishes both releases, a second commit sets each `published` to the date, and only then does the pair reach
+  `main`. CI then moves from "skip with one notice" to "fail without the data" at once (`scripts/lib/data-pins.mjs`
+  keys on both, and a unit test, `dataRelease.test.ts`, fails a commit that pins one without the other).
 - **mylatexformat in core-data** (`forOwnDocuments`, decided 2026-11-01): a planned format that holds a pdfLaTeX
   document's preamble, which the engine host would dump, needs it, so it is in core-data rather than the add-on.
   No code builds that format yet. Its licence, read in the pinned snapshot: the LaTeX Project Public License 1.3 or

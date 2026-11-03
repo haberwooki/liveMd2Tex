@@ -80,7 +80,7 @@ jobs:
           path: ${{ github.workspace }}/../engine_assets
           key: engine-assets-${{ hashFiles('engine/pins.json') }}
           enableCrossOsArchive: true
-      - name: Fetch and check the pinned engine and inputs (our engine release; the CTAN files)
+      - name: Fetch and check the pinned engine and inputs (our engine and data releases; the CTAN files)
         run: node scripts/engine-assets.mjs
       - run: npm run lint
       - run: npm run typecheck
@@ -107,7 +107,7 @@ jobs:
       # The private markers reach this step alone (build gate 2, G2E-R2). A pull request from a fork gets no
       # secret: its scan is left out with a notice, and the markers job scans again after the merge (G2R-03).
       # The scans run whatever an earlier step did, so a red engine step hides no scan. The test copy needs the data
-      # packages: until engine/pins.json pins both, data-pins.mjs prints a notice and the test copy waits.
+      # packages: engine/pins.json pins both, so it is scanned; a repository that pins neither gets a notice instead.
       - name: VSIX scans (plain package and test copy)
         if: inputs.package && !cancelled()
         shell: bash
