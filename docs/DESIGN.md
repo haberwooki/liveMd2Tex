@@ -88,10 +88,12 @@ These rules hold for everyone who installs the extension.
   such line as reviewed. No route out remains: `system()` and `popen()` are our stubs, which start nothing; the
   engine imports nothing for a shell, a socket, the network or dynamic loading, which the build and the scan check;
   shell escape and font generation are off.
-- **Pinned inputs.** Every engine and data file is named in `engine/pins.json` with its address, size and
-  SHA-256, and checked before use. The engine's files come from its release in this repository, and
-  `engine/engine-build.json` records how they were built. Two builds of the same commit, one on GitHub and one on
-  a developer's machine, must give the same bytes before a release.
+- **Pinned inputs.** Every engine, data and test file is named in `engine/pins.json` with its address, size and
+  SHA-256, and checked before use. Each comes from an immutable release of this repository: the engine's files from
+  the engine release, the data packages from their data releases, and the CTAN files the tests use from the test
+  inputs' release, unpacked from TeX Live's unchanged archives (each checked by its SHA-512) or, for REVTeX, CTAN's
+  unchanged zip. `engine/engine-build.json` records how the engine was built. Two builds of the same commit, one on
+  GitHub and one on a developer's machine, must give the same bytes before a release.
 - **Data sets.** The core data ships with the extension. More packages come from data extensions, today the
   optional Extra Packages add-on. Every data set has `data/manifest.json` (format 1; `DataManifest` in
   `src/extension/engine/dataSets.ts` is the contract): the TeX Live year, the engine build it was made for (the

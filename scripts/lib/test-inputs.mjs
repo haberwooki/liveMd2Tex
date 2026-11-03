@@ -63,7 +63,6 @@ export const TEST_INPUTS = {
       'acmart.dtx': ['source', 'source/latex/acmart/acmart.dtx'],
       'acmart.ins': ['source', 'source/latex/acmart/acmart.ins'],
       'ACM-Reference-Format.bst': ['run', 'bibtex/bst/acmart/ACM-Reference-Format.bst'],
-      ...Object.fromEntries(['samples.dtx', 'samples.ins', 'sample-base.bib', 'sampleteaser.pdf'].map((n) => [`samples/${n}`, ['doc', `doc/latex/acmart/samples/${n}`]])),
     },
   },
   'ctan-llncs': {
@@ -73,7 +72,6 @@ export const TEST_INPUTS = {
     files: {
       'llncs.cls': ['run', 'tex/latex/llncs/llncs.cls'],
       'splncs04.bst': ['run', 'bibtex/bst/llncs/splncs04.bst'],
-      'llncsdoc.tex': ['doc', 'doc/latex/llncs/llncsdoc.tex'],
     },
   },
   'ctan-pgf-manual': {

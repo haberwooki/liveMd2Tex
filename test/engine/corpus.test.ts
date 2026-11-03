@@ -1,6 +1,7 @@
 // S1 pass tests on the public corpus P1 to P8 (docs/DESIGN.md#testing). P1, P5 and the project part of P8 are in the
-// repository (CC0); the CTAN files are fetched and pinned by scripts/pin-ctan.mjs into ../engine_assets and read
-// from there (the publisher classes go in through the project-folder route of docs/DESIGN.md#engine-and-data).
+// repository (CC0); the CTAN files come from the test inputs' release (engine/pins.json, scripts/engine-assets.mjs)
+// into ../engine_assets and are read from there (the publisher classes go in through the project-folder route of
+// docs/DESIGN.md#engine-and-data).
 
 import * as assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';

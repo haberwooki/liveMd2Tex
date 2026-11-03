@@ -309,11 +309,23 @@ Catalogue's "other-free", and TeX Live's own files. "collection" packages and th
 
 ## Test copies only (not in the store package)
 
-Two CTAN packages are used only by tests:
+Ten CTAN packages are used only by tests. Their files come from this repository's release `test-inputs-20261015-1`
+(published 2026-11-03), which holds each package whole and unchanged: TeX Live's archives of it from the pinned
+snapshot (2026/10/15), and CTAN's `revtex.tds.zip`. `engine/pins.json` names each file, its archive and its
+SHA-256. The release's notes give the same licences and credits as the table, and where each licence text is
+inside the archives.
 
 | Part | Version | Licence | Used for | Source |
 |---|---|---|---|---|
-| REVTeX (class, `.rtx` options, helper `.sty` files, `.bst` styles), unchanged from `revtex.tds.zip` | 4.2f | LPPL 1.3c | a made-up data set in the engine tests; the corpus document P2 | https://ctan.org/pkg/revtex |
+| REVTeX (class, `.rtx` options, helper `.sty` files, `.bst` styles), unchanged from `revtex.tds.zip` | 4.2f | LPPL 1.3c | a made-up data set in the engine tests; the corpus document P2; the CTAN ZIP test of "Add a package from a file"; the REVTeX template | https://ctan.org/pkg/revtex |
+| IEEEtran (`IEEEtran.cls`, `IEEEtran.bst`, `bare_jrnl.tex`) | 1.8b | LPPL 1.3 | the corpus document P3; the IEEEtran template; the speed measures | https://ctan.org/pkg/ieeetran |
+| elsarticle (`.dtx`, `.ins`, a template, `elsarticle-num.bst`), built by docstrip in a test | 3.5 | LPPL 1.3 | the corpus document P4; the elsarticle template | https://ctan.org/pkg/elsarticle |
+| beamer's conference-talk example (`beamerexample-conference-talk.tex`) | 3.78 | the documentation: GNU FDL 1.3 or later, or LPPL 1.3c or later (the code: GPL 2 or later, or LPPL 1.3c or later) | the corpus document P6; the engine-host design tests; the speed measures | https://ctan.org/pkg/beamer |
+| ucbthesis (class and its example thesis) | 3.6 | LPPL 1.3 | the corpus document P7 | https://ctan.org/pkg/ucbthesis |
+| acmart (`.dtx`, `.ins`, `ACM-Reference-Format.bst`), built by docstrip in a test | 2.20 | LPPL 1.3 | the acmart template | https://ctan.org/pkg/acmart |
+| llncs (`llncs.cls`, `splncs04.bst`) | 2.26 | Copyright (c) 1996-2025 Springer, CC BY 4.0 or later (https://creativecommons.org/licenses/by/4.0/); `splncs04.bst`, generated with makebst, carries Patrick W Daly's notice: LPPL 1 or later | the llncs template | https://ctan.org/pkg/llncs |
+| pgf manual, the tutorial chapter's source (`pgfmanual-en-tutorial.tex`) | 3.1.12 | LPPL 1.3c, GPL 2, GNU FDL 1.2 (the manual) | the corpus document P8 | https://ctan.org/pkg/pgf |
+| DejaVu fonts (twelve TrueType files) and their `LICENSE` | 2.34 | (c) Bitstream under the Bitstream Vera terms, the DejaVu changes in the public domain, the glyphs from the Arev fonts (c) Tavmjong Bah under their terms; LPPL 1.3 for the TeX support | the font tests; the engine build's smoke test | https://ctan.org/pkg/dejavu |
 | tensor (`tensor.dtx`, `tensor.ins`), built by docstrip in a test | 2.2 (2023/07/18) | LPPL 1.3c or later | the `.dtx` and `.ins` test of "Add a package from a file" | https://ctan.org/pkg/tensor |
 
 Packages a user adds with "Add a package from a file" stay on the user's computer, under VS Code's global storage

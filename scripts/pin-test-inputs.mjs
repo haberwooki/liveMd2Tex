@@ -80,6 +80,10 @@ export function pinToRelease(pins, list, read, bundlePins, published = null) {
       return { name: pin.name, from: archiveName(entry.package, at[0]), path: at[1], size: pin.size, sha256: pin.sha256 };
     });
   }
+  // Each ctan-* source's fields in the order the engine's and the data packages' pins have them: who it is, the
+  // release, what it is, then the archives and the files.
+  const order = ['id', 'folder', 'release', 'tag', 'published', 'package', 'licence', 'note', 'pinned', 'archives', 'files'];
+  out.sources = out.sources.map((s) => (s.id.startsWith('ctan-') ? Object.fromEntries([...order.filter((k) => k in s).map((k) => [k, s[k]]), ...Object.entries(s).filter(([k]) => !order.includes(k))]) : s));
   return out;
 }
 

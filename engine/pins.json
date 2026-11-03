@@ -1,5 +1,5 @@
 {
-  "about": "Pinned inputs (docs/DESIGN.md#engine-and-data): our engine release and the CTAN files the tests and templates use. Files are fetched by scripts/engine-assets.mjs into ../engine_assets/<folder>/ (outside the repository) and checked by size and SHA-256. Never commit the files themselves.",
+  "about": "Pinned inputs (docs/DESIGN.md#engine-and-data), each from an immutable release of this repository: our engine, the two data packages, and the CTAN files the tests and templates use (the test inputs' release: TeX Live's archives, unchanged, and CTAN's revtex.tds.zip). Files are fetched by scripts/engine-assets.mjs into ../engine_assets/<folder>/ (outside the repository) and checked by size and SHA-256; a file with \"from\" is unpacked from one of its source's \"archives\", each checked by size and SHA-512 first. Never commit the files themselves.",
   "sources": [
     {
       "id": "livemd2tex-engine",
@@ -70,14 +70,17 @@
     {
       "id": "ctan-revtex",
       "folder": "ctan-revtex",
+      "release": "https://github.com/haberwooki/liveMd2Tex/releases/tag/test-inputs-20261015-1",
+      "tag": "test-inputs-20261015-1",
+      "published": "2026-11-03",
       "package": "revtex 4.2f",
       "licence": "LPPL 1.3c (docs/DESIGN.md#testing, P2)",
-      "note": "SHA-256 recorded at first download from the mirror named in each URL (CTAN publishes no checksums).",
+      "note": "CTAN's revtex.tds.zip, unchanged, from this repository's release test-inputs-20261015-1 (published 2026-11-03). It is an immutable release, so the file cannot change: scripts/engine-assets.mjs downloads it anonymously from the address below and checks its size and SHA-256 (first recorded from CTAN on 2026-10-15).",
       "pinned": "2026-10-15",
       "files": [
         {
           "name": "revtex.tds.zip",
-          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/install/macros/latex/contrib/revtex.tds.zip",
+          "url": "https://github.com/haberwooki/liveMd2Tex/releases/download/test-inputs-20261015-1/revtex.tds.zip",
           "size": 6711510,
           "sha256": "594346d851a4a8f73de31235b83cbb105bf7730cc4b8eca23c3c87f159a48400"
         }
@@ -86,26 +89,46 @@
     {
       "id": "ctan-ieeetran",
       "folder": "ctan-ieeetran",
+      "release": "https://github.com/haberwooki/liveMd2Tex/releases/tag/test-inputs-20261015-1",
+      "tag": "test-inputs-20261015-1",
+      "published": "2026-11-03",
       "package": "IEEEtran 1.8b",
       "licence": "LPPL 1.3 (P3)",
-      "note": "SHA-256 recorded at first download from the mirror named in each URL (CTAN publishes no checksums).",
+      "note": "Unpacked from the archives of this repository's release test-inputs-20261015-1 (published 2026-11-03), which holds TeX Live's archives of this package from the pinned snapshot (engine/bundle-pins.json), unchanged. It is an immutable release, so its files cannot change: scripts/engine-assets.mjs downloads each archive anonymously from the address below and checks its size and SHA-512 (the snapshot's tlpdb gives them), unpacks each file and checks its size and SHA-256 (first recorded from CTAN on 2026-10-15).",
       "pinned": "2026-10-15",
+      "archives": [
+        {
+          "name": "ieeetran.tar.xz",
+          "url": "https://github.com/haberwooki/liveMd2Tex/releases/download/test-inputs-20261015-1/ieeetran.tar.xz",
+          "size": 89368,
+          "sha512": "7712cc4a26fe8b018002d3dae381c05220eeb9fb655839188c6d940cb65ff8a489aac67ba411fdd219037465f2ee7f8e2296902cc8f3ecb47e84445dfce87b4f"
+        },
+        {
+          "name": "ieeetran.doc.tar.xz",
+          "url": "https://github.com/haberwooki/liveMd2Tex/releases/download/test-inputs-20261015-1/ieeetran.doc.tar.xz",
+          "size": 487300,
+          "sha512": "ae168285a781243d23057f97319068a4c1b9a58c0d16b23f0c30bb0b96fd5ae51a2298c3dfc7206c9fbc2b138a9713ca345fe53f3e4aec0cf9a9b573380518f4"
+        }
+      ],
       "files": [
         {
           "name": "IEEEtran.cls",
-          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/macros/latex/contrib/IEEEtran/IEEEtran.cls",
+          "from": "ieeetran.tar.xz",
+          "path": "tex/latex/ieeetran/IEEEtran.cls",
           "size": 281957,
           "sha256": "da751920a317ed318b7b5cd7fa585a6cc7d28502d457856382e9be24b10a3bd7"
         },
         {
           "name": "bare_jrnl.tex",
-          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/macros/latex/contrib/IEEEtran/bare_jrnl.tex",
+          "from": "ieeetran.doc.tar.xz",
+          "path": "doc/latex/ieeetran/bare_jrnl.tex",
           "size": 26887,
           "sha256": "7a5e5dfdb7c17d6dcc827d1a985245b873e7e903d9d66882392c47bee4be47ed"
         },
         {
           "name": "bibtex/IEEEtran.bst",
-          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/macros/latex/contrib/IEEEtran/bibtex/IEEEtran.bst",
+          "from": "ieeetran.tar.xz",
+          "path": "bibtex/bst/ieeetran/IEEEtran.bst",
           "size": 57748,
           "sha256": "314f0ece704568faf827011bac498650691b2b5ee06320720830e782416d5a5f"
         }
@@ -114,32 +137,59 @@
     {
       "id": "ctan-elsarticle",
       "folder": "ctan-elsarticle",
+      "release": "https://github.com/haberwooki/liveMd2Tex/releases/tag/test-inputs-20261015-1",
+      "tag": "test-inputs-20261015-1",
+      "published": "2026-11-03",
       "package": "elsarticle 3.5",
       "licence": "LPPL 1.3 or later (P4)",
-      "note": "SHA-256 recorded at first download from the mirror named in each URL (CTAN publishes no checksums).",
+      "note": "Unpacked from the archives of this repository's release test-inputs-20261015-1 (published 2026-11-03), which holds TeX Live's archives of this package from the pinned snapshot (engine/bundle-pins.json), unchanged. It is an immutable release, so its files cannot change: scripts/engine-assets.mjs downloads each archive anonymously from the address below and checks its size and SHA-512 (the snapshot's tlpdb gives them), unpacks each file and checks its size and SHA-256 (first recorded from CTAN on 2026-10-15).",
       "pinned": "2026-10-15",
+      "archives": [
+        {
+          "name": "elsarticle.source.tar.xz",
+          "url": "https://github.com/haberwooki/liveMd2Tex/releases/download/test-inputs-20261015-1/elsarticle.source.tar.xz",
+          "size": 11192,
+          "sha512": "c48fde02f15864b13a0f3d0d5a018d240e617e40f90a49d64fc630793ec8fb59a534c9f309f858db3e9c1f4b5edd0eb7c3f04a8088958a3f294a140fb9dc363d"
+        },
+        {
+          "name": "elsarticle.doc.tar.xz",
+          "url": "https://github.com/haberwooki/liveMd2Tex/releases/download/test-inputs-20261015-1/elsarticle.doc.tar.xz",
+          "size": 1094928,
+          "sha512": "bad0142512e8fb20752fc412ba5d57a0401a6b2c071d9b6dca46e3dfcc37bc0bbbd2b3e92294c16a825f3fa3f42fe040e50641096a45c6c9564abe3364f2ad3f"
+        },
+        {
+          "name": "elsarticle.tar.xz",
+          "url": "https://github.com/haberwooki/liveMd2Tex/releases/download/test-inputs-20261015-1/elsarticle.tar.xz",
+          "size": 18976,
+          "sha512": "5c72d0378ef50fbb651b68f5eabee926f73b9ad7ab2a60edb1c2462c7ddbe74bcaa421314b84ead64988a45da0c4d006f4411bb25913a883d4f91961eea1fe2e"
+        }
+      ],
       "files": [
         {
           "name": "elsarticle.dtx",
-          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/macros/latex/contrib/elsarticle/elsarticle.dtx",
+          "from": "elsarticle.source.tar.xz",
+          "path": "source/latex/elsarticle/elsarticle.dtx",
           "size": 48559,
           "sha256": "5679fe34806e0a08d3747f96e472126f520b6ccd3e92118c14bdd26e9e101e2e"
         },
         {
           "name": "elsarticle.ins",
-          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/macros/latex/contrib/elsarticle/elsarticle.ins",
+          "from": "elsarticle.source.tar.xz",
+          "path": "source/latex/elsarticle/elsarticle.ins",
           "size": 2626,
           "sha256": "fb7a1005446d3217a77dc4496a10837d01f5ea3a177859054bf0daac0d4072c1"
         },
         {
           "name": "elsarticle-template-num.tex",
-          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/macros/latex/contrib/elsarticle/elsarticle-template-num.tex",
+          "from": "elsarticle.doc.tar.xz",
+          "path": "doc/latex/elsarticle/elsarticle-template-num.tex",
           "size": 8424,
           "sha256": "3b02f9b8c80972bda933f281de3c96bb5147969fcebeb23fd8468ff28e33e15d"
         },
         {
           "name": "elsarticle-num.bst",
-          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/macros/latex/contrib/elsarticle/elsarticle-num.bst",
+          "from": "elsarticle.tar.xz",
+          "path": "bibtex/bst/elsarticle/elsarticle-num.bst",
           "size": 29462,
           "sha256": "f04dfa2f78d0198ab8e4055b609dc0b91bdb730743cbbd549d84270f20d11394"
         }
@@ -148,14 +198,26 @@
     {
       "id": "ctan-beamer-example",
       "folder": "ctan-beamer-example",
+      "release": "https://github.com/haberwooki/liveMd2Tex/releases/tag/test-inputs-20261015-1",
+      "tag": "test-inputs-20261015-1",
+      "published": "2026-11-03",
       "package": "beamer 3.78 documentation example",
       "licence": "FDL 1.3 or LPPL 1.3c, the LPPL option taken (P6)",
-      "note": "SHA-256 recorded at first download from the mirror named in each URL (CTAN publishes no checksums).",
+      "note": "Unpacked from the archives of this repository's release test-inputs-20261015-1 (published 2026-11-03), which holds TeX Live's archives of this package from the pinned snapshot (engine/bundle-pins.json), unchanged. It is an immutable release, so its files cannot change: scripts/engine-assets.mjs downloads each archive anonymously from the address below and checks its size and SHA-512 (the snapshot's tlpdb gives them), unpacks each file and checks its size and SHA-256 (first recorded from CTAN on 2026-10-15).",
       "pinned": "2026-10-15",
+      "archives": [
+        {
+          "name": "beamer.doc.tar.xz",
+          "url": "https://github.com/haberwooki/liveMd2Tex/releases/download/test-inputs-20261015-1/beamer.doc.tar.xz",
+          "size": 2495428,
+          "sha512": "f08df016a3c174cf927b0feb87aa8781330ad66d1d72ee0cca69ff7e34b14e522f4a9aec3cb7ccdbcf8c9e2904071d782924f9da26f8c2b1b2642691e69d6daf"
+        }
+      ],
       "files": [
         {
           "name": "beamerexample-conference-talk.tex",
-          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/macros/latex/contrib/beamer/doc/examples/a-conference-talk/beamerexample-conference-talk.tex",
+          "from": "beamer.doc.tar.xz",
+          "path": "doc/latex/beamer/examples/a-conference-talk/beamerexample-conference-talk.tex",
           "size": 20741,
           "sha256": "858a5607467a926ce619965d9db966fd640316f00a6b588562972fedc0899fa2"
         }
@@ -164,44 +226,67 @@
     {
       "id": "ctan-ucbthesis",
       "folder": "ctan-ucbthesis",
+      "release": "https://github.com/haberwooki/liveMd2Tex/releases/tag/test-inputs-20261015-1",
+      "tag": "test-inputs-20261015-1",
+      "published": "2026-11-03",
       "package": "ucbthesis 3.6",
       "licence": "LPPL 1.3 or later (P7)",
-      "note": "SHA-256 recorded at first download from the mirror named in each URL (CTAN publishes no checksums).",
+      "note": "Unpacked from the archives of this repository's release test-inputs-20261015-1 (published 2026-11-03), which holds TeX Live's archives of this package from the pinned snapshot (engine/bundle-pins.json), unchanged. It is an immutable release, so its files cannot change: scripts/engine-assets.mjs downloads each archive anonymously from the address below and checks its size and SHA-512 (the snapshot's tlpdb gives them), unpacks each file and checks its size and SHA-256 (first recorded from CTAN on 2026-10-15).",
       "pinned": "2026-10-15",
+      "archives": [
+        {
+          "name": "ucbthesis.tar.xz",
+          "url": "https://github.com/haberwooki/liveMd2Tex/releases/download/test-inputs-20261015-1/ucbthesis.tar.xz",
+          "size": 7364,
+          "sha512": "b1a4258afddfb1283c3fa4f8e126dc63f1ac948ebee2d2fab3738e2f5228b0bda85e71ab3cc3ccfab0b8ae66b84547c5070e111e8c1516b54bcef721f935e63c"
+        },
+        {
+          "name": "ucbthesis.doc.tar.xz",
+          "url": "https://github.com/haberwooki/liveMd2Tex/releases/download/test-inputs-20261015-1/ucbthesis.doc.tar.xz",
+          "size": 169228,
+          "sha512": "aa443fe9530f08dde9b0531e075052868524c7ff6052e8e93e384ee3c01a354fd1752664b602ff6c98ab5250d05eca910773236d55270c09a567c9b238fbcd7a"
+        }
+      ],
       "files": [
         {
           "name": "ucbthesis.cls",
-          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/macros/latex/contrib/ucbthesis/ucbthesis.cls",
+          "from": "ucbthesis.tar.xz",
+          "path": "tex/latex/ucbthesis/ucbthesis.cls",
           "size": 24518,
           "sha256": "e3a3e283637215edc99978f7bf925344f56ecb6d1f7555aed369b699813340c3"
         },
         {
           "name": "thesis.tex",
-          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/macros/latex/contrib/ucbthesis/thesis.tex",
+          "from": "ucbthesis.doc.tar.xz",
+          "path": "doc/latex/ucbthesis/example/thesis.tex",
           "size": 3663,
           "sha256": "7197593bccc271aa9a816b7608f181c480c6ec62328cd0d269b3e0941bcdd574"
         },
         {
           "name": "abstract.tex",
-          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/macros/latex/contrib/ucbthesis/abstract.tex",
+          "from": "ucbthesis.doc.tar.xz",
+          "path": "doc/latex/ucbthesis/example/abstract.tex",
           "size": 382,
           "sha256": "17499dd240b070fd0be854a16fbd752dff1d43c24f33859fafdf2fc9d01831bf"
         },
         {
           "name": "chap1.tex",
-          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/macros/latex/contrib/ucbthesis/chap1.tex",
+          "from": "ucbthesis.doc.tar.xz",
+          "path": "doc/latex/ucbthesis/example/chap1.tex",
           "size": 7077,
           "sha256": "a4c120bfe083b1918c68d52642a75cf66709e7294dea60dfac5c93f18fb386b1"
         },
         {
           "name": "chap2.tex",
-          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/macros/latex/contrib/ucbthesis/chap2.tex",
+          "from": "ucbthesis.doc.tar.xz",
+          "path": "doc/latex/ucbthesis/example/chap2.tex",
           "size": 2401,
           "sha256": "fd88932b079eba9200216c16da9af0279c539f1eb4f2efd29a8d509e4e7062e6"
         },
         {
           "name": "references.bib",
-          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/macros/latex/contrib/ucbthesis/references.bib",
+          "from": "ucbthesis.doc.tar.xz",
+          "path": "doc/latex/ucbthesis/example/references.bib",
           "size": 1983,
           "sha256": "41ef4c0c151cdccd42808842f127ec72f8bb512b0af0163464d43dea0708beec"
         }
@@ -210,94 +295,109 @@
     {
       "id": "ctan-acmart",
       "folder": "ctan-acmart",
+      "release": "https://github.com/haberwooki/liveMd2Tex/releases/tag/test-inputs-20261015-1",
+      "tag": "test-inputs-20261015-1",
+      "published": "2026-11-03",
       "package": "acmart 2.20",
       "licence": "LPPL 1.3 or later (P12)",
-      "note": "SHA-256 recorded at first download from CTAN (the mirror mirrors.ibiblio.org) on 2026-10-15: acmart 2.20 of 2026/08/16. CTAN had replaced these files with acmart 2.21 (2026/11/01) by 2026-11-03, so they now come from upstream acmart's commit 10d6d082e522c4034022f38437019ba75589456b on GitHub (tag v2.20 of https://github.com/borisveytsman/acmart, where acmart is developed), whose bytes are the pinned ones (checked 2026-11-03). A commit's files do not change.",
+      "note": "Unpacked from the archives of this repository's release test-inputs-20261015-1 (published 2026-11-03), which holds TeX Live's archives of this package from the pinned snapshot (engine/bundle-pins.json), unchanged. It is an immutable release, so its files cannot change: scripts/engine-assets.mjs downloads each archive anonymously from the address below and checks its size and SHA-512 (the snapshot's tlpdb gives them), unpacks each file and checks its size and SHA-256 (first recorded from CTAN on 2026-10-15).",
       "pinned": "2026-10-15",
+      "archives": [
+        {
+          "name": "acmart.source.tar.xz",
+          "url": "https://github.com/haberwooki/liveMd2Tex/releases/download/test-inputs-20261015-1/acmart.source.tar.xz",
+          "size": 65364,
+          "sha512": "ac0fb14c3344d110d4a59afb14cb2a04019f7a9161219eb613f5520dee401e8578313fc8c25417c65733eee15ba0800f76ed006fdcde78fa61b6c2070f25ff74"
+        },
+        {
+          "name": "acmart.tar.xz",
+          "url": "https://github.com/haberwooki/liveMd2Tex/releases/download/test-inputs-20261015-1/acmart.tar.xz",
+          "size": 44140,
+          "sha512": "132406c6ce0fd59456cb8790d751f9df7f40eb6a2c519429a6591ee38406d31867d2c94f8775a499f57d85b58ff49fb6ccd9eafc0933a91984ea779403c1161f"
+        }
+      ],
       "files": [
         {
           "name": "acmart.dtx",
-          "url": "https://raw.githubusercontent.com/borisveytsman/acmart/10d6d082e522c4034022f38437019ba75589456b/acmart.dtx",
+          "from": "acmart.source.tar.xz",
+          "path": "source/latex/acmart/acmart.dtx",
           "size": 306814,
           "sha256": "e29efd327f5c759f3d1f2e99dc8588c6a05b734c142f89c3e348161b893e44ff"
         },
         {
           "name": "acmart.ins",
-          "url": "https://raw.githubusercontent.com/borisveytsman/acmart/10d6d082e522c4034022f38437019ba75589456b/acmart.ins",
+          "from": "acmart.source.tar.xz",
+          "path": "source/latex/acmart/acmart.ins",
           "size": 1016,
           "sha256": "fa7daaa9375775ce699f33f909667bdb83c0408fd8d67606926df86c346c4044"
         },
         {
           "name": "ACM-Reference-Format.bst",
-          "url": "https://raw.githubusercontent.com/borisveytsman/acmart/10d6d082e522c4034022f38437019ba75589456b/ACM-Reference-Format.bst",
+          "from": "acmart.tar.xz",
+          "path": "bibtex/bst/acmart/ACM-Reference-Format.bst",
           "size": 94292,
           "sha256": "4342d27456645567ef1a027f6474e894715bc31d468f040142fa54540440ad04"
-        },
-        {
-          "name": "samples/samples.dtx",
-          "url": "https://raw.githubusercontent.com/borisveytsman/acmart/10d6d082e522c4034022f38437019ba75589456b/samples/samples.dtx",
-          "size": 40694,
-          "sha256": "0d707be22c0655631e084c5392dbfe7b9c1e885378dc8a87d83c36c9ab0bf2cd"
-        },
-        {
-          "name": "samples/samples.ins",
-          "url": "https://raw.githubusercontent.com/borisveytsman/acmart/10d6d082e522c4034022f38437019ba75589456b/samples/samples.ins",
-          "size": 1381,
-          "sha256": "80b7bc67c0a9ce7121074b1f9d64ecbc0456e3d49520833edbb0268b3d7b9c33"
-        },
-        {
-          "name": "samples/sample-base.bib",
-          "url": "https://raw.githubusercontent.com/borisveytsman/acmart/10d6d082e522c4034022f38437019ba75589456b/samples/sample-base.bib",
-          "size": 49366,
-          "sha256": "528fa8c133f02afd415288792dc9febfa2740ec716656cfff105ae76603945ee"
-        },
-        {
-          "name": "samples/sampleteaser.pdf",
-          "url": "https://raw.githubusercontent.com/borisveytsman/acmart/10d6d082e522c4034022f38437019ba75589456b/samples/sampleteaser.pdf",
-          "size": 439021,
-          "sha256": "46154916fe8ecc9c3fae87705bfdff78e1d537fe5c4bfd74227cc338de6f2810"
         }
       ]
     },
     {
       "id": "ctan-llncs",
       "folder": "ctan-llncs",
+      "release": "https://github.com/haberwooki/liveMd2Tex/releases/tag/test-inputs-20261015-1",
+      "tag": "test-inputs-20261015-1",
+      "published": "2026-11-03",
       "package": "llncs 2.26",
       "licence": "CC BY 4.0 (P13)",
-      "note": "SHA-256 recorded at first download from the mirror named in each URL (CTAN publishes no checksums).",
+      "note": "Unpacked from the archives of this repository's release test-inputs-20261015-1 (published 2026-11-03), which holds TeX Live's archives of this package from the pinned snapshot (engine/bundle-pins.json), unchanged. It is an immutable release, so its files cannot change: scripts/engine-assets.mjs downloads each archive anonymously from the address below and checks its size and SHA-512 (the snapshot's tlpdb gives them), unpacks each file and checks its size and SHA-256 (first recorded from CTAN on 2026-10-15).",
       "pinned": "2026-10-15",
+      "archives": [
+        {
+          "name": "llncs.tar.xz",
+          "url": "https://github.com/haberwooki/liveMd2Tex/releases/download/test-inputs-20261015-1/llncs.tar.xz",
+          "size": 16728,
+          "sha512": "7f4d74dc89e5bcacdb7ff15dc9df1b029f3f9c518f1820c844bb797c78cd9b6e549e56711f101257a2a0293d826e50532872da50a000906349ff062fe3a3b645"
+        }
+      ],
       "files": [
         {
           "name": "llncs.cls",
-          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/macros/latex/contrib/llncs/llncs.cls",
+          "from": "llncs.tar.xz",
+          "path": "tex/latex/llncs/llncs.cls",
           "size": 43405,
           "sha256": "e9894c92191fcd195eef3120a36d2f75b52030eadcbdc3ce1463179746526e6a"
         },
         {
           "name": "splncs04.bst",
-          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/macros/latex/contrib/llncs/splncs04.bst",
+          "from": "llncs.tar.xz",
+          "path": "bibtex/bst/llncs/splncs04.bst",
           "size": 32146,
           "sha256": "f36c3a17e5304a692706359aafa9de709395a085e579eb47c027095aeaa35174"
-        },
-        {
-          "name": "llncsdoc.tex",
-          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/macros/latex/contrib/llncs/llncsdoc.tex",
-          "size": 17763,
-          "sha256": "2b77b747d13460a375e4aab7f94ccbc4c9ec74851b073d5d17550426662124f8"
         }
       ]
     },
     {
       "id": "ctan-pgf-manual",
       "folder": "ctan-pgf-manual",
+      "release": "https://github.com/haberwooki/liveMd2Tex/releases/tag/test-inputs-20261015-1",
+      "tag": "test-inputs-20261015-1",
+      "published": "2026-11-03",
       "package": "pgf 3.1.12 manual source (tutorial chapter)",
       "licence": "FDL 1.2 or LPPL 1.3c, the LPPL option taken (P8)",
-      "note": "SHA-256 recorded at first download from the mirror named in each URL (CTAN publishes no checksums).",
+      "note": "Unpacked from the archives of this repository's release test-inputs-20261015-1 (published 2026-11-03), which holds TeX Live's archives of this package from the pinned snapshot (engine/bundle-pins.json), unchanged. It is an immutable release, so its files cannot change: scripts/engine-assets.mjs downloads each archive anonymously from the address below and checks its size and SHA-512 (the snapshot's tlpdb gives them), unpacks each file and checks its size and SHA-256 (first recorded from CTAN on 2026-10-15).",
       "pinned": "2026-10-15",
+      "archives": [
+        {
+          "name": "pgf.doc.tar.xz",
+          "url": "https://github.com/haberwooki/liveMd2Tex/releases/download/test-inputs-20261015-1/pgf.doc.tar.xz",
+          "size": 10327132,
+          "sha512": "5fac17dce996635271c4c4aa9204a7915d9f370d4257b6ed3cf9a6e6b6ca9c9a840c72728063a35b7151405c96b0c1b0a2309ed34665199a29d7ddc43e0becb4"
+        }
+      ],
       "files": [
         {
           "name": "pgfmanual-en-tutorial.tex",
-          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/graphics/pgf/base/doc/generic/pgf/pgfmanual-en-tutorial.tex",
+          "from": "pgf.doc.tar.xz",
+          "path": "doc/generic/pgf/pgfmanual-en-tutorial.tex",
           "size": 59355,
           "sha256": "28bced671b41712a544af9e2c613718cfabc4557432b232311ed9c66ff02f9c5"
         }
@@ -306,86 +406,116 @@
     {
       "id": "ctan-dejavu",
       "folder": "ctan-dejavu",
+      "release": "https://github.com/haberwooki/liveMd2Tex/releases/tag/test-inputs-20261015-1",
+      "tag": "test-inputs-20261015-1",
+      "published": "2026-11-03",
       "package": "DejaVu 2.34 (TrueType)",
       "licence": "Bitstream Vera licence with DejaVu changes; LPPL 1.3 for the TeX support (CTAN)",
-      "note": "SHA-256 recorded at first download from the mirror named in each URL (CTAN publishes no checksums).",
+      "note": "Unpacked from the archives of this repository's release test-inputs-20261015-1 (published 2026-11-03), which holds TeX Live's archives of this package from the pinned snapshot (engine/bundle-pins.json), unchanged. It is an immutable release, so its files cannot change: scripts/engine-assets.mjs downloads each archive anonymously from the address below and checks its size and SHA-512 (the snapshot's tlpdb gives them), unpacks each file and checks its size and SHA-256 (first recorded from CTAN on 2026-10-15).",
       "pinned": "2026-10-15",
+      "archives": [
+        {
+          "name": "dejavu.tar.xz",
+          "url": "https://github.com/haberwooki/liveMd2Tex/releases/download/test-inputs-20261015-1/dejavu.tar.xz",
+          "size": 10725216,
+          "sha512": "2721b3ce67728149167d0e4bd40093492f258ec7b4c87ae190ade995fab50bde70c86615798f8aeb2329766be66985f8b08f0800d1939d82ae6bf050c680dc41"
+        },
+        {
+          "name": "dejavu.doc.tar.xz",
+          "url": "https://github.com/haberwooki/liveMd2Tex/releases/download/test-inputs-20261015-1/dejavu.doc.tar.xz",
+          "size": 1085072,
+          "sha512": "e692d6e940d36aa012eccf5a0525176d45c8a5158b51c76b60d5e7a5497a42d237c94194cf89ea4db33d0d551a4484a117a4663d0041d4001868fef84f94a95a"
+        }
+      ],
       "files": [
         {
           "name": "truetype/DejaVuSans.ttf",
-          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/fonts/dejavu/truetype/DejaVuSans.ttf",
+          "from": "dejavu.tar.xz",
+          "path": "fonts/truetype/public/dejavu/DejaVuSans.ttf",
           "size": 741536,
           "sha256": "08ca98e69d9d8fa1065584b4f9ab7d49b6205abea6572b90e171b254845bb990"
         },
         {
           "name": "truetype/DejaVuSans-Bold.ttf",
-          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/fonts/dejavu/truetype/DejaVuSans-Bold.ttf",
+          "from": "dejavu.tar.xz",
+          "path": "fonts/truetype/public/dejavu/DejaVuSans-Bold.ttf",
           "size": 693876,
           "sha256": "7e69e81478e233b81c3ad730f5b10abe76c792d48ec6c3e7cc3b3596a37bb3b1"
         },
         {
           "name": "truetype/DejaVuSans-Oblique.ttf",
-          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/fonts/dejavu/truetype/DejaVuSans-Oblique.ttf",
+          "from": "dejavu.tar.xz",
+          "path": "fonts/truetype/public/dejavu/DejaVuSans-Oblique.ttf",
           "size": 632416,
           "sha256": "0603149f330f53c663618a2fcb639493989214a644744d57810c5164e370076b"
         },
         {
           "name": "truetype/DejaVuSans-BoldOblique.ttf",
-          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/fonts/dejavu/truetype/DejaVuSans-BoldOblique.ttf",
+          "from": "dejavu.tar.xz",
+          "path": "fonts/truetype/public/dejavu/DejaVuSans-BoldOblique.ttf",
           "size": 632168,
           "sha256": "440d2978d12b3bc206acdeed547e4d7164426d44f8a4268ce2ebce4e17c97d28"
         },
         {
           "name": "truetype/DejaVuSerif.ttf",
-          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/fonts/dejavu/truetype/DejaVuSerif.ttf",
+          "from": "dejavu.tar.xz",
+          "path": "fonts/truetype/public/dejavu/DejaVuSerif.ttf",
           "size": 367260,
           "sha256": "8deba7c78917fb06eafa38f73434b8f50f2b733cf4374bbf54be814699115dc4"
         },
         {
           "name": "truetype/DejaVuSerif-Bold.ttf",
-          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/fonts/dejavu/truetype/DejaVuSerif-Bold.ttf",
+          "from": "dejavu.tar.xz",
+          "path": "fonts/truetype/public/dejavu/DejaVuSerif-Bold.ttf",
           "size": 345364,
           "sha256": "8ffc6ac18d52250940d4cafddb415ed5ed63925b0f68c82e71bd6956eb2b0053"
         },
         {
           "name": "truetype/DejaVuSerif-Italic.ttf",
-          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/fonts/dejavu/truetype/DejaVuSerif-Italic.ttf",
+          "from": "dejavu.tar.xz",
+          "path": "fonts/truetype/public/dejavu/DejaVuSerif-Italic.ttf",
           "size": 343388,
           "sha256": "a17c73ae6b29b2d776da7d6b78e48be5ca24c109e5046ff5767e0d377937a49f"
         },
         {
           "name": "truetype/DejaVuSerif-BoldItalic.ttf",
-          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/fonts/dejavu/truetype/DejaVuSerif-BoldItalic.ttf",
+          "from": "dejavu.tar.xz",
+          "path": "fonts/truetype/public/dejavu/DejaVuSerif-BoldItalic.ttf",
           "size": 336884,
           "sha256": "711b63f25193e51d0b54183d0ef6c200eca5a5cf234531df5dd504819c98377c"
         },
         {
           "name": "truetype/DejaVuSansMono.ttf",
-          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/fonts/dejavu/truetype/DejaVuSansMono.ttf",
+          "from": "dejavu.tar.xz",
+          "path": "fonts/truetype/public/dejavu/DejaVuSansMono.ttf",
           "size": 335068,
           "sha256": "67fa085e9e72a7565ac36cb6a77bdac701e18c7a46d0c15b9b08714a1e1a2042"
         },
         {
           "name": "truetype/DejaVuSansMono-Bold.ttf",
-          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/fonts/dejavu/truetype/DejaVuSansMono-Bold.ttf",
+          "from": "dejavu.tar.xz",
+          "path": "fonts/truetype/public/dejavu/DejaVuSansMono-Bold.ttf",
           "size": 318392,
           "sha256": "b908e119ab3a02a34f5ebeb479a1dcbf5682e90cdbdb5c13d68bb55b4d423326"
         },
         {
           "name": "truetype/DejaVuSansMono-Oblique.ttf",
-          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/fonts/dejavu/truetype/DejaVuSansMono-Oblique.ttf",
+          "from": "dejavu.tar.xz",
+          "path": "fonts/truetype/public/dejavu/DejaVuSansMono-Oblique.ttf",
           "size": 245948,
           "sha256": "6b93cf18dd3224c24a1febabf62336bd3dabb46ee66fb758f7ea191a7901de40"
         },
         {
           "name": "truetype/DejaVuSansMono-BoldOblique.ttf",
-          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/fonts/dejavu/truetype/DejaVuSansMono-BoldOblique.ttf",
+          "from": "dejavu.tar.xz",
+          "path": "fonts/truetype/public/dejavu/DejaVuSansMono-BoldOblique.ttf",
           "size": 239876,
           "sha256": "4faba01515b6b40e145b7de16a7e9d3f867e74e5622bb2458b027ac685af1273"
         },
         {
           "name": "doc/font-doc/LICENSE",
-          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/fonts/dejavu/doc/font-doc/LICENSE",
+          "from": "dejavu.doc.tar.xz",
+          "path": "doc/fonts/dejavu/LICENSE",
           "size": 4816,
           "sha256": "d75938dec098f06f0ac3c00853065d94f020be1c3c62ef1dc2975ba15b4d9b0e"
         }
@@ -394,20 +524,33 @@
     {
       "id": "ctan-tensor",
       "folder": "ctan-tensor",
+      "release": "https://github.com/haberwooki/liveMd2Tex/releases/tag/test-inputs-20261015-1",
+      "tag": "test-inputs-20261015-1",
+      "published": "2026-11-03",
       "package": "tensor 2.2",
       "licence": "LPPL 1.3c or later (M6 .dtx/.ins test; 2023/07/18 v2.2)",
-      "note": "SHA-256 recorded at first download from the mirror named in each URL (CTAN publishes no checksums).",
+      "note": "Unpacked from the archives of this repository's release test-inputs-20261015-1 (published 2026-11-03), which holds TeX Live's archives of this package from the pinned snapshot (engine/bundle-pins.json), unchanged. It is an immutable release, so its files cannot change: scripts/engine-assets.mjs downloads each archive anonymously from the address below and checks its size and SHA-512 (the snapshot's tlpdb gives them), unpacks each file and checks its size and SHA-256 (first recorded from CTAN on 2026-10-16).",
       "pinned": "2026-10-16",
+      "archives": [
+        {
+          "name": "tensor.source.tar.xz",
+          "url": "https://github.com/haberwooki/liveMd2Tex/releases/download/test-inputs-20261015-1/tensor.source.tar.xz",
+          "size": 8980,
+          "sha512": "9371431c1542966768f436c1bdcc5aa214f5f561d605ec8ff59934e578b4ae63cde7b7fb876018c2c8fa002306a523da6392c81e347454b511e07ba04d9b1b6a"
+        }
+      ],
       "files": [
         {
           "name": "tensor.dtx",
-          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/macros/latex/contrib/tensor/tensor.dtx",
+          "from": "tensor.source.tar.xz",
+          "path": "source/latex/tensor/tensor.dtx",
           "size": 26581,
           "sha256": "b64ed87442ca34a1252f8afefa4934506b046ae3f42174a489660fb417e5b722"
         },
         {
           "name": "tensor.ins",
-          "url": "https://mirrors.ibiblio.org/pub/mirrors/CTAN/macros/latex/contrib/tensor/tensor.ins",
+          "from": "tensor.source.tar.xz",
+          "path": "source/latex/tensor/tensor.ins",
           "size": 2011,
           "sha256": "98dc0c9f73a73c6351e202b515e1abbfabd0ece220ee5e1bb1111193146c726a"
         }

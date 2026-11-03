@@ -54,8 +54,8 @@ to WebAssembly), the optional native packages of `@vscode/vsce` (signing, keyrin
 (canvas) are left out, and no package install script runs. The integration tests use the installed VS Code
 with a throwaway profile under the system temp folder (`--user-data-dir`, `--extensions-dir`), deleted after
 the run; `.vscode-test.mjs` refuses to download a VS Code build. The engine work adds the pinned engine files
-in `../engine_assets/` (about 412.2 MB: our engine, 27.0 MB, the CTAN set, 13.6 MB, and the two data packages the
-engine tests need, 131.7 MB and 239.9 MB; "The TeX engine") and small result files in `../s1_runs/`.
+in `../engine_assets/` (about 411.6 MB kept: our engine, 27.0 MB, the CTAN set, 13.0 MB, and the two data packages
+the engine tests need, 131.7 MB and 239.9 MB; "The TeX engine") and small result files in `../s1_runs/`.
 
 ## The rules the checks enforce
 
@@ -122,13 +122,14 @@ own driver in `src/engine-host/engine/` runs it. Its files are not in the reposi
 one with its address in the engine release, its size and SHA-256 (`livemd2tex-engine`, release `engine-6a30018-4`),
 beside a small CTAN set (corpus samples, the publisher classes, DejaVu). The release was published on 2026-11-02
 (the pin's `published`) as an immutable release, so its files cannot change; `npm run engine:assets` downloads them
-anonymously and checks each one. The CTAN set comes from a CTAN mirror (`scripts/pin-ctan.mjs`), which serves only
-each package's newest files, so a CTAN update fails the check until the set is pinned again. acmart's files come
-from its upstream commit on GitHub instead (tag v2.20), whose bytes are the pinned ones: CTAN had replaced them
-with acmart 2.21 by 2026-11-03.
+anonymously and checks each one. The CTAN set comes from a release of this repository too,
+`test-inputs-20261015-1`, published on 2026-11-03 as an immutable release, and not from a CTAN mirror, which
+serves only each package's newest files. On a first fetch or a CI cache miss, `npm run engine:assets` downloads
+15 archives and CTAN's zip (33.4 MB downloaded) and checks each one. It keeps only the set's 36 files: 35 unpacked
+from the archives, and the zip (13.0 MB kept).
 
-The lasting home of the CTAN set is a release of this repository, `test-inputs-<snapshot date>-<n>`, made as a
-draft by `.github/workflows/test-inputs.yml` (by hand, on `main`, with the candidate number `n`):
+That release, `test-inputs-<snapshot date>-<n>`, is made as a draft by `.github/workflows/test-inputs.yml` (by
+hand, on `main`, with the candidate number `n`):
 - **What it holds.** Whole works, unchanged, since the LPPL counts the distribution of part of a work as a
   modification (clause 2):
   - every archive the pinned TeX Live snapshot has for the nine packages the set's files come from (ieeetran,
@@ -151,9 +152,9 @@ draft by `.github/workflows/test-inputs.yml` (by hand, on `main`, with the candi
   DejaVu's whole terms.
 - **Making the release**, step by step:
   1. Run it: Actions, test-inputs, Run workflow, on `main`, with the candidate number (1 for the first).
-  2. Read the run: every step passed; the check names 21 archives, the zip and the tlpdb, and 40 test files
-     unpacked and checked; the draft holds its 24 files, which the job checked by name and size; the notes name the
-     run's commit.
+  2. Read the run: every step passed; the check names 21 archives, the zip and the tlpdb, and 35 test files
+     unpacked from the archives and checked; the draft holds its 24 files, which the job checked by name and size;
+     the notes name the run's commit.
   3. When the job fails, its log says where. A failure before the draft step leaves no draft. If it fails after
      making the draft, or an upload fails partway (`gh release create` then leaves a partial draft), delete that
      draft on the Releases page. Then re-run the failed job, or start a new run with the next candidate number. A
@@ -167,13 +168,19 @@ draft by `.github/workflows/test-inputs.yml` (by hand, on `main`, with the candi
 - **The pins, once the owner has published it.** `node scripts/pin-test-inputs.mjs --release DIR --published
   YYYY-MM-DD` (DIR: the release's files) checks the same things again. It then points each `ctan-*` source at the
   release: its `archives` (each with its address, size and SHA-512) and each file's `from` (an archive) and `path`
-  (inside it). The sizes and SHA-256 never change there.
+  (inside it). The sizes and SHA-256 never change there. A new file for the set gets its pin from its archive in
+  the same way, after its entry in `scripts/lib/test-inputs.mjs`. Today all ten sources are pinned to
+  `test-inputs-20261015-1`: 15 archives and CTAN's zip. From them come 36 files kept: 35 unpacked from the
+  archives, and the zip. acmart's four `samples/*` files and llncs's `llncsdoc.tex`, which no test read, were
+  dropped then, from the pins and from `scripts/lib/test-inputs.mjs` together.
 
   `scripts/engine-assets.mjs` then downloads each archive a missing file needs and checks it. It unpacks the file
   with our own xz and tar readers into the same folder as before, checks it, and deletes the archive. So the tests
   and the CI cache see the same files.
 - **Tests:** `test/unit/testInputs.test.ts`, on archives made in the test, with no network. It covers:
   - every pinned file's archive and path;
+  - the pins' shape: every `ctan-*` source on the one release, each file from one of its source's archives (CTAN's
+    zip alone fetched by itself), every address under that release's downloads, and none on a CTAN mirror;
   - each package whole;
   - the tag;
   - the fetch of unpacked files: once per archive, nothing when present, and a failure for an archive of other
@@ -184,7 +191,7 @@ draft by `.github/workflows/test-inputs.yml` (by hand, on `main`, with the candi
   `test/unit/workflows.test.ts` checks the job.
 
 ```sh
-npm run engine:assets   # fetch and check every pinned file into ../engine_assets/ (about 412.2 MB; never inside the repo)
+npm run engine:assets   # fetch and check every pinned file into ../engine_assets/ (about 411.6 MB; never inside the repo)
 npm run test:engine     # the engine tests: fixtures, the public corpus P1-P8, the engine-host design, any private tests
 ```
 

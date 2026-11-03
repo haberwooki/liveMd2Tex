@@ -71,6 +71,39 @@ describe('the test inputs: one release of whole, unchanged works, and the files 
     assert.deepEqual(ctan.find((s) => s.id === lib.REVTEX.source)?.files.map((f) => f.name), ['revtex.tds.zip']);
   });
 
+  it("engine/pins.json takes every CTAN test file from the test inputs' release, and none from a mirror", () => {
+    const text = readFileSync(path.join(root, 'engine', 'pins.json'), 'utf8');
+    const ctan = (JSON.parse(text) as { sources: Source[] }).sources.filter((s) => s.id.startsWith('ctan-'));
+    assert.equal(ctan.length, 10);
+    const tags = [...new Set(ctan.map((s) => s.tag))];
+    assert.equal(tags.length, 1, `one release for all: ${tags.join(', ')}`);
+    const tag = String(tags[0]);
+    assert.ok(lib.TAG.test(tag), tag);
+    const base = `https://github.com/haberwooki/liveMd2Tex/releases/download/${tag}/`;
+    for (const s of ctan) {
+      assert.equal(s.release, `https://github.com/haberwooki/liveMd2Tex/releases/tag/${tag}`, s.id);
+      assert.match(String(s.published), /^\d{4}-\d{2}-\d{2}$/, `${s.id}: published`);
+      for (const a of s.archives ?? []) {
+        assert.equal(a.url, `${base}${a.name}`, `${s.id}: ${a.name}`);
+        assert.match(a.sha512, /^[0-9a-f]{128}$/, `${s.id}: ${a.name}`);
+        assert.ok(a.size > 0, `${s.id}: ${a.name}`);
+        assert.ok(s.files.some((f) => f.from === a.name), `${s.id}: no file comes from ${a.name}`);
+      }
+      for (const f of s.files) {
+        if (f.from) {
+          assert.ok((s.archives ?? []).some((a) => a.name === f.from), `${s.id}: ${f.name} comes from ${f.from}, which the source does not list`);
+          assert.equal(f.url, undefined, `${s.id}: ${f.name} has an address of its own`);
+          assert.equal(f.path, lib.TEST_INPUTS[s.id].files[f.name][1], `${s.id}: ${f.name}`);
+        } else {
+          assert.equal(f.url, `${base}${f.name}`, `${s.id}: ${f.name}`);
+        }
+      }
+    }
+    // Only CTAN's zip is fetched alone; every other file is unpacked from an archive.
+    assert.deepEqual(ctan.flatMap((s) => s.files.filter((f) => !f.from).map((f) => `${s.id}/${f.name}`)), ['ctan-revtex/revtex.tds.zip']);
+    assert.doesNotMatch(text, /mirrors\.ibiblio\.org|raw\.githubusercontent\.com|\/CTAN\//);
+  });
+
   it('tags the release test-inputs-<snapshot date>-<n>', () => {
     assert.equal(lib.testInputsTag('2026/10/15', 1), 'test-inputs-20261015-1');
     assert.equal(lib.testInputsTag('2026/10/15', '12'), 'test-inputs-20261015-12');
