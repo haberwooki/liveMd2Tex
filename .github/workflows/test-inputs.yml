@@ -1,0 +1,97 @@
+# Makes the test inputs' release as a draft (docs/DEVELOPING.md, "The TeX engine"): the CTAN packages the tests use,
+# as whole works and unchanged, so every test input comes from an address whose bytes never change. It holds each
+# package's archives from the pinned TeX Live snapshot (engine/bundle-pins.json), CTAN's revtex.tds.zip, the
+# snapshot's texlive.tlpdb.xz and test-inputs.json, the list of every file with its hashes
+# (scripts/lib/test-inputs.mjs says what and why).
+#
+# Run it by hand (Actions, test-inputs, Run workflow) on main, with the candidate number n of the tag
+# test-inputs-<snapshot date>-<n>. One job, with write access to contents for its draft. scripts/test-inputs.mjs
+# writes the curl configs, curl fetches (the host and options of bundle.yml's fetch), and the tool checks every file
+# before the draft exists: the tlpdb against its pin, each archive against the tlpdb's SHA-512, the zip against its
+# pin, and each pinned test file, unpacked, against its pin. The tag must be free; the draft must then hold every
+# file by name and size. The owner publishes it once it is checked; nothing here publishes, tags or pushes, and the
+# checkout keeps no token. About 43 MB of downloads and 5 minutes.
+
+name: test-inputs
+
+on:
+  workflow_dispatch:
+    inputs:
+      candidate:
+        description: The candidate number n of the tag test-inputs-<snapshot date>-<n>
+        type: string
+        default: '1'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: test-inputs
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    env:
+      CANDIDATE: ${{ inputs.candidate }}
+    steps:
+      - name: The release runs on main, with a candidate number
+        run: |
+          case "$CANDIDATE" in ''|*[!0-9]*|0*) echo "candidate must be a number from 1" >&2; exit 1 ;; esac
+          [ "$GITHUB_REF" = refs/heads/main ] || { echo "a release runs on main only, not $GITHUB_REF" >&2; exit 1; }
+      # actions/checkout v4.4.0 and actions/setup-node v4.4.0, pinned by commit, as in engine.yml and bundle.yml.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: The pinned tlpdb, the archives and the zip, downloaded with curl and checked
+        run: |
+          set -euo pipefail
+          d="$RUNNER_TEMP/test-inputs"
+          node scripts/test-inputs.mjs meta --out "$d"
+          curl --fail --location --retry 3 --create-dirs -K "$d/meta.curl"
+          node scripts/test-inputs.mjs list --out "$d"
+          curl --fail --location --retry 3 --create-dirs --parallel --parallel-max 4 -K "$d/files.curl"
+          node scripts/test-inputs.mjs check --out "$d" --candidate "$CANDIDATE" --commit "$GITHUB_SHA" --repository "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY"
+          (cd "$d/assets" && sha256sum -- *) > "$d/assets.sha256"
+      - name: The draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          d="$RUNNER_TEMP/test-inputs"
+          tag="$(cat "$d/tag")"
+          # The tag must be free: GitHub ignores --target when the tag exists, and a release of that tag, draft or
+          # not, would be another candidate's. git ls-remote gives 0 for a tag that exists and 2 for none; any other
+          # status is an error, never "free".
+          s=0
+          git ls-remote --exit-code --tags "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" "refs/tags/$tag" >/dev/null || s=$?
+          case "$s" in
+            0) echo "the tag $tag exists already" >&2; exit 1 ;;
+            2) ;;
+            *) echo "git ls-remote failed (status $s), so the tag $tag is not known to be free" >&2; exit 1 ;;
+          esac
+          taken="$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases" --jq ".[] | select(.tag_name == \"$tag\") | .id")"
+          [ -z "$taken" ] || { echo "a release of $tag exists already" >&2; exit 1; }
+          assets=("$d"/assets/*)
+          gh release create "$tag" --repo "$GITHUB_REPOSITORY" --draft --target "$GITHUB_SHA" --title "$tag" --notes-file "$d/notes.md" "${assets[@]}"
+          want="$(cd "$d/assets" && for f in *; do printf '%s %s\n' "$f" "$(stat -c %s "$f")"; done | sort)"
+          got="$(gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[] | "\(.name) \(.size)"' | sort)"
+          [ "$got" = "$want" ] || { echo "the draft $tag does not hold the assembled files, by name and size:" >&2; diff <(echo "$want") <(echo "$got") >&2 || true; exit 1; }
+          echo "the draft $tag holds its ${#assets[@]} files, each by name and size"
+      - name: The release's files' SHA-256, in the job summary
+        if: always()
+        shell: bash
+        run: |
+          d="$RUNNER_TEMP/test-inputs"
+          {
+            echo '### Test inputs: the SHA-256 of each file'
+            echo '```'
+            if [ -f "$d/assets.sha256" ]; then cat "$d/assets.sha256"; else echo 'not assembled'; fi
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

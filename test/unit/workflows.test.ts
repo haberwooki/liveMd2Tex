@@ -16,7 +16,7 @@ const load = (name: string) => parse(readFileSync(path.join(folder, name), 'utf8
 describe('GitHub Actions workflows (G0 preparation)', () => {
   it('every workflow parses and asks only for read access to the repository, but the release job', () => {
     const files = readdirSync(folder).filter((f) => f.endsWith('.yml'));
-    assert.deepEqual(files.sort(), ['bundle.yml', 'ci.yml', 'coverage.yml', 'engine.yml', 'floor.yml', 'references.yml', 'release-sources.yml', 'test-runner.yml']);
+    assert.deepEqual(files.sort(), ['bundle.yml', 'ci.yml', 'coverage.yml', 'engine.yml', 'floor.yml', 'references.yml', 'release-sources.yml', 'test-inputs.yml', 'test-runner.yml']);
     for (const f of files) {
       const w = load(f) as Workflow & { permissions?: Record<string, string> };
       // The coverage measurement also reads another run's artifacts (the bundle's data packages); the release job
@@ -442,6 +442,40 @@ describe('GitHub Actions workflows (G0 preparation)', () => {
     const upload = at(/gh release upload "\$TAG"/);
     assert.ok(list >= 0 && list < curl && curl < trees && trees < check && check < upload, [list, curl, trees, check, upload].join(' '));
     assert.doesNotMatch(readFileSync(path.join(folder, 'release-sources.yml'), 'utf8'), /git push|git tag |vsce publish|ovsx publish|gh release (create|edit)/);
+  });
+
+  it("the test inputs' release: by hand, on main, every file checked before a draft, and the tag free first", () => {
+    type Step = { name?: string; run?: string; uses?: string; with?: Record<string, unknown>; env?: Record<string, string> };
+    const w = load('test-inputs.yml') as Workflow & { permissions: Record<string, string>; concurrency: { 'cancel-in-progress': boolean } };
+    assert.deepEqual(Object.keys(w.on), ['workflow_dispatch']);
+    assert.deepEqual(w.permissions, { contents: 'read' });
+    assert.equal(w.concurrency['cancel-in-progress'], false);
+    const job = w.jobs.release as { permissions: Record<string, string>; env: Record<string, string>; steps: Step[] };
+    assert.deepEqual(job.permissions, { contents: 'write' });
+    const steps = job.steps;
+    const at = (re: RegExp) => steps.findIndex((s) => re.test(`${s.name ?? ''} ${s.run ?? ''} ${s.uses ?? ''}`));
+    assert.equal(steps[at(/actions\/checkout@/)].with?.['persist-credentials'], false);
+    for (const s of steps) {
+      assert.doesNotMatch(s.run ?? '', /\$\{\{/, `${s.name}: no expression inside a run script`);
+      if (s.uses) {
+        assert.match(s.uses, /^actions\/[a-z-]+@[0-9a-f]{40}$/, `${s.uses}: pinned by commit`);
+      }
+    }
+    // On main, with a candidate number, before anything else.
+    assert.equal(at(/case "\$CANDIDATE" in ''\|\*\[!0-9\]\*\|0\*\)/), 0);
+    assert.match(steps[0].run ?? '', /\[ "\$GITHUB_REF" = refs\/heads\/main \]/);
+    // The token only where gh runs.
+    assert.equal(job.env.GH_TOKEN, undefined);
+    assert.ok(steps.filter((s) => /\bgh (release|api)\b/.test(s.run ?? '')).every((s) => s.env?.GH_TOKEN), 'every gh step has the token');
+    // Fetch and check everything, then the tag must be free, then the draft, then its files by name and size.
+    const check = at(/test-inputs\.mjs check --out "\$d" --candidate "\$CANDIDATE"/);
+    const draft = at(/gh release create "\$tag" [^\n]*--draft/);
+    assert.ok(check >= 0 && check < draft, `${check} ${draft}`);
+    const run = steps[draft].run ?? '';
+    assert.ok(run.indexOf('git ls-remote --exit-code --tags') < run.indexOf('gh release create'));
+    assert.match(run, /\*\) echo "git ls-remote failed/);
+    assert.ok(run.indexOf('gh release create') < run.indexOf('gh release view "$tag"'));
+    assert.doesNotMatch(readFileSync(path.join(folder, 'test-inputs.yml'), 'utf8'), /git push|git tag |gh release (edit|upload|delete)|--latest|--draft=false/);
   });
 
   it('the engine build runs on ubuntu-26.04 read-only, and only its release job may write, to make a draft', () => {

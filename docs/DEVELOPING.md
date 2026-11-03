@@ -127,6 +127,62 @@ each package's newest files, so a CTAN update fails the check until the set is p
 from its upstream commit on GitHub instead (tag v2.20), whose bytes are the pinned ones: CTAN had replaced them
 with acmart 2.21 by 2026-11-03.
 
+The lasting home of the CTAN set is a release of this repository, `test-inputs-<snapshot date>-<n>`, made as a
+draft by `.github/workflows/test-inputs.yml` (by hand, on `main`, with the candidate number `n`):
+- **What it holds.** Whole works, unchanged, since the LPPL counts the distribution of part of a work as a
+  modification (clause 2):
+  - every archive the pinned TeX Live snapshot has for the nine packages the set's files come from (ieeetran,
+    elsarticle, beamer, ucbthesis, acmart, llncs, pgf, dejavu and tensor: their run, doc and source archives);
+  - CTAN's `revtex.tds.zip`, which the tests use as a CTAN ZIP (TeX Live has REVTeX's files, but not the zip);
+  - the snapshot's `texlive.tlpdb.xz`, so anyone can check each archive's SHA-512;
+  - `test-inputs.json`, the list of every file with its hashes and where it comes from.
+
+  `scripts/lib/test-inputs.mjs` names each pinned file's archive and path.
+- **The checks before the draft.** `scripts/test-inputs.mjs` writes the curl configs and curl fetches (as for the
+  data releases). The tool then checks:
+  - the tlpdb against `engine/bundle-pins.json`;
+  - each archive against the tlpdb's size and SHA-512;
+  - the zip against its pin;
+  - each pinned file, unpacked, against its pin.
+
+  So the release is known to give the pinned bytes. The tag must be free, and the draft must hold every file by
+  name and size. The notes give each package's version and licence as its files state them, and where its licence
+  texts are inside the archives. That includes llncs's credit (CC BY 4.0, and the LPPL of its `splncs04.bst`) and
+  DejaVu's whole terms.
+- **Making the release**, step by step:
+  1. Run it: Actions, test-inputs, Run workflow, on `main`, with the candidate number (1 for the first).
+  2. Read the run: every step passed; the check names 21 archives, the zip and the tlpdb, and 40 test files
+     unpacked and checked; the draft holds its 24 files, which the job checked by name and size; the notes name the
+     run's commit.
+  3. When the job fails, its log says where. A failure before the draft step leaves no draft. If it fails after
+     making the draft, or an upload fails partway (`gh release create` then leaves a partial draft), delete that
+     draft on the Releases page. Then re-run the failed job, or start a new run with the next candidate number. A
+     candidate number belongs to one run, as for the data releases.
+  4. Publish the draft only after that check, with "Set as the latest release" unticked. Then check which release
+     GitHub shows as "Latest", and set it back on the engine release if it moved, as for the data releases
+     ("Running the data release", step 4).
+  5. Pin it (the next item). Before the pins reach `main`, run, logged out, `node scripts/engine-assets.mjs --root
+     <an empty folder> --source <id>` for each of the ten `ctan-*` sources. Each must say "all pinned files
+     verified".
+- **The pins, once the owner has published it.** `node scripts/pin-test-inputs.mjs --release DIR --published
+  YYYY-MM-DD` (DIR: the release's files) checks the same things again. It then points each `ctan-*` source at the
+  release: its `archives` (each with its address, size and SHA-512) and each file's `from` (an archive) and `path`
+  (inside it). The sizes and SHA-256 never change there.
+
+  `scripts/engine-assets.mjs` then downloads each archive a missing file needs and checks it. It unpacks the file
+  with our own xz and tar readers into the same folder as before, checks it, and deletes the archive. So the tests
+  and the CI cache see the same files.
+- **Tests:** `test/unit/testInputs.test.ts`, on archives made in the test, with no network. It covers:
+  - every pinned file's archive and path;
+  - each package whole;
+  - the tag;
+  - the fetch of unpacked files: once per archive, nothing when present, and a failure for an archive of other
+    bytes, a missing member, a member that is not its pin, `--verify` and an unpublished release;
+  - the notes;
+  - `pin-test-inputs.mjs`'s refusals.
+
+  `test/unit/workflows.test.ts` checks the job.
+
 ```sh
 npm run engine:assets   # fetch and check every pinned file into ../engine_assets/ (about 412.2 MB; never inside the repo)
 npm run test:engine     # the engine tests: fixtures, the public corpus P1-P8, the engine-host design, any private tests
