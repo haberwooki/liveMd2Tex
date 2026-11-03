@@ -122,7 +122,10 @@ own driver in `src/engine-host/engine/` runs it. Its files are not in the reposi
 one with its address in the engine release, its size and SHA-256 (`livemd2tex-engine`, release `engine-6a30018-4`),
 beside a small CTAN set (corpus samples, the publisher classes, DejaVu). The release was published on 2026-11-02
 (the pin's `published`) as an immutable release, so its files cannot change; `npm run engine:assets` downloads them
-anonymously and checks each one.
+anonymously and checks each one. The CTAN set comes from a CTAN mirror (`scripts/pin-ctan.mjs`), which serves only
+each package's newest files, so a CTAN update fails the check until the set is pinned again. acmart's files come
+from its upstream commit on GitHub instead (tag v2.20), whose bytes are the pinned ones: CTAN had replaced them
+with acmart 2.21 by 2026-11-03.
 
 ```sh
 npm run engine:assets   # fetch and check every pinned file into ../engine_assets/ (about 412.2 MB; never inside the repo)

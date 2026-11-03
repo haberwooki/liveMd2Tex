@@ -3,7 +3,9 @@
 // publisher classes with their .bst files, DejaVu) from one fixed CTAN mirror into ../engine_assets/ctan-<id>/,
 // computes each file's SHA-256 and writes the entries into engine/pins.json. CTAN publishes no checksums, so
 // these pins record the files as first downloaded on the date below; scripts/engine-assets.mjs rechecks them
-// on every later fetch, and a changed file fails until it is reviewed and re-pinned here.
+// on every later fetch, and a changed file fails until it is reviewed and re-pinned here. A CTAN mirror serves
+// each package's newest files only, so a set whose files CTAN has replaced names a fixed address of its own
+// instead ('base', with its 'note'): acmart's upstream commit on GitHub.
 //
 //   node scripts/pin-ctan.mjs              every set below
 //   node scripts/pin-ctan.mjs ctan-tensor  only the named sets (the others keep their pins)
@@ -57,7 +59,9 @@ const sets = [
     id: 'ctan-acmart',
     package: 'acmart 2.20',
     licence: 'LPPL 1.3 or later (P12)',
-    dir: '/macros/latex/contrib/acmart',
+    // CTAN had replaced 2.20 with 2.21 by 2026-11-03; upstream's v2.20 commit has the pinned bytes.
+    base: 'https://raw.githubusercontent.com/borisveytsman/acmart/10d6d082e522c4034022f38437019ba75589456b',
+    note: "SHA-256 recorded at first download from CTAN (the mirror mirrors.ibiblio.org) on 2026-10-15: acmart 2.20 of 2026/08/16. CTAN had replaced these files with acmart 2.21 (2026/11/01) by 2026-11-03, so they now come from upstream acmart's commit 10d6d082e522c4034022f38437019ba75589456b on GitHub (tag v2.20 of https://github.com/borisveytsman/acmart, where acmart is developed), whose bytes are the pinned ones (checked 2026-11-03). A commit's files do not change.",
     files: [
       'acmart.dtx',
       'acmart.ins',
@@ -114,7 +118,7 @@ for (const set of sets.filter((s) => only.length === 0 || only.includes(s.id))) 
   const folder = set.id;
   const files = [];
   for (const rel of set.files) {
-    const url = `${MIRROR}${set.dir}/${rel}`;
+    const url = `${set.base ?? `${MIRROR}${set.dir}`}/${rel}`;
     const res = await fetch(url, { headers: { 'user-agent': 'latex-preview-s1-assets' } });
     if (!res.ok) {
       throw new Error(`${url}: HTTP ${res.status}`);
@@ -131,7 +135,7 @@ for (const set of sets.filter((s) => only.length === 0 || only.includes(s.id))) 
     folder,
     package: set.package,
     licence: set.licence,
-    note: 'SHA-256 recorded at first download from the mirror named in each URL (CTAN publishes no checksums).',
+    note: set.note ?? 'SHA-256 recorded at first download from the mirror named in each URL (CTAN publishes no checksums).',
     pinned: new Date().toISOString().slice(0, 10),
     files,
   };
