@@ -7,12 +7,21 @@
 // the stubs, never from environment variables: a forked child inherits its parent's environment, and the
 // engine host must not inherit the extension host's fork permission.
 
+const fs = require('node:fs');
 const path = require('node:path');
 
 const KEY = Symbol.for('livemd2tex.stubs');
 
+// The real path where the file exists: Node names a loaded file by its real path (on macOS the temporary
+// folder /var/... is /private/var/...), so a caller's stack frame and a configured path must both be resolved
+// before they are compared. A path that does not exist yet keeps its resolved form.
 function normalize(p) {
-  const resolved = path.resolve(String(p));
+  let resolved = path.resolve(String(p));
+  try {
+    resolved = fs.realpathSync(resolved);
+  } catch {
+    // not there yet: compare the resolved path
+  }
   return process.platform === 'win32' ? resolved.toLowerCase() : resolved;
 }
 
