@@ -1,5 +1,6 @@
 {
-  "image": "9ae117b8fd7eacc13430296278d63603070f083c6f1e647937a6866874c726ae",
+  "core": "d5ff3ffd13110742ce385d90997c988907844e11c16e1a82433c0a1b2b81049c",
+  "addon": "c572320a3e6abb0fa845a4100677ee8b43bc0d046f9fc849279498e721ff3ce2",
   "documents": {
     "P1": {
       "pages": 1,
@@ -33,10 +34,10 @@
       "pages": 1,
       "missing": []
     },
-    "P2-without-REVTeX": {
+    "P7-core-only": {
       "pages": null,
       "missing": [
-        "revtex4-2.cls"
+        "biblatex.sty"
       ]
     }
   }

@@ -265,7 +265,29 @@ node scripts/engine-compare.mjs CI_OUT WSL_OUT                               # t
 node scripts/engine-shakedown.mjs --b ~/engine-out --a OTHER_ENGINE_DIR --images DATA_PACKAGES_DIR --work WORK_DIR \
   --corpus CORPUS_DIR --reference CORPUS_REFERENCE_JSON   # real LaTeX, A and B paired (--a busytex: the earlier
                                                           # engine, with --host of a checkout that still pins it)
+node scripts/engine-diff.mjs --old-host DIR_A --new-host DIR_B --docs LIST --out OUT   # two worktrees, document by document
 ```
+
+- **Comparing two engines.** `scripts/engine-diff.mjs` starts the engine host of two worktrees of this repository (each
+  with its own `dist/` and compiled `out/`, and the data its engine needs), compiles the same documents through each
+  one's own extension route with fixed dates (`SOURCE_DATE_EPOCH=1700000000`, `FORCE_SOURCE_DATE=1`), and compares
+  page counts, the package scan, the log's error lines, each step's exit code, `.aux`, `.bbl`, `.xdv`, SyncTeX, the log
+  without its banner, the PDF after its producer strings and dates are masked, and per page the boxes, fonts, images,
+  annotations and text. `--make-docs` writes the public corpus as project folders; `--banners`, `--formats` and `--timing`
+  give the other figures of the comparison. The report names both commits. A document marked private is compared by
+  counts and hashes, and nothing of its text is written. Keep it for every later engine change.
+- **The first comparison (2026-11-04):** side A was `48d823e` (the last release on TeXlyre's engine, with its worker patched
+  in two lines to take fixed dates) on core and add-on data built for it (TeX Live 2026/10/15), side B this tree with engine
+  `6a30018-4` (`ASSERTIONS=0`) and data `ae9dbba-2`. Of 47 public documents none differed in page counts, package scans,
+  log errors, exit codes, `.aux`, `.bbl`, `.xdv`, SyncTeX, the normalised PDF or per-page structure. Of 10 private runs, 7
+  matched; the other three differ only in one file path, because a package moved from the add-on to the core data (side A
+  needs the add-on mounted to compile them). The format dumps match, except the pool's total string length: 9 characters,
+  the banner-add part. The one allowed program difference is xdvipdfmx, 20260317 against 20260113 (TeX Live 2026.1's
+  quoting fix). Suites on this tree: unit 701 passing, 2 pending; engine 162 passing, 4 pending; integration 74 passing,
+  5 pending, and Restricted Mode 4 passing. Peak host memory over the run: 1073 MB on side B, 1101 MB on side A (1.5 GB is
+  the line). A run on an idle machine gave B/A between 0.805 and 0.992 on six rows (host start, first compile, worker
+  restart, one warm pass, three XeTeX passes, the beamer document), and the largest `heapBytes` of all 57 documents within
+  +10 % of side A.
 
 - **Host tools** (Ubuntu package names; `engine-build-pins.json`, `hostTools`): `build-essential python3 xz-utils
   curl git gawk`; for the font check also `fontconfig libfreetype-dev libexpat1-dev pkg-config gperf`. `gawk` is
@@ -670,9 +692,11 @@ CI runs on GitHub since G0: on the first commit of the fresh history, and on eac
 - On CI only, `@vscode/test-cli` downloads the VS Code version the workflow names. Both `CI=true` and
   `LIVEMD2TEX_ALLOW_VSCODE_DOWNLOAD=1` must be set (`scripts/lib/test-vscode.mjs`); elsewhere the tests use
   the installed VS Code, and the launcher fails if a download happened anyway.
-- `test/engine/corpusBaseline.test.ts` is G0's acceptance check: the public corpus gives the same page counts and
-  missing-package lists on every runner as on a development machine (`test/baselines/corpus.json`, written
-  there with `LIVEMD2TEX_WRITE_CORPUS_BASELINE=1` for the image with the same SHA-256).
+- `test/engine/corpusBaseline.test.ts` is G0's acceptance check: P1 to P8, compiled with the core data and the Extra
+  Packages add-on, give the same page counts and missing-package lists on every runner as on a development machine,
+  and `P7-core-only` (core data alone) reports `biblatex.sty` missing. `test/baselines/corpus.json` holds the SHA-256
+  of both images; with other images the test fails (it never skips), so rewrite it after a data release with
+  `LIVEMD2TEX_WRITE_CORPUS_BASELINE=1 npm run test:engine`.
 - `node scripts/fresh-history.mjs` makes the fresh history. It puts the files of `main` in one commit, in a new
   repository outside this one (default `../public_candidate`), with no remote. The commit's author is
   `haberwooki <189794217+haberwooki@users.noreply.github.com>` (`--author` changes it), and its times are in UTC.

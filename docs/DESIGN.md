@@ -301,7 +301,7 @@ These rules hold for everyone who installs the extension.
 - **Unit tests** run in plain Node with the stubs loaded: the scheduler on a fake clock, the project model,
   the converter, the scans, the manifest checks.
 - **Engine tests** run the real engine in the engine host with its stubs: a public corpus of sample documents
-  (page counts and missing-package lists are compared with a recorded baseline), cancel races, change sets,
+  (page counts and missing-package lists are compared with a recorded baseline, made with both data images; a baseline made with other images fails the test), cancel races, change sets,
   data images, package builds, fonts by name. They run on a core-data package built for the pinned engine, with
   the Extra Packages add-on mounted for the documents that need it, as for a user who installed it. Both come from
   their pins, so on CI they fail without the engine and the data, instead of skipping.
