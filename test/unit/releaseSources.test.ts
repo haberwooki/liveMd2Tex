@@ -7,7 +7,7 @@
 
 import * as assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { gzipSync } from 'node:zlib';
@@ -20,12 +20,13 @@ interface Lib {
   sourceTree(tag: string): string;
   sourceStatement(tag: string): string;
   namesSource(text: string, tag: string): boolean;
-  releaseSources(packages: Map<string, Map<string, Buffer>>, tag: string, notices: unknown, bundlePins: unknown): Record<string, Source[]>;
+  releaseSources(packages: Map<string, Map<string, Buffer>>, tag: string, notices: unknown, bundlePins: unknown, viewerSources?: unknown): Record<string, Source[]>;
   curlConfig(groups: Record<string, Source[]>, dir: string, bundlePins: unknown): string;
   gitList(groups: Record<string, Source[]>): string;
   treeDifferences(entries: Entry[], lsTree: string): string[];
   buildManifestDifferences(wasmSha256: string, record: unknown, pins: unknown, sources: { commit?: string }[], treeSha256: string): { problems: string[]; scriptsSource: { from: string; tag?: string; commit?: string; why?: string } };
   checkSources(groups: Record<string, Source[]>, dir: string, context?: unknown): { problems: string[]; notes: string[] };
+  releaseNotes(tag: string, x: { pins: unknown; record: unknown; notices: unknown; scripts: { from: string; release?: string; commit?: string }; preRelease: boolean }): string;
 }
 
 const sha = (algo: string, b: Buffer | string) => createHash(algo).update(b).digest('hex');
@@ -101,7 +102,7 @@ describe('the sources a release carries (scripts/release-sources.mjs)', () => {
     assert.deepEqual(Object.keys(groups), ['core-data', 'engine']);
     const byName = (a: string[], b: string[]) => (a[0] < b[0] ? -1 : 1);
     // The two archives; the third source, our build scripts, is the tag itself (buildManifestDifferences, below).
-    assert.deepEqual(groups.engine.map((s) => [s.name, s.url, s.sha256]), notices.sources.filter((s: Source) => s.url).map((s: Source) => [s.name, s.url, s.sha256]).sort(byName));
+    assert.deepEqual(groups.engine.map((s) => [s.name, s.url, s.sha256]), notices.sources.filter((s: Source & { mirror?: string }) => s.url).map((s: Source & { mirror?: string }) => [s.name, s.mirror ?? s.url, s.sha256]).sort(byName));
     assert.equal(groups.engine.length, 2);
     assert.deepEqual(groups['core-data'].map((s) => [s.name, s.sha512, s.for]), [
       ['cm-super.source.tar.xz', 'cd', ['core.vsix: cm-super (source)']],
@@ -121,6 +122,74 @@ describe('the sources a release carries (scripts/release-sources.mjs)', () => {
     // Two packages that name one file with different bytes stop it.
     const other = dataPackage({ 'cm-super': { licence: ['gpl'], archives: [{ kind: 'run', url: `${snap}archive/cm-super.tar.xz`, sha512: 'ff' }] } });
     assert.throws(() => lib.releaseSources(new Map([['a.vsix', dataPackage(licences)], ['b.vsix', other]]), 'x', notices, bundlePins), /core-data\/cm-super\.tar\.xz: two packages name it/);
+  });
+
+  it("the engine's source archives come from the engine release's own copies, with the pinned hashes", () => {
+    const pins = JSON.parse(readFileSync(path.join(root, 'engine', 'pins.json'), 'utf8'));
+    const engine = pins.sources.find((s: { id: string }) => s.id === 'livemd2tex-engine');
+    const archives = notices.sources.filter((s: Source) => s.url);
+    assert.equal(archives.length, 2);
+    for (const s of archives as (Source & { mirror?: string })[]) {
+      assert.equal(s.mirror, `https://github.com/haberwooki/liveMd2Tex/releases/download/${engine.tag}/${s.name}`, s.name);
+      assert.match(s.sha256 ?? '', /^[0-9a-f]{64}$/);
+    }
+  });
+
+  it("the full package's core data is offered as the core-data group, and the notes give every part of the source", () => {
+    const snapshot = 'https://texlive.info/tlnet-archive/2026/10/15/tlnet/';
+    const readme = Buffer.from('for this version, the tag `v1.2.3` of https://github.com/haberwooki/liveMd2Tex');
+    const full = new Map([
+      ['extension/package.json', Buffer.from(JSON.stringify({ name: 'livemd2tex', version: '1.2.3' }))],
+      ['extension/dist/extension.js', Buffer.from('')],
+      ['extension/dist/engine/engine.wasm', Buffer.from('')],
+      ['extension/dist/data/licences.json', Buffer.from(JSON.stringify({ 'cm-super': { archives: [{ kind: 'run', url: `${snapshot}archive/cm-super.tar.xz`, sha512: 'ab' }] } }))],
+      ['extension/readme.md', readme],
+    ]);
+    const groups = lib.releaseSources(new Map([['full.vsix', full]]), 'v1.2.3', notices, bundlePins);
+    assert.deepEqual(Object.keys(groups), ['core-data', 'engine']);
+    assert.deepEqual(groups['core-data'].map((s) => s.name), ['cm-super.tar.xz']);
+    // The same file named by the data package's own release is one entry, not a clash.
+    const data = new Map([
+      ['extension/package.json', Buffer.from(JSON.stringify({ name: 'livemd2tex-core-data', version: '1' }))],
+      ['extension/data/licences.json', full.get('extension/dist/data/licences.json') as Buffer],
+    ]);
+    assert.equal(lib.releaseSources(new Map([['full.vsix', full], ['core.vsix', data]]), 'v1.2.3', notices, bundlePins)['core-data'].length, 1);
+    const record = JSON.parse(readFileSync(path.join(root, 'engine', 'engine-build.json'), 'utf8'));
+    const pins = JSON.parse(readFileSync(path.join(root, 'engine', 'pins.json'), 'utf8'));
+    const notes = lib.releaseNotes('v1.2.3', { pins, record, notices, scripts: { from: 'tag' }, preRelease: true });
+    for (const needed of [lib.sourceTree('v1.2.3'), 'pre-release', 'Install from VSIX', record.inputs.texLive.commit, record.inputs.emscripten.commit, record.build.scripts.treeSha256, 'engine-build.json', 'engine-6a30018-4', 'core-data-ae9dbba-2', 'issues']) {
+      assert.ok(notes.includes(needed), needed);
+    }
+    assert.ok(!lib.releaseNotes('v1.2.3', { pins, record, notices, scripts: { from: 'tag' }, preRelease: false }).includes('Install from VSIX'));
+    // The scripts changed after the build: the notes name the engine release and link its archive of them, not the tag's folder.
+    const engine = pins.sources.find((x: { id: string }) => x.id === 'livemd2tex-engine');
+    const moved = lib.releaseNotes('v1.2.3', { pins, record, notices, scripts: { from: 'engine release', release: engine.release, commit: record.build.scripts.commit }, preRelease: true });
+    assert.ok(moved.includes(`${engine.release.replace('/tag/', '/download/')}/engine-build-scripts-${record.build.scripts.commit.slice(0, 7)}.tar.gz`));
+    assert.ok(!moved.includes('whose files hash to'));
+    assert.ok(notes.includes('whose files hash to'));
+    assert.ok(notes.includes('viewer-sources-v1.2.3.tar') && notes.includes('package-lock.json'));
+  });
+
+  it("pdf.js's Liberation Sans fonts (GPL-2.0) bring their pinned source archive as the viewer group, checked by the commit's tree", () => {
+    const viewer = JSON.parse(readFileSync(path.join(root, 'engine', 'viewer-sources.json'), 'utf8'));
+    assert.equal(viewer.sources.length, 1);
+    const [src] = viewer.sources as Source[];
+    assert.match(src.sha256 ?? '', /^[0-9a-f]{64}$/);
+    assert.match(src.commit ?? '', /^[0-9a-f]{40}$/);
+    assert.ok((src.url ?? '').includes(src.commit as string));
+    const readme = Buffer.from('for this version, the tag `v1.2.3` of https://github.com/haberwooki/liveMd2Tex');
+    const pkg = (extra: string[]) => new Map<string, Buffer>([['extension/package.json', Buffer.from(JSON.stringify({ name: 'livemd2tex', version: '1.2.3' }))], ['extension/dist/extension.js', Buffer.from('')], ['extension/readme.md', readme], ...extra.map((n): [string, Buffer] => [n, Buffer.from('')])]);
+    const withFonts = lib.releaseSources(new Map([['f.vsix', pkg(['extension/dist/viewer/pdfjs/standard_fonts/LiberationSans-Regular.ttf'])]]), 'v1.2.3', notices, bundlePins, viewer);
+    assert.deepEqual(Object.keys(withFonts), ['viewer']);
+    assert.deepEqual(withFonts.viewer.map((s) => [s.name, s.url, s.sha256, s.commit]), [[src.name, src.url, src.sha256, src.commit]]);
+    // A package without those fonts offers nothing for them; a viewer group needs no package database.
+    assert.deepEqual(lib.releaseSources(new Map([['f.vsix', pkg([])]]), 'v1.2.3', notices, bundlePins, viewer), {});
+    assert.ok(!lib.curlConfig(withFonts, '/out', bundlePins).includes('tlpdb'));
+    assert.equal(lib.gitList(withFonts).split('	')[2].trim(), src.commit);
+    assert.deepEqual(lib.checkSources(withFonts, path.join(os.tmpdir(), 'livemd2tex-no-such-dir')).problems, [`viewer/${src.name}: not downloaded (${src.url})`]);
+    // The packaged fonts really are in the package this repository ships.
+    const standard = path.join(root, 'dist', 'viewer', 'pdfjs', 'standard_fonts');
+    assert.ok(!existsSync(standard) || readdirSync(standard).some((n) => /^LiberationSans-/.test(n)));
   });
 
   it("checks a commit archive's files against the commit's tree, allowing git's CRLF export of .bat files", () => {

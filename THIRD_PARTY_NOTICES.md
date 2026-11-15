@@ -14,7 +14,7 @@ Some TeX packages in the Extra Packages add-on stay under the AGPL; they are fil
 their licence text ("The data packages"). Copyright (C) 2026 the liveMd2Tex authors (`AUTHORS.md` in the
 repository says who they are).
 
-The source code of each release is the tag of its version in this repository: for this version, the tag `v0.0.1`
+The source code of each release is the tag of its version in this repository: for this version, the tag `v0.1.0`
 of https://github.com/haberwooki/liveMd2Tex. Each release is tagged `v<version>`, with the version in
 `package.json`, on the commit its packages are built from, and its page links the tag's tree. That tree holds the
 whole source, with the engine's build in `engine/build/`. The release workflow
@@ -66,7 +66,10 @@ The Liberation fonts are GPL-2.0 (not "or later"). They ship as separate font fi
 aggregation, not combination, under GPL-3 section 5. Their source: the same files in PDF.js's repository at its
 tag, https://github.com/mozilla/pdf.js/tree/v6.4.299/external/standard_fonts, and Liberation 1.x's own
 repository, https://github.com/liberationfonts/liberation-1.7-fonts (the fonts here are Liberation Sans 1.07.4,
-as their name table gives).
+as their name table gives). So that the offer does not rest on another project's server (GPL-2 section 3a), each
+release of liveMd2Tex that holds these fonts carries a pinned copy of Liberation 1.x's source: the commit
+archive `engine/viewer-sources.json` pins (the last commit that still says 1.07.4), checked against its SHA-256
+and its commit's tree, attached as `viewer-sources-<tag>.tar` by `.github/workflows/release-sources.yml`.
 
 ## Bundled npm packages
 
@@ -237,7 +240,8 @@ each release of liveMd2Tex that ships the engine carries them again:
 - The licence statement: our own code is GPL-3.0-or-later; the engine as a whole can be passed on under GPL-3.0,
   and its parts keep their own terms ("This version and its source").
 
-Each release of liveMd2Tex that ships the engine carries a copy of the two archives, attached before the release
+Each release of liveMd2Tex that ships the engine carries a copy of the two archives, taken from the engine
+release's own copies (`engine/engine-notices.json`, `mirror`; the same SHA-256) and attached before the release
 is published (`.github/workflows/release-sources.yml`, run on the draft release). The workflow downloads them,
 checks each one's bytes against the SHA-256 above and its files against its commit's tree, and checks that the
 packaged `engine.wasm` is the one that `engine-build.json` records and `engine/pins.json` pins, built from those
@@ -255,7 +259,8 @@ files differ, the workflow stops.
 `node scripts/vsix-scan.mjs --test-copy --data-package PATH` builds the development machine's test copy: the
 package with the engine, plus a core-data package's data in `dist/data/` and its licence texts in
 `dist/data/LICENSES/`, for a throwaway VS Code profile only. The store packages get these files from the data
-packages instead.
+packages instead. The pre-release package (`--preview`, for a GitHub pre-release) holds the same files, so
+this section covers it too; its release attaches the data's source archives (`core-data-sources-<tag>.tar`).
 
 | Part | Version | Licence | Where in the test copy | Source |
 |---|---|---|---|---|

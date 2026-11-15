@@ -481,6 +481,10 @@ node scripts/stage-engine.mjs --data --data-package PATH   # put the engine and 
 node scripts/vsix-scan.mjs --test-copy --data-package PATH # build, stage, package and scan the test copy into out/vsix/
 ```
 
+The pre-release package is the same files under another name, `node scripts/vsix-scan.mjs --preview`
+(`npm run package:preview`): `out/vsix/livemd2tex-<version>-preview.vsix`, the same scan. It differs from the test
+copy only in what it is for: a normal profile, as the asset of a GitHub pre-release. `package.json` has no
+`extensionDependencies`, so the package needs no other extension (both flags refuse to build if one is added).
 The test copy goes into a throwaway VS Code profile only (`code --user-data-dir DIR --extensions-dir DIR
 --install-extension FILE`, then `Code.exe` with the same two folders), never into a normal profile.
 `npm run test:engine` includes the V0 route at Node level (`test/engine/v0.test.ts`: every corpus document
@@ -1658,7 +1662,12 @@ written again for our own engine (2026-10-31). What they set up:
      ("When the engine is rebuilt", above), and its report is recorded.
   1. Push the tag `v<version>` on the commit the packages are built from.
   2. Make a draft release on GitHub for that tag, with the packages (`.vsix`) as its files. Its notes give the
-     source: the tag's tree, https://github.com/haberwooki/liveMd2Tex/tree/v<version>.
+     source: the tag's tree, https://github.com/haberwooki/liveMd2Tex/tree/v<version>. For a pre-release, run
+     `.github/workflows/release-package.yml` by hand with the tag: it builds the full package
+     (`node scripts/vsix-scan.mjs --preview`, below), scans it, and makes the draft, marked as a pre-release, with
+     that `.vsix` and notes written by `node scripts/release-sources.mjs notes` (the tag's tree, the engine and
+     core data releases, the commits and hashes of the sources). It stops if the tag is not `v<version>` of
+     `package.json`, or if a release for the tag exists. It never publishes.
   3. Run `.github/workflows/release-sources.yml` by hand with the tag. It runs `scripts/release-sources.mjs`,
      which checks the tag against the extension's version and README, and lists the sources each package needs:
      for a package with the engine, the two archives of `engine/engine-notices.json`; for a data package, the
@@ -1673,10 +1682,18 @@ written again for our own engine (2026-10-31). What they set up:
      (`engine-sources-<tag>.tar`, `core-data-sources-<tag>.tar`, `extra-data-sources-<tag>.tar`) and the list,
      `sources.json`, to the draft. The data packages are released on their own, each with its sources, by
      `bundle.yml`'s `release` job ("The data sets", "The data releases"), so the two `-data-sources-<tag>.tar`
-     names apply only when an extension release also holds a data package. On the first real run, confirm that
+     names apply only when an extension release also holds a data package. The full package holds the core data in
+     `dist/data/`, so its `dist/data/licences.json` is read like a data package's and its archives are attached as
+     `core-data-sources-<tag>.tar`. A package that holds pdf.js's Liberation Sans fonts (GPL-2.0-only) also gets
+     their source: the archive `engine/viewer-sources.json` pins, attached as `viewer-sources-<tag>.tar` (the
+     fonts' version is 1.07.4; a byte-for-byte rebuild of the TrueType files from the `.sfd` sources has not been
+     tried). The engine's two archives come from the engine release's own copies first
+     (`mirror` in `engine/engine-notices.json`, the release `engine-6a30018-4`; the hashes are the same). On the first real run, confirm that
      `gh release download` and `gh release upload` find the draft by its tag: GitHub's look-up by tag does not
      return drafts, and gh's way around that has not been tried here.
-  4. Only when that run has passed: publish the release.
+  4. Only when that run has passed: check that the draft lists exactly the `.vsix`, `engine-sources-<tag>.tar`,
+     `core-data-sources-<tag>.tar`, `viewer-sources-<tag>.tar` and `sources.json`, and that the passing
+     `release-sources` run was on this draft. Then publish the release. Nothing can be attached after that.
   5. Only then: upload the packages to the VS Code Marketplace and Open VSX.
 
   GitHub makes the `archive/` files of TeX Live's and Emscripten's commits on request, and promises the same files

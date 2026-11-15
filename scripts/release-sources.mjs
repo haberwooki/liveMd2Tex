@@ -8,7 +8,10 @@
 //     this tag records and engine/pins.json pins, built from those two commits, and if this tag's engine/build/ and
 //     engine-build-pins.json still give the build's tree hash, this tag is the scripts' source; if not, the engine
 //     release that built it is;
-//   - a data package (extension/data/licences.json): the archives of the pinned TeX Live snapshot that its
+//   - a package with pdf.js's Liberation Sans fonts (extension/dist/viewer/pdfjs/standard_fonts/LiberationSans-*.ttf,
+//     GPL-2.0): the source archive engine/viewer-sources.json pins (group "viewer"), checked like the engine's;
+//   - a data package (extension/data/licences.json), or the full package's core data (extension/dist/data/licences.json,
+//     the pre-release package of scripts/vsix-scan.mjs --preview): the archives of the pinned TeX Live snapshot that its
 //     licences.json lists for each package under the GPL, LGPL or AGPL, or with a packed font under the GPL. Each
 //     address must be under a mirror of engine/bundle-pins.json's snapshot, and each SHA-512 must be the one the
 //     pinned package database (tlpkg/texlive.tlpdb.xz, checked against its pinned SHA-256) gives.
@@ -71,8 +74,9 @@ export function snapshotMirrors(bundlePins) {
  * @param {string} tag
  * @param {{ sources: { name: string, url?: string, sha256?: string, mirror?: string, commit?: string, repository?: string }[] }} engineNotices
  * @param {{ snapshot: string, mirrors: string[] }} bundlePins
+ * @param {{ sources: { name: string, url: string, sha256: string, commit?: string, repository?: string }[] }} [viewerSources] engine/viewer-sources.json: the source of pdf.js's Liberation fonts
  */
-export function releaseSources(packages, tag, engineNotices, bundlePins) {
+export function releaseSources(packages, tag, engineNotices, bundlePins, viewerSources = { sources: [] }) {
   const mirrors = snapshotMirrors(bundlePins);
   const groups = new Map();
   const add = (group, s, why) => {
@@ -109,9 +113,18 @@ export function releaseSources(packages, tag, engineNotices, bundlePins) {
         add('engine', { name: s.name, url: s.mirror ?? s.url, sha256: s.sha256, ...(s.commit ? { commit: s.commit, repository: s.repository } : {}) }, `${file}: the engine`);
       }
     }
-    const licences = entries.get('extension/data/licences.json');
+    // The viewer's Liberation Sans fonts (GPL-2.0): their source is attached, group "viewer".
+    if ([...entries.keys()].some((n) => /^extension\/dist\/viewer\/pdfjs\/standard_fonts\/LiberationSans-/.test(n))) {
+      for (const s of viewerSources.sources) {
+        add('viewer', { name: s.name, url: s.url, sha256: s.sha256, ...(s.commit ? { commit: s.commit, repository: s.repository } : {}) }, `${file}: pdf.js's Liberation Sans fonts`);
+      }
+    }
+    // A data package holds data/licences.json; the full (preview) package holds the core data's copy in dist/data/,
+    // so its archives are offered as the core-data group, as the data package's own release does.
+    const inside = entries.has('extension/dist/data/licences.json');
+    const licences = entries.get(inside ? 'extension/dist/data/licences.json' : 'extension/data/licences.json');
     if (licences) {
-      const set = String(identity.name ?? 'data').replace(/^livemd2tex-/, '');
+      const set = inside ? 'core-data' : String(identity.name ?? 'data').replace(/^livemd2tex-/, '');
       for (const [pkg, l] of Object.entries(JSON.parse(licences.toString('utf8')))) {
         for (const a of l.archives ?? []) {
           const base = mirrors.find((m) => a.url.startsWith(`${m}archive/`));
@@ -132,7 +145,7 @@ export function releaseSources(packages, tag, engineNotices, bundlePins) {
 export function curlConfig(groups, dir, bundlePins) {
   const out = (...p) => path.join(dir, ...p).replace(/\\/g, '/');
   const lines = Object.entries(groups).flatMap(([g, list]) => list.map((s) => `url = ${JSON.stringify(s.url)}\noutput = ${JSON.stringify(out('files', g, s.name))}\n`));
-  if (Object.keys(groups).some((g) => g !== 'engine')) {
+  if (Object.values(groups).some((list) => list.some((s) => s.sha512))) {
     lines.push(`url = ${JSON.stringify(`${snapshotMirrors(bundlePins)[0]}${bundlePins.tlpdb.file}`)}\noutput = ${JSON.stringify(out('meta', 'texlive.tlpdb.xz'))}\n`);
   }
   return lines.join('');
@@ -254,7 +267,7 @@ export function checkSources(groups, dir, context = {}) {
   const problems = [];
   const notes = [];
   let db;
-  const dataGroups = Object.keys(groups).filter((g) => g !== 'engine');
+  const dataGroups = Object.entries(groups).filter(([, list]) => list.some((s) => s.sha512)).map(([g]) => g);
   if (dataGroups.length > 0) {
     const tlpdbFile = path.join(dir, 'meta', 'texlive.tlpdb.xz');
     const pin = context.bundlePins?.tlpdb?.sha256;
@@ -276,7 +289,7 @@ export function checkSources(groups, dir, context = {}) {
       const bytes = readFileSync(file);
       const [algo, want] = s.sha256 ? ['sha256', s.sha256] : ['sha512', s.sha512];
       const got = sha(algo, bytes);
-      if (g !== 'engine' && db && tlpdbChecksum(db, s.name) !== s.sha512) {
+      if (s.sha512 && db && tlpdbChecksum(db, s.name) !== s.sha512) {
         problems.push(`${g}/${s.name}: its SHA-512 in licences.json is not the pinned tlpdb's`);
       }
       if (s.commit) {
@@ -298,18 +311,71 @@ export function checkSources(groups, dir, context = {}) {
   return { problems, notes };
 }
 
+/**
+ * The release notes of an extension release: what it is, how to install it, and where the corresponding source is
+ * (GPL-3 section 6(d): clear directions next to the object code). Facts come from the files at the tag: the engine's
+ * pin and record, the engine's sources, the core data's pin. `scripts` is buildManifestDifferences's scriptsSource:
+ * when this tag's engine/build/ still gives the build's tree hash the tag holds our build scripts; if not, the
+ * engine release that built the engine does, and the notes name it and link its archive of them.
+ * @param {string} tag
+ * @param {{ pins: { sources: object[] }, record: object, notices: { sources: object[] }, scripts: { from: string, release?: string|null, commit?: string|null }, preRelease: boolean }} x
+ */
+export function releaseNotes(tag, { pins, record, notices, scripts, preRelease }) {
+  const pin = (id) => pins.sources.find((s) => s.id === id);
+  const engine = pin('livemd2tex-engine');
+  const core = pin('livemd2tex-core-data');
+  const archive = (n) => notices.sources.find((s) => s.name?.startsWith(n));
+  const tl = archive('texlive-source');
+  const em = archive('emscripten');
+  const ours =
+    scripts.from === 'tag'
+      ? `- This extension: ${sourceTree(tag)}. Our build scripts for the engine are the \`engine/build/\` folder and \`engine/engine-build-pins.json\` of this tag, whose files hash to \`${record.build?.scripts?.treeSha256}\` (the build's own record).`
+      : `- This extension: ${sourceTree(tag)}. This tag's \`engine/build/\` is not the one that built the engine, so our build scripts are in the engine release ${scripts.release} (built at commit \`${scripts.commit}\`): ${String(scripts.release).replace('/tag/', '/download/')}/engine-build-scripts-${String(scripts.commit).slice(0, 7)}.tar.gz.`;
+  return [
+    `# ${tag}${preRelease ? ' (pre-release)' : ''}`,
+    '',
+    ...(preRelease ? ['A preview for testers, not a store release. Download the `.vsix` below and install it from the Extensions view (the "..." menu, "Install from VSIX..."), or run `code --install-extension <file>.vsix`. The file holds the TeX engine and the core TeX data, so it needs no other extension. Report problems at https://github.com/haberwooki/liveMd2Tex/issues.', ''] : []),
+    '## The corresponding source',
+    '',
+    ours,
+    `- TeX Live's source at commit \`${tl?.commit}\` (${tl?.repository}): \`${tl?.name}\`, in \`engine-sources-${tag}.tar\`.`,
+    `- Emscripten at commit \`${em?.commit}\` (${em?.repository}): \`${em?.name}\`, in the same file.`,
+    `- The engine's build flags, toolchain and output hashes: \`engine/engine-build.json\` at this tag. The engine itself is the release ${engine?.release} (built at commit \`${record.build?.scripts?.commit}\`).`,
+    `- The core data: ${core?.release}. The source archives of its packages under the GPL, LGPL or AGPL are in \`core-data-sources-${tag}.tar\`.`,
+    `- The Liberation Sans fonts of the PDF viewer (GPL-2.0): the fonts' source, Liberation 1.x at the commit \`engine/viewer-sources.json\` pins, is in \`viewer-sources-${tag}.tar\`.`,
+    "- The npm packages bundled into `dist/extension.js` are pinned in this tag's `package-lock.json` and listed, with their licences, in `THIRD_PARTY_NOTICES.md`.",
+    '- `sources.json` lists every archive with its address and SHA-256 or SHA-512.',
+    '',
+  ].join('\n');
+}
+
 function main(argv) {
   const arg = (name) => {
     const i = argv.indexOf(name);
     return i >= 0 ? argv[i + 1] : undefined;
   };
   const dir = arg('--out');
+  if (argv[0] === 'notes') {
+    const tag = arg('--tag');
+    if (!tag || !arg('--file')) {
+      console.error('usage: release-sources.mjs notes --tag TAG --file FILE [--pre-release]');
+      return 2;
+    }
+    const json = (n) => JSON.parse(readFileSync(path.join(root, 'engine', n), 'utf8'));
+    const pins = json('pins.json');
+    const record = json('engine-build.json');
+    const notices = json('engine-notices.json');
+    const { scriptsSource } = buildManifestDifferences(record.outputs?.wasm?.sha256, record, pins, notices.sources, scriptsTree(root).treeSha256);
+    writeFileSync(arg('--file'), releaseNotes(tag, { pins, record, notices, scripts: scriptsSource, preRelease: argv.includes('--pre-release') }));
+    return 0;
+  }
   if (!dir || !['list', 'check'].includes(argv[0])) {
-    console.error('usage: release-sources.mjs list --out DIR --tag TAG VSIX... | check --out DIR');
+    console.error('usage: release-sources.mjs list --out DIR --tag TAG VSIX... | check --out DIR | notes --tag TAG --file FILE');
     return 2;
   }
   const manifest = JSON.parse(readFileSync(path.join(root, 'engine', 'engine-notices.json'), 'utf8'));
   const bundlePins = JSON.parse(readFileSync(path.join(root, 'engine', 'bundle-pins.json'), 'utf8'));
+  const viewerSources = JSON.parse(readFileSync(path.join(root, 'engine', 'viewer-sources.json'), 'utf8'));
   if (argv[0] === 'list') {
     const tag = arg('--tag');
     const files = argv.slice(1).filter((a, i, all) => !a.startsWith('--') && !['--out', '--tag'].includes(all[i - 1]));
@@ -318,7 +384,7 @@ function main(argv) {
       return 2;
     }
     const packages = new Map(files.map((f) => [path.basename(f), readZip(readFileSync(f))]));
-    const groups = releaseSources(packages, tag, manifest, bundlePins);
+    const groups = releaseSources(packages, tag, manifest, bundlePins, viewerSources);
     // The engine against its build record at this tag, and where our build scripts' source is.
     let scripts;
     const wasm = [...packages.values()].map((e) => e.get('extension/dist/engine/engine.wasm')).find(Boolean);

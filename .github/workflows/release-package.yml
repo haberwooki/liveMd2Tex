@@ -1,0 +1,82 @@
+# Builds the full package (the pre-release .vsix) and puts it on a DRAFT, PRE-RELEASE GitHub release (docs/DEVELOPING.md,
+# "Releases, in this order", steps 2 and 3). Prepared on the development machine; not yet run.
+#
+# Run it by hand (Actions, release-package, Run workflow) with the tag v<version>, which must already be pushed, on the
+# commit the package is built from. The job:
+# - checks out the tag (refs/tags/, so a branch of the same name is never taken), and checks the tag against the extension's version and that no release has the tag yet;
+# - installs from the lockfile, fetches the pinned engine and core data (engine/pins.json; scripts/engine-assets.mjs),
+#   checking each by size and SHA-256;
+# - runs scripts/vsix-scan.mjs --preview: builds the extension, puts the engine and the core data inside it, packages
+#   it as <name>-<version>-preview.vsix, and scans every file in it (the same scan as the test copy's; the private
+#   markers come from the repository secret);
+# - writes the release notes (scripts/release-sources.mjs notes) and makes the draft pre-release with the .vsix.
+# It publishes nothing: the draft stays a draft until release-sources.yml has passed on it and the owner publishes it by
+# hand. It starts no store upload. Estimated: 15 minutes (about 190 MB of engine and data to download).
+
+name: release-package
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: The tag v<version> of the extension, already pushed
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-package-${{ inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    # Write access only to make the draft release; the job pushes nothing.
+    permissions:
+      contents: write
+    env:
+      TAG: ${{ inputs.tag }}
+    steps:
+      # actions/checkout v4.4.0 and actions/setup-node v4.4.0, pinned by commit.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: refs/tags/${{ inputs.tag }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: The tag fits the version, and no release has it yet
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          if [ "$TAG" != "v$version" ]; then
+            echo "The tag is $TAG, but package.json's version is $version, so the tag must be v$version." >&2
+            exit 1
+          fi
+          # A draft is not found by its tag, so list the releases.
+          if gh release list --repo "$GITHUB_REPOSITORY" --limit 200 --json tagName --jq '.[].tagName' | grep -qx -- "$TAG"; then
+            echo "A release for $TAG exists already; delete the draft by hand to make it again." >&2
+            exit 1
+          fi
+      - name: Install from the lockfile
+        run: npm ci --omit=optional
+      - name: Fetch and check the pinned engine and core data
+        run: node scripts/engine-assets.mjs
+      - name: Build, package and scan the full package
+        # The private markers reach this step alone (build gate 2, G2E-R2).
+        env:
+          LIVEMD2TEX_PRIVATE_MARKERS: ${{ secrets.LIVEMD2TEX_PRIVATE_MARKERS }}
+        run: node scripts/vsix-scan.mjs --preview
+      - name: Make the draft pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node scripts/release-sources.mjs notes --tag "$TAG" --file "$RUNNER_TEMP/notes.md" --pre-release
+          shopt -s nullglob
+          vsix=(out/vsix/*-preview.vsix)
+          [ "${#vsix[@]}" -eq 1 ] || { echo "Expected one preview package in out/vsix/." >&2; exit 1; }
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag --draft --prerelease --title "$TAG (pre-release)" --notes-file "$RUNNER_TEMP/notes.md" "${vsix[0]}"

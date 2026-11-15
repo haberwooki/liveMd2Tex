@@ -16,7 +16,7 @@ const load = (name: string) => parse(readFileSync(path.join(folder, name), 'utf8
 describe('GitHub Actions workflows (G0 preparation)', () => {
   it('every workflow parses and asks only for read access to the repository, but the release job', () => {
     const files = readdirSync(folder).filter((f) => f.endsWith('.yml'));
-    assert.deepEqual(files.sort(), ['bundle.yml', 'ci.yml', 'coverage.yml', 'engine.yml', 'floor.yml', 'references.yml', 'release-sources.yml', 'test-inputs.yml', 'test-runner.yml']);
+    assert.deepEqual(files.sort(), ['bundle.yml', 'ci.yml', 'coverage.yml', 'engine.yml', 'floor.yml', 'references.yml', 'release-package.yml', 'release-sources.yml', 'test-inputs.yml', 'test-runner.yml']);
     for (const f of files) {
       const w = load(f) as Workflow & { permissions?: Record<string, string> };
       // The coverage measurement also reads another run's artifacts (the bundle's data packages); the release job
@@ -422,6 +422,7 @@ describe('GitHub Actions workflows (G0 preparation)', () => {
     const steps = job.steps;
     const at = (re: RegExp) => steps.findIndex((s) => re.test(`${s.name ?? ''} ${s.run ?? ''} ${s.uses ?? ''}`));
     assert.equal(steps[at(/actions\/checkout@/)].with?.['persist-credentials'], false);
+    assert.equal(steps[at(/actions\/checkout@/)].with?.ref, 'refs/tags/${{ inputs.tag }}');
     for (const s of steps) {
       assert.doesNotMatch(s.run ?? '', /\$\{\{/, `${s.name}: no expression inside a run script`);
       if (s.uses) {
@@ -442,6 +443,38 @@ describe('GitHub Actions workflows (G0 preparation)', () => {
     const upload = at(/gh release upload "\$TAG"/);
     assert.ok(list >= 0 && list < curl && curl < trees && trees < check && check < upload, [list, curl, trees, check, upload].join(' '));
     assert.doesNotMatch(readFileSync(path.join(folder, 'release-sources.yml'), 'utf8'), /git push|git tag |vsce publish|ovsx publish|gh release (create|edit)/);
+  });
+
+  it('the package job makes a draft pre-release from a pushed tag, scanned first, and publishes nothing', () => {
+    type Step = { name?: string; run?: string; uses?: string; with?: Record<string, unknown>; env?: Record<string, string> };
+    const w = load('release-package.yml') as Workflow & { permissions: Record<string, string> };
+    assert.deepEqual(Object.keys(w.on), ['workflow_dispatch']);
+    assert.deepEqual(w.permissions, { contents: 'read' });
+    const job = w.jobs.package as { permissions: Record<string, string>; env: Record<string, string>; steps: Step[] };
+    assert.deepEqual(job.permissions, { contents: 'write' });
+    const steps = job.steps;
+    const at = (re: RegExp) => steps.findIndex((s) => re.test(`${s.name ?? ''} ${s.run ?? ''} ${s.uses ?? ''}`));
+    assert.equal(steps[at(/actions\/checkout@/)].with?.['persist-credentials'], false);
+    for (const s of steps) {
+      assert.doesNotMatch(s.run ?? '', /\$\{\{/, `${s.name}: no expression inside a run script`);
+      if (s.uses) {
+        assert.match(s.uses, /^actions\/[a-z-]+@[0-9a-f]{40}$/, `${s.uses}: pinned by commit`);
+      }
+    }
+    // The token only where gh runs; the check of the tag and the release, then the assets, the scan, and only then the draft.
+    assert.equal(job.env.GH_TOKEN, undefined);
+    assert.ok(steps.filter((s) => /\bgh release\b/.test(s.run ?? '')).every((s) => s.env?.GH_TOKEN), 'every gh step has the token');
+    const free = at(/gh release list/);
+    const assets = at(/engine-assets\.mjs/);
+    const scan = at(/vsix-scan\.mjs --preview/);
+    const create = at(/gh release create "\$TAG"/);
+    assert.ok(free >= 0 && free < assets && assets < scan && scan < create, [free, assets, scan, create].join(' '));
+    assert.match(steps[create].run ?? '', /--verify-tag --draft --prerelease /);
+    // The private markers reach the scan step alone (G2E-R2), and the checkout takes the tag, never a branch of its name.
+    assert.equal(job.env.LIVEMD2TEX_PRIVATE_MARKERS, undefined);
+    assert.deepEqual(steps.filter((s) => s.env?.LIVEMD2TEX_PRIVATE_MARKERS).map((s) => s.run), ['node scripts/vsix-scan.mjs --preview']);
+    assert.equal(steps[at(/actions\/checkout@/)].with?.ref, 'refs/tags/${{ inputs.tag }}');
+    assert.doesNotMatch(readFileSync(path.join(folder, 'release-package.yml'), 'utf8'), /git push|git tag |vsce publish|ovsx publish|gh release (edit|upload)/);
   });
 
   it("the test inputs' release: by hand, on main, every file checked before a draft, and the tag free first", () => {

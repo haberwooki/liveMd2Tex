@@ -1,0 +1,14 @@
+{
+  "about": "The corresponding source of the one copyleft binary the PDF viewer ships that is not TeX Live's or ours: pdf.js's Liberation Sans fonts (dist/viewer/pdfjs/standard_fonts/LiberationSans-*.ttf, GPL-2.0 with Red Hat's font-embedding exception). A release that holds them attaches this archive (scripts/release-sources.mjs, group 'viewer'), so the offer does not depend on another project's server (GPL-2 section 3a). The fonts' name table says Version 1.07.4; the source is Liberation 1.x's repository at its last commit that still says 1.07.4 (its fonts' .sfd files, ChangeLog and licence texts; later commits are README changes after the 1.07.4 release, the 1.07.5 commit follows). The TrueType files in pdf.js are built from these .sfd files by FontForge; a byte-for-byte rebuild has not been tried.",
+  "sources": [
+    {
+      "name": "liberation-1.7-fonts-bbf14be.tar.gz",
+      "url": "https://github.com/liberationfonts/liberation-1.7-fonts/archive/bbf14bed1575adbb367530ae8c4b119b86496c62.tar.gz",
+      "sha256": "2397c2026fe6ad4873d2078e4a036dba432e09363223487ac2981107446c06f5",
+      "bytes": 2947290,
+      "what": "Liberation 1.x fonts' source (Liberation Sans 1.07.4) at commit bbf14bed1575adbb367530ae8c4b119b86496c62",
+      "repository": "https://github.com/liberationfonts/liberation-1.7-fonts",
+      "commit": "bbf14bed1575adbb367530ae8c4b119b86496c62"
+    }
+  ]
+}

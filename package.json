@@ -2,7 +2,7 @@
   "name": "livemd2tex",
   "displayName": "liveMd2Tex",
   "description": "A live PDF preview of LaTeX and Markdown, typeset by TeX engines inside the extension: no TeX installation, no download after install, no network, no telemetry.",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "publisher": "haberwooki",
   "author": "the liveMd2Tex authors",
   "license": "GPL-3.0-or-later",
@@ -426,7 +426,8 @@
     "engine:assets": "node scripts/engine-assets.mjs",
     "test:engine": "node scripts/build.mjs && node scripts/stage-engine.mjs --data --if-present && node scripts/clean-out.mjs && tsc -p tsconfig.json && node scripts/private-tests.mjs && mocha --config .mocharc.engine.cjs",
     "stage:engine": "node scripts/stage-engine.mjs --data",
-    "package:testcopy": "node scripts/vsix-scan.mjs --test-copy"
+    "package:testcopy": "node scripts/vsix-scan.mjs --test-copy",
+    "package:preview": "node scripts/vsix-scan.mjs --preview"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

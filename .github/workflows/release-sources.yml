@@ -18,7 +18,10 @@
 #   files are checked against the commit as well as its bytes;
 # - checks every archive: its hash; a commit archive's files against its commit's tree; a data archive's SHA-512
 #   against the pinned package database;
-# - attaches one tar file per group (engine, core-data, extra-data) and the list, sources.json, to the draft.
+# - attaches one tar file per group (engine, core-data, extra-data, and viewer: the source of pdf.js's GPL-2.0 Liberation
+#   Sans fonts, pinned in engine/viewer-sources.json) and the list, sources.json, to the draft.
+# The pre-release package itself is made by release-package.yml, which makes the draft; this workflow then attaches the
+# sources to it. The full package holds the core data too, so its dist/data/licences.json gives the core-data group.
 # The minutes, estimated: 10 (about 190 MB for the engine group: TeX Live's 149 MB and Emscripten's 33 MB; up to a
 # few hundred MB for a data package).
 
@@ -51,7 +54,7 @@ jobs:
       # actions/checkout v4.4.0 and actions/setup-node v4.4.0, pinned by commit.
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
-          ref: ${{ inputs.tag }}
+          ref: refs/tags/${{ inputs.tag }}
           persist-credentials: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:

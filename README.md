@@ -5,9 +5,10 @@ type. The TeX engines run inside the extension, so you need no TeX installation.
 for our own code; the TeX engine's parts keep their own terms (see Licence below, `LICENSE` and
 `THIRD_PARTY_NOTICES.md`).
 
-Status: a development version, not published yet. `.tex` files compile as you type and on save, Markdown files
-are converted and typeset when asked, and a click in the PDF goes to the source line. This page is for users, and
-is the store page; building and testing the extension is in `docs/DEVELOPING.md`.
+Status: a preview. It is not in any store yet; you install it from a file on GitHub (see Preview, below).
+`.tex` files compile as you type and on save, Markdown files are converted and typeset when asked, and a click
+in the PDF goes to the source line. This page is for users, and is the store page; building and testing the
+extension is in `docs/DEVELOPING.md`.
 
 ## What it does
 
@@ -23,8 +24,8 @@ is the store page; building and testing the extension is in `docs/DEVELOPING.md`
 
 ## What it never does
 
-- **No download after installation.** Everything it needs comes from the store when you install it. The
-  optional Extra Packages add-on is a second extension, which you install yourself from the same store.
+- **No download after installation.** Everything it needs comes with the package when you install it. The
+  optional Extra Packages add-on is a second extension, which you install yourself.
 - **No network.** It opens no network connection: no update check of its own, no package or font download.
 - **No outside program.** It starts no program on your computer. Its only child process is its own engine
   host, which VS Code's own program runs in Node mode. The TeX engines are WebAssembly inside that process, and
@@ -53,11 +54,52 @@ notes, report, journal paper, or two-column paper with the example preset. The n
 that exists. The starting documents and the example preset are dedicated to the public domain (CC0 1.0), so you
 can use them for anything.
 
+## Preview
+
+This is a preview release for testers. Please try it and tell us what breaks.
+
+**How it is looked after.** It is a Preview: issues are answered as time allows, and the TeX package set is
+rebuilt once a year with TeX Live.
+
+**Install it.**
+
+1. On https://github.com/haberwooki/liveMd2Tex/releases, open the newest release marked "Pre-release" and
+   download its `.vsix` file (the one named `livemd2tex-<version>-preview.vsix`). It is large, about 147 MB,
+   because it holds the TeX engine and the core TeX data.
+2. In VS Code, open the Extensions view, choose the `...` menu at its top, then "Install from VSIX...", and pick
+   the file. Or run `code --install-extension livemd2tex-<version>-preview.vsix` in a terminal.
+3. Open a `.tex` file. It compiles as you type; if no preview shows, open the Command Palette (Ctrl+Shift+P, or
+   Cmd+Shift+P on macOS) and run "liveMd2Tex: Show the PDF preview". For a `.md` file, run "liveMd2Tex: Open
+   LaTeX preview" from the same palette.
+
+You need no other extension and no TeX installation. To remove it, uninstall it in the Extensions view.
+
+**What works.** The compile loop and the PDF preview, pdfLaTeX and XeLaTeX, click-through between the PDF and
+the source, errors on their lines, Markdown to PDF, templates, and the walkthrough.
+
+**Extra packages.** For more packages and fonts, install the Extra Packages add-on, a second `.vsix`:
+
+1. Open https://github.com/haberwooki/liveMd2Tex/releases/tag/extra-data-ae9dbba-2 and download the `.vsix`
+   file (about 240 MB).
+2. Install it the same way as above: Extensions view, the `...` menu, "Install from VSIX...".
+3. Reload VS Code if it asks.
+
+The "Install Extra Packages" button and the Extensions search will not find the add-on during the preview, because
+it is in no store yet. Use the steps above instead.
+
+**What does not work yet.** It is not in the VS Code Marketplace or Open VSX, so VS Code does not update it:
+install the next preview by hand. How many documents compile is not measured yet (see below), remote windows are
+untested, and the list under "What does not work" applies.
+
+**Report a problem** at https://github.com/haberwooki/liveMd2Tex/issues. Say what you did, what you expected and
+what happened, and the VS Code version. The liveMd2Tex output channel (View > Output) has a log you can paste;
+remove anything private first.
+
 ## What you install
 
-The plan for the first release is three store items. The two data packages are built and released on GitHub
-(`core-data-ae9dbba-2` and `extra-data-ae9dbba-2`, each a `.vsix` with its sources), but the extension is not yet
-built, so for now the core data reaches VS Code only in the development test copy.
+The plan for the first store release is three store items. The two data packages are built and released on GitHub
+(`core-data-ae9dbba-2` and `extra-data-ae9dbba-2`, each a `.vsix` with its sources). The preview is a single
+`.vsix` that holds the extension and the core data together (see Preview, above).
 
 | Item | What it holds | Size |
 |---|---|---|
@@ -66,8 +108,8 @@ built, so for now the core data reaches VS Code only in the development test cop
 | Extra Packages (`haberwooki.livemd2tex-extra-data`) | Optional: many more packages and fonts, publishers' classes among them | 239.9 MB |
 
 The TeX engines are part of the extension itself. The two data items hold TeX's files only, and no code.
-Installing liveMd2Tex from the store will install the core data with it. If you install from a `.vsix` file
-instead, install the core data's `.vsix` file first: VS Code fetches a dependency only from the store.
+Installing liveMd2Tex from the store will install the core data with it. The preview `.vsix` already holds the
+core data, so it needs nothing first.
 
 ## Markdown
 
@@ -125,7 +167,8 @@ Before each compile the extension reads the preamble. Each file that no installe
 the Problems panel and in one notification, with what to do:
 
 - **Install Extra Packages**, when the add-on has it. The button opens VS Code's Extensions view on the add-on,
-  and you install it there.
+  and you install it there. In the preview the add-on is in no store, so the button finds nothing: install its
+  `.vsix` file from GitHub (see Preview, above).
 - **Add a package from a file**: a `.sty` or `.cls` file, a `.dtx` file with its `.ins` file (built with the
   extension's own TeX), or a ZIP file from CTAN. The package is kept for all your documents, or put in the
   document's folder.
@@ -211,7 +254,7 @@ the AGPL ships, but some TeX packages in the Extra Packages add-on stay under th
 liveMd2Tex authors; `AUTHORS.md` in the repository says who they are. The parts by others and their licences are
 in `THIRD_PARTY_NOTICES.md`. The licence texts and the notices of the engine's parts ship in `dist/licenses/`.
 
-The source code of each release is the tag of its version in this repository: for this version, the tag `v0.0.1`
+The source code of each release is the tag of its version in this repository: for this version, the tag `v0.1.0`
 of https://github.com/haberwooki/liveMd2Tex. The tag is `v` and the version, its tree holds the whole source, and
 each release's page links it.
 

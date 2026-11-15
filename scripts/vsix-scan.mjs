@@ -32,6 +32,11 @@
 //                                              dist/data/ (stage-engine.mjs --data; PATH a .vsix or its unpacked
 //                                              folder, by default LIVEMD2TEX_CORE_DATA); for a throwaway VS Code
 //                                              profile only, never for the stores.
+//   node scripts/vsix-scan.mjs --preview [--data-package PATH]
+//                                              the pre-release package: the same files as the test copy (engine and
+//                                              core data inside), named <name>-<version>-preview.vsix, for a normal
+//                                              profile and a GitHub pre-release; the same scan. It needs no other
+//                                              extension (package.json has no extensionDependencies).
 //   node scripts/vsix-scan.mjs --vsix FILE     scan an existing VSIX
 //   node scripts/vsix-scan.mjs --vsix FILE --data   a data package (no code at all: any JavaScript fails it)
 // Exit code 0 when clean; 1 with a report otherwise. A JSON report is written next to the VSIX.
@@ -588,19 +593,23 @@ async function main(argv) {
   } else {
     run(process.execPath, [path.join(root, 'scripts', 'build.mjs'), '--production']);
     const testCopy = argv.includes('--test-copy');
-    const withEngine = testCopy || argv.includes('--with-engine');
+    const preview = argv.includes('--preview');
+    if (testCopy && preview) {
+      throw new Error('--test-copy and --preview are two different packages; give one');
+    }
+    const withEngine = testCopy || preview || argv.includes('--with-engine');
     // build.mjs empties dist/, so the plain package never holds the engine or the image.
     rmSync(path.join(root, 'dist', 'engine'), { recursive: true, force: true });
     rmSync(path.join(root, 'dist', 'data'), { recursive: true, force: true });
-    if (pkg.extensionDependencies?.length && testCopy) {
-      throw new Error('the test copy is built without extensionDependencies (docs/DESIGN.md#testing, V0)');
+    if (pkg.extensionDependencies?.length && (testCopy || preview)) {
+      throw new Error('the test copy and the preview package are built without extensionDependencies: they hold the core data themselves (docs/DESIGN.md#testing, V0)');
     }
     if (withEngine) {
       const at = argv.indexOf('--data-package');
-      console.log(stageEngine({ data: testCopy, dataPackage: at >= 0 ? path.resolve(argv[at + 1]) : process.env.LIVEMD2TEX_CORE_DATA || null }).join('\n'));
+      console.log(stageEngine({ data: testCopy || preview, dataPackage: at >= 0 ? path.resolve(argv[at + 1]) : process.env.LIVEMD2TEX_CORE_DATA || null }).join('\n'));
     }
     mkdirSync(path.join(root, 'out', 'vsix'), { recursive: true });
-    const suffix = testCopy ? '-testcopy' : withEngine ? '-engine' : '';
+    const suffix = testCopy ? '-testcopy' : preview ? '-preview' : withEngine ? '-engine' : '';
     vsixPath = path.join(root, 'out', 'vsix', `${pkg.name}-${pkg.version}${suffix}.vsix`);
     const vsce = await import('@vscode/vsce');
     await vsce.createVSIX({ cwd: root, packagePath: vsixPath, dependencies: false, allowMissingRepository: true });
