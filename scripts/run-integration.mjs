@@ -57,7 +57,10 @@ if (executable && existsSync(path.join(path.dirname(executable), 'updating_versi
   process.exit(3);
 }
 
-const profile = mkdtempSync(path.join(os.tmpdir(), 'livemd2tex-test-'));
+// On macOS the temporary folder (/var/folders/.../T/) is long, and VS Code's socket in the Restricted Mode
+// window's user data folder must stay within the 103 characters a Unix socket path may have: there the
+// throwaway profile goes under /tmp.
+const profile = mkdtempSync(path.join(process.platform === 'darwin' ? '/tmp' : os.tmpdir(), 'livemd2tex-test-'));
 const env = { ...process.env, LIVEMD2TEX_TEST_PROFILE_DIR: profile };
 const workspace = path.join(profile, 'workspace');
 const prepare = await import(pathToFileURL(path.join(root, 'out', 'test', 'support', 'prepareV0Workspace.js')).href);

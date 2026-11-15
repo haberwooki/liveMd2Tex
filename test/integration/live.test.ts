@@ -130,7 +130,13 @@ describe('M2-A: live preview in VS Code', function () {
     const saved = api.nextCompile(main);
     await doc.save();
     const record = await withTimeout(saved, 60000, 'save compile');
-    assert.equal(record.trigger, 'save');
+    // The save writes the file, and the watcher's news of that write may reach the scheduler before the save
+    // event does (a slow machine): the two then group into one compile, "file+save". One compile with the save
+    // among its triggers is the behaviour; a later compile for the file change alone would be the fault.
+    assert.ok(record.trigger.split('+').includes('save'), `trigger ${record.trigger}`);
+    await sleep(1500);
+    const fileOnly = api.compileRecords().slice(count).filter((r) => r.trigger === 'file');
+    assert.equal(fileOnly.length, 0, 'the save\'s own write compiled again as a file change');
     assert.equal(record.pass, 'full');
     assert.ok(record.pdfWritten);
     await vscode.commands.executeCommand(`${COMMAND_PREFIX}.toggleLive`);
